@@ -1,0 +1,49 @@
+{% extends "webinterface/base.html" %}
+{% load bootstrap3 %}
+
+{% block title %}
+Cleaners
+{% endblock %}
+
+{% block body %}
+    <div class="container-fluid">
+        <div class="row" style="margin: 1em;">
+            <h1>Review cleaners: Are they configured correctly?</h1>
+            <div class="col-sm-8 col-sm-offset-2
+                            col-md-6">
+                <p>
+                    <a class="btn btn-default" href="{% url 'webinterface:cleaning-plans' %}" role="button">
+                    <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
+                    <a class="btn btn-primary" href="{% url 'webinterface:cleaners-new' %}" role="button">
+                    <span class="glyphicon glyphicon-plus"></span> New cleaner</a>
+                    <a class="btn btn-success" href="#" role="button">
+                    <span class="glyphicon glyphicon-chevron-right"></span> Next step</a>
+                </p>
+                <h3>Number of cleaners: {{ object_list.count }}</h3>
+                {% for object in object_list %}
+                        <div class="panel panel-info">
+                            <div class="panel-heading">
+                                <h2 class="panel-title">{{ object.name }}</h2>
+                            </div>
+                            <div class="panel-body">
+                                <h4>Cleans:</h4>
+                                {% for job in object.jobs.all %}
+                                    <p style="margin-left: 1em">{{ job }}</p>
+                                {% empty %}
+                                    <p style="margin-left: 1em">Not issued any cleaning jobs...</p>
+                                {% endfor %}
+                            </div>
+                            <div class="panel-footer">
+                                <a class="btn btn-info" href="{% url 'webinterface:cleaners-edit' object.pk %}"
+                                   role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
+                                <a class="btn btn-danger" href="{% url 'webinterface:cleaners-delete' object.pk %}"
+                                   role="button"><span class="glyphicon glyphicon-trash"></span> Delete</a>
+                            </div>
+                        </div>
+                {% empty %}
+                    <h2>Nothing to display here...</h2>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

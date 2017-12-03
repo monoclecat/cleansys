@@ -37,7 +37,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'webinterface.apps.WebinterfaceConfig',
+    'bootstrap3',
+    'crispy_forms',
 ]
+
+CRISPY_TEMPLATE_PACK = 'bootstrap3'
+LOGIN_URL = '/login'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

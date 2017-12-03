@@ -1,0 +1,58 @@
+{% extends "webinterface/base.html" %}
+{% load bootstrap3 %}
+
+{% block title %}
+Cleaning Plans
+{% endblock %}
+
+{% block body %}
+    <div class="container-fluid">
+        <div class="row">
+            <h1 style="margin: 1em;">Review cleaning schedules: Are they configured correctly?</h1>
+            <div class="col-sm-8 col-sm-offset-2
+                            col-md-6 col-md-offset-3">
+                <p>
+                    <a class="btn btn-default" href="/" role="button">
+                    <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
+                    <a class="btn btn-primary" href="{% url 'webinterface:cleaning-plan-new' %}" role="button">
+                    <span class="glyphicon glyphicon-plus"></span> New schedule</a>
+                    <a class="btn btn-success" href="{% url 'webinterface:cleaners' %}" role="button">
+                    <span class="glyphicon glyphicon-chevron-right"></span> Next step</a>
+                </p>
+
+                {% for object in object_list %}
+                        <div class="panel panel-info">
+                            <div class="panel-heading">
+                                <h2 class="panel-title">{{ object.name }}</h2>
+                            </div>
+                            <div class="panel-body">
+                                    <h4>Cleaners per week: {{ object.get_cleaners_per_date_display }}</h4>
+                                    <h4>Cleaning frequency: {{ object.get_frequency_display }}</h4>
+                                    <h4>Tasks</h4>
+                                    <ul>
+                                        {% ifnotequal object.task1 "" %}<li>{{ object.task1 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task2 "" %}<li>{{ object.task2 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task3 "" %}<li>{{ object.task3 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task4 "" %}<li>{{ object.task4 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task5 "" %}<li>{{ object.task5 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task6 "" %}<li>{{ object.task6 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task7 "" %}<li>{{ object.task7 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task8 "" %}<li>{{ object.task8 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task9 "" %}<li>{{ object.task9 }}</li>{% endifnotequal %}
+                                        {% ifnotequal object.task10 "" %}<li>{{ object.task10 }}</li>{% endifnotequal %}
+                                    </ul>
+                            </div>
+                            <div class="panel-footer">
+                                <a class="btn btn-info" href="{% url 'webinterface:cleaning-plan-edit' object.pk %}"
+                                   role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
+                                <a class="btn btn-danger" href="{% url 'webinterface:cleaning-plan-delete' object.pk %}"
+                                   role="button"><span class="glyphicon glyphicon-trash"></span> Delete</a>
+                            </div>
+                        </div>
+                {% empty %}
+                    <h2>Nothing to display here...</h2>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

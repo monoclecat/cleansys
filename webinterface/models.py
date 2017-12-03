@@ -5,19 +5,37 @@ from django.core.validators import validate_comma_separated_integer_list
 
 class CleaningPlan(models.Model):
     name = models.CharField(max_length=20)
-    cleaners_per_week = models.IntegerField(default=1)
-    tasks = models.CharField(max_length=200, validators=[validate_comma_separated_integer_list])
+
+    CLEANERS_PER_DATE_CHOICES = ((1, 'One'), (2, 'Two'))
+    cleaners_per_date = models.IntegerField(default=1, choices=CLEANERS_PER_DATE_CHOICES)
+
+    FREQUENCY_CHOICES = ((1, 'Every week'), (2, 'Even weeks'), (3, 'Odd weeks'))
+    frequency = models.IntegerField(default=1, choices=FREQUENCY_CHOICES)
+
+    task1 = models.CharField(max_length=40, blank=True)
+    task2 = models.CharField(max_length=40, blank=True)
+    task3 = models.CharField(max_length=40, blank=True)
+    task4 = models.CharField(max_length=40, blank=True)
+    task5 = models.CharField(max_length=40, blank=True)
+    task6 = models.CharField(max_length=40, blank=True)
+    task7 = models.CharField(max_length=40, blank=True)
+    task8 = models.CharField(max_length=40, blank=True)
+    task9 = models.CharField(max_length=40, blank=True)
+    task10 = models.CharField(max_length=40, blank=True)
+
+    def __str__(self):
+        return self.name
 
 
-class Cleaners(models.Model):
-    name = models.CharField(max_length=20)
-    email = models.CharField(max_length=40)
+class Cleaner(models.Model):
+    name = models.CharField(max_length=10)
+    jobs = models.ManyToManyField(CleaningPlan)
 
 
 class Config(models.Model):
     name = models.CharField(max_length=20)
     created = models.DateField(default=timezone.now)
-    cleaners = models.ManyToManyField(Cleaners)
+    cleaners = models.ManyToManyField(Cleaner)
     start_date = models.DateField()
     end_date = models.DateField()
     cleaning_plans = models.ManyToManyField(CleaningPlan)
