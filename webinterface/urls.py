@@ -6,6 +6,9 @@ app_name = 'webinterface'
 urlpatterns = [
     url(r'^$', login_required(WelcomeView.as_view()), name='welcome'),
 
+    url(r'^config/$', login_required(ConfigView.as_view()), name='config'),
+    url(r'^results/$', login_required(ResultsView.as_view()), name='results'),
+
     url(r'^cleaners/$', login_required(CleanersView.as_view()), name='cleaners'),
     url(r'^cleaners-new/$', login_required(CleanersNewView.as_view()), name='cleaners-new'),
     url(r'^cleaners-delete/(?P<pk>[\w]+)/$', login_required(CleanersDeleteView.as_view()),
@@ -13,12 +16,12 @@ urlpatterns = [
     url(r'^cleaners-edit/(?P<pk>[\w]+)/$', login_required(CleanersUpdateView.as_view()),
         name='cleaners-edit'),
 
-    url(r'^cleaning-schedules/$', login_required(CleaningPlanView.as_view()), name='cleaning-plans'),
-    url(r'^cleaning-schedule-new/$', login_required(CleaningPlanNewView.as_view()), name='cleaning-plan-new'),
-    url(r'^cleaning-schedule-delete/(?P<pk>[\w]+)/$', login_required(CleaningPlanDeleteView.as_view()),
-        name='cleaning-plan-delete'),
-    url(r'^cleaning-schedule-edit/(?P<pk>[\w]+)/$', login_required(CleaningPlanUpdateView.as_view()),
-        name='cleaning-plan-edit'),
+    url(r'^cleaning-schedules/$', login_required(CleaningScheduleView.as_view()), name='cleaning-schedule'),
+    url(r'^cleaning-schedules-new/$', login_required(CleaningScheduleNewView.as_view()), name='cleaning-schedule-new'),
+    url(r'^cleaning-schedules-delete/(?P<pk>[\w]+)/$', login_required(CleaningScheduleDeleteView.as_view()),
+        name='cleaning-schedule-delete'),
+    url(r'^cleaning-schedules-edit/(?P<pk>[\w]+)/$', login_required(CleaningScheduleUpdateView.as_view()),
+        name='cleaning-schedule-edit'),
 
     url(r'^login/$', login_view, name='login'),
     url(r'^logout/$', login_required(login_view), name='logout'),

@@ -1,0 +1,38 @@
+{% extends "webinterface/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+Cleaners
+{% endblock %}
+
+{% block body %}
+    <div class="container-fluid">
+        <div class="row" style="margin: 1em;">
+            <h1>Results</h1>
+            <div class="col-sm-8 col-sm-offset-2
+                            col-md-6">
+                <p>
+                    <a class="btn btn-default" href="{% url 'webinterface:cleaners' %}" role="button">
+                    <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
+                </p>
+                <table>
+                    {% for object in object_list %}
+                        <tr>
+                            <td>
+                                {{ object.date }}
+                            </td>
+                            <td>
+                                {{ object.schedule }}
+                            </td>
+                            <td>
+                                {{ object.cleaners }}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <h2>Nothing to display here...</h2>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

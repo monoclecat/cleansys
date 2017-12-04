@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.core.validators import validate_comma_separated_integer_list
 
 
-class CleaningPlan(models.Model):
+class CleaningSchedule(models.Model):
     name = models.CharField(max_length=20)
 
     CLEANERS_PER_DATE_CHOICES = ((1, 'One'), (2, 'Two'))
@@ -29,16 +29,13 @@ class CleaningPlan(models.Model):
 
 class Cleaner(models.Model):
     name = models.CharField(max_length=10)
-    jobs = models.ManyToManyField(CleaningPlan)
+    jobs = models.ManyToManyField(CleaningSchedule)
 
 
-class Config(models.Model):
-    name = models.CharField(max_length=20)
-    created = models.DateField(default=timezone.now)
+class CleaningDuty(models.Model):
     cleaners = models.ManyToManyField(Cleaner)
-    start_date = models.DateField()
-    end_date = models.DateField()
-    cleaning_plans = models.ManyToManyField(CleaningPlan)
+    date = models.DateField()
+    schedule = models.ForeignKey(CleaningSchedule, null=True)
 
 
 

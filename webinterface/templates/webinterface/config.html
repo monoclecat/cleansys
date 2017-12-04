@@ -1,0 +1,27 @@
+{% extends "webinterface/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+Cleaners
+{% endblock %}
+
+{% block body %}
+    <div class="container-fluid">
+        <div class="row" style="margin: 1em;">
+            <h1>Set timeframe</h1>
+            <div class="col-sm-8 col-sm-offset-2
+                            col-md-6">
+                <p>
+                    <a class="btn btn-default" href="{% url 'webinterface:cleaners' %}" role="button">
+                    <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
+                </p>
+
+                <form method="POST" class="form">
+                    {% csrf_token %}
+                    {% crispy form %}
+                </form>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
