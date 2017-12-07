@@ -34,7 +34,7 @@ class CleanerForm(forms.ModelForm):
     name = forms.CharField(max_length=10, label="Cleaner name", help_text="Please only the first name",
                            required=True, widget=forms.TextInput)
 
-    jobs = forms.ModelMultipleChoiceField(queryset=CleaningSchedule.objects.all(), widget=forms.CheckboxSelectMultiple())
+    assigned_to = forms.ModelMultipleChoiceField(queryset=CleaningSchedule.objects.all(), widget=forms.CheckboxSelectMultiple())
 
     def __init__(self, *args, **kwargs):
         super(CleanerForm, self).__init__(*args, **kwargs)
@@ -43,7 +43,7 @@ class CleanerForm(forms.ModelForm):
         self.helper.layout = Layout(
             Fieldset("General",
                      'name',
-                     'jobs',
+                     'assigned_to',
                      ),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Save</button> "

@@ -14,7 +14,7 @@ Cleaning Plans
                 <p>
                     <a class="btn btn-default" href="/" role="button">
                     <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
-                    <a class="btn btn-primary" href="{% url 'webinterface:cleaning-plan-new' %}" role="button">
+                    <a class="btn btn-primary" href="{% url 'webinterface:cleaning-schedule-new' %}" role="button">
                     <span class="glyphicon glyphicon-plus"></span> New schedule</a>
                     <a class="btn btn-success" href="{% url 'webinterface:cleaners' %}" role="button">
                     <span class="glyphicon glyphicon-chevron-right"></span> Next step</a>
@@ -43,9 +43,9 @@ Cleaning Plans
                                     </ul>
                             </div>
                             <div class="panel-footer">
-                                <a class="btn btn-info" href="{% url 'webinterface:cleaning-plan-edit' object.pk %}"
+                                <a class="btn btn-info" href="{% url 'webinterface:cleaning-schedule-edit' object.pk %}"
                                    role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
-                                <a class="btn btn-danger" href="{% url 'webinterface:cleaning-plan-delete' object.pk %}"
+                                <a class="btn btn-danger" href="{% url 'webinterface:cleaning-schedule-delete' object.pk %}"
                                    role="button"><span class="glyphicon glyphicon-trash"></span> Delete</a>
                             </div>
                         </div>

@@ -20,6 +20,7 @@ class WelcomeView(TemplateView):
 class ConfigView(FormView):
     template_name = 'webinterface/config.html'
     form_class = ConfigForm
+    success_url = "/results/1-1-1111/1-1-1112"
 
     def post(self, request, *args, **kwargs):
         """
@@ -37,19 +38,65 @@ class ConfigView(FormView):
             if end_date > start_date:
                 date_iterator = start_date
                 to_add = datetime.timedelta(days=7)
-                while date_iterator < end_date:
+                while date_iterator <= end_date:
                     for job in CleaningSchedule.objects.all():
-                        CleaningDuty.objects.create(schedule=job, date=date_iterator)
+                        if not CleaningDuty.objects.filter(date=date_iterator, schedule__name=job.name).exists():
+                            # 2: Even weeks 3: Odd weeks
+                            if job.frequency == 1 or \
+                                    job.frequency == 2 and date_iterator.isocalendar()[1] % 2 == 0 or \
+                                    job.frequency == 3 and date_iterator.isocalendar()[1] % 2 == 1:
+
+                                CleaningDuty.objects.create(schedule=job, date=date_iterator)
                     date_iterator += to_add
 
-                # Call cleaning scheduling function here with argument dates
-                return reverse_lazy('webinterface:results')
-        return self.render_to_response(self.get_context_data(form=form))
+                duties = CleaningDuty.objects.filter(
+                    date__range=(start_date, end_date))
+
+                distribution_structure = []
+                for schedule in CleaningSchedule.objects.all().order_by('-frequency'):
+                    cleaners_for_schedule = Cleaner.objects.filter(assigned_to__name=schedule.name)
+                    cleaners_with_data = []
+                    for cleaner in cleaners_for_schedule:
+                        cleaners_with_data.append([cleaner, 0])
+                    distribution_structure.append(
+                        [duties.filter(schedule__name=schedule.name), cleaners_with_data])
 
 
-class ResultsView(ListView):
-    model = CleaningDuty
+
+
+
+                # distribution_structure ==
+                # [
+                #   for every schedule:
+                #   [
+                #       <list of all CleaningDuties in time frame>,
+                #       [list of [<cleaner assigned to this schedule>, <times he/she already cleaned this>]
+                #   ], ...
+                # ]
+
+
+
+                # duty.cleaners.add(Cleaner.objects.first())
+
+                return self.form_valid(form)
+        return self.form_invalid(form)
+
+
+
+class ResultsView(TemplateView):
     template_name = 'webinterface/results.html'
+
+    def get(self, request, *args, **kwargs):
+        kwargs['from_date'] = datetime.date(int(kwargs['from_year']), int(kwargs['from_month']), int(kwargs['from_day']))
+        kwargs['to_date'] = datetime.date(int(kwargs['to_year']), int(kwargs['to_month']), int(kwargs['to_day']))
+        context = self.get_context_data(**kwargs)
+
+        return self.render_to_response(context)
+
+    def get_context_data(self, **kwargs):
+        keywords = super(ResultsView, self).get_context_data(**kwargs)
+        keywords['object_list'] = CleaningDuty.objects.filter(date__range=(kwargs['from_date'], kwargs['to_date']))
+        return keywords
 
 
 class CleanersView(ListView):

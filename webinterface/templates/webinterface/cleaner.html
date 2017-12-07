@@ -27,7 +27,7 @@ Cleaners
                             </div>
                             <div class="panel-body">
                                 <h4>Cleans:</h4>
-                                {% for job in object.jobs.all %}
+                                {% for job in object.assigned_to.all %}
                                     <p style="margin-left: 1em">{{ job }}</p>
                                 {% empty %}
                                     <p style="margin-left: 1em">Not issued any cleaning jobs...</p>

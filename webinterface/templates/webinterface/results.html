@@ -2,36 +2,54 @@
 {% load crispy_forms_tags %}
 
 {% block title %}
-Cleaners
+Cleaning Duties
 {% endblock %}
 
 {% block body %}
     <div class="container-fluid">
         <div class="row" style="margin: 1em;">
             <h1>Results</h1>
-            <div class="col-sm-8 col-sm-offset-2
-                            col-md-6">
+            <div class="">
                 <p>
                     <a class="btn btn-default" href="{% url 'webinterface:cleaners' %}" role="button">
                     <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
                 </p>
-                <table>
-                    {% for object in object_list %}
-                        <tr>
-                            <td>
-                                {{ object.date }}
-                            </td>
-                            <td>
-                                {{ object.schedule }}
-                            </td>
-                            <td>
-                                {{ object.cleaners }}
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <h2>Nothing to display here...</h2>
-                    {% endfor %}
-                </table>
+                {% regroup object_list by date as grouped_objects %}
+                <div class="">
+                    <div class="panel panel-primary">
+                        <div class="panel-heading">
+                            <h3>Cleaning duties from {{ object_list.first.date }} until
+                                {{ object_list.last.date }}</h3>
+                        </div>
+                        <div class="panel-body">
+                            <table class="table">
+                                <tr>
+                                    <th>Date</th>
+                                    {% for duty in grouped_objects.0.list %}
+                                        <th>{{ duty.schedule.name }}</th>
+                                    {% endfor %}
+
+                                </tr>
+                                {% for group in grouped_objects %}
+                                    <tr>
+                                        <td>{{ group.grouper }}</td>
+                                        {% for schedule in group.list %}
+                                            <td>
+                                                {% for cleaner in schedule.cleaners.all %}
+                                                    {{ cleaner.name }}
+                                                {% endfor %}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% empty %}
+                                    <h2>Nothing to display here...</h2>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+
             </div>
         </div>
     </div>

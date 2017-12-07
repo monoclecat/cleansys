@@ -2,6 +2,8 @@ from django.db import models
 from django.utils import timezone
 from django.core.validators import validate_comma_separated_integer_list
 
+import logging
+
 
 class CleaningSchedule(models.Model):
     name = models.CharField(max_length=20)
@@ -29,14 +31,13 @@ class CleaningSchedule(models.Model):
 
 class Cleaner(models.Model):
     name = models.CharField(max_length=10)
-    jobs = models.ManyToManyField(CleaningSchedule)
+    assigned_to = models.ManyToManyField(CleaningSchedule)
 
 
 class CleaningDuty(models.Model):
     cleaners = models.ManyToManyField(Cleaner)
-    date = models.DateField()
+    date = models.DateField(unique=True)
     schedule = models.ForeignKey(CleaningSchedule, null=True)
-
 
 
 
