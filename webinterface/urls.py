@@ -2,11 +2,22 @@ from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 from .views import *
 
+from django.views.generic.base import RedirectView
+import datetime
+
+
 app_name = 'webinterface'
 urlpatterns = [
     url(r'^$', login_required(WelcomeView.as_view()), name='welcome'),
 
     url(r'^config/$', login_required(ConfigView.as_view()), name='config'),
+    url(r'^results/$', RedirectView.as_view(
+        url=reverse_lazy('webinterface:results',
+                    kwargs={'from_day': datetime.datetime.now().day, 'from_month': datetime.datetime.now().month,
+                            'from_year': datetime.datetime.now().year,
+                            'to_day': (datetime.datetime.now() + datetime.timedelta(days=30)).day,
+                            'to_month': (datetime.datetime.now() + datetime.timedelta(days=30)).month,
+                            'to_year': (datetime.datetime.now() + datetime.timedelta(days=30)).year})), name='results-now'),
     url(r'^results/(?P<from_day>[\d]+)-(?P<from_month>[\d]+)-(?P<from_year>[\d]+)/(?P<to_day>[\d]+)-(?P<to_month>[\d]+)-(?P<to_year>[\d]+)$', login_required(ResultsView.as_view()), name='results'),
 
     url(r'^cleaners/$', login_required(CleanersView.as_view()), name='cleaners'),

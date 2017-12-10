@@ -11,38 +11,41 @@ Cleaning Duties
             <h1>Results</h1>
             <div class="">
                 <p>
-                    <a class="btn btn-default" href="{% url 'webinterface:cleaners' %}" role="button">
+                    <a class="btn btn-default" href="{% url 'webinterface:config' %}" role="button">
                     <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
                 </p>
-                {% regroup object_list by date as grouped_objects %}
+
                 <div class="">
                     <div class="panel panel-primary">
                         <div class="panel-heading">
-                            <h3>Cleaning duties from {{ object_list.first.date }} until
-                                {{ object_list.last.date }}</h3>
+                            <h3>Cleaning duties from {{ duties.0.0 }} until
+                                {% with duties|last as last %}{{ last.0 }}{% endwith %}</h3>
                         </div>
                         <div class="panel-body">
                             <table class="table">
                                 <tr>
                                     <th>Date</th>
-                                    {% for duty in grouped_objects.0.list %}
-                                        <th>{{ duty.schedule.name }}</th>
+                                    {% for schedule_name in table_header %}
+                                        <th>{{ schedule_name }}</th>
                                     {% endfor %}
-
                                 </tr>
-                                {% for group in grouped_objects %}
+                                {% for date in duties %}
                                     <tr>
-                                        <td>{{ group.grouper }}</td>
-                                        {% for schedule in group.list %}
+                                        <td>{{ date.0 }}</td>
+                                        {% for schedule,duty in date.1.items %}
                                             <td>
-                                                {% for cleaner in schedule.cleaners.all %}
-                                                    {{ cleaner.name }}
-                                                {% endfor %}
+                                                {% ifnotequal duty "" %}
+                                                    {% for cleaner in duty.cleaners.all %}
+                                                        {{ cleaner.name }}
+                                                    {% empty %}
+                                                        No cleaners
+                                                    {% endfor %}
+                                                {% endifnotequal %}
                                             </td>
                                         {% endfor %}
                                     </tr>
                                 {% empty %}
-                                    <h2>Nothing to display here...</h2>
+                                    No duties to show
                                 {% endfor %}
                             </table>
                         </div>

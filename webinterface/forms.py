@@ -7,8 +7,8 @@ from crispy_forms.bootstrap import FormActions
 
 
 class ConfigForm(forms.Form):
-    start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Start date DD.MM.YYYY", help_text="Must be a Sunday!")
-    end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="End date DD.MM.YYYY", help_text="Must be a Sunday!")
+    start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Start date DD.MM.YYYY")
+    end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="End date DD.MM.YYYY")
 
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)

@@ -6,7 +6,7 @@ import logging
 
 
 class CleaningSchedule(models.Model):
-    name = models.CharField(max_length=20)
+    name = models.CharField(max_length=20, unique=True)
 
     CLEANERS_PER_DATE_CHOICES = ((1, 'One'), (2, 'Two'))
     cleaners_per_date = models.IntegerField(default=1, choices=CLEANERS_PER_DATE_CHOICES)
@@ -30,14 +30,26 @@ class CleaningSchedule(models.Model):
 
 
 class Cleaner(models.Model):
-    name = models.CharField(max_length=10)
+    name = models.CharField(max_length=10, unique=True)
     assigned_to = models.ManyToManyField(CleaningSchedule)
+
+    def free_on_date(self, date):
+        return not CleaningDuty.objects.filter(date=date, cleaners=self).exists()
+
+    def __str__(self):
+        return self.name
 
 
 class CleaningDuty(models.Model):
+    class Meta:
+        unique_together = ("date", "schedule")
     cleaners = models.ManyToManyField(Cleaner)
-    date = models.DateField(unique=True)
+    date = models.DateField()
     schedule = models.ForeignKey(CleaningSchedule, null=True)
 
+    def cleaners_missing(self):
+        return self.schedule.cleaners_per_date - self.cleaners.count()
 
+    def __str__(self):
+        return str(self.schedule.name)+' '+str(self.date)
 
