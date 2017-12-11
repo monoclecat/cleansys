@@ -13,16 +13,16 @@ class ConfigForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
-
         self.helper.layout = Layout(
-            Fieldset("General",
-                     'start_date',
-                     'end_date',
-                     ),
-            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Next</button> "
-                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:cleaners\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Cancel</a>"),
+            HTML(
+                "<a class=\"btn btn-default\" href=\"{% url 'webinterface:welcome' %}\" role=\"button\" style=\"margin:0.5em 1em 0.5em 0.5em\">"
+                "<span class=\"glyphicon glyphicon-chevron-left\"></span> Back</a>"
+            ),
+            'start_date',
+            'end_date',
+            HTML(
+                "<button class=\"btn btn-success\" type=\"submit\" name=\"save\" style=\"margin:0.5em 0.5em 0.5em 1em\">"
+                "<span class=\"glyphicon glyphicon-chevron-right\"></span> Next</button> ")
         )
 
 
@@ -47,7 +47,7 @@ class CleanerForm(forms.ModelForm):
                      ),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Save</button> "
-                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:cleaners\' %}\" role=\"button\">"
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Cancel</a>"),
         )
 
@@ -112,7 +112,7 @@ class CleaningScheduleForm(forms.ModelForm):
                      ),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Save</button> "
-                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:cleaning-schedule\' %}\" role=\"button\">"
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Cancel</a>"),
         )
 

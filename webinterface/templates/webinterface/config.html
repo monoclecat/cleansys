@@ -7,20 +7,59 @@ Cleaners
 
 {% block body %}
     <div class="container-fluid">
-        <div class="row" style="margin: 1em;">
-            <h1>Set timeframe</h1>
-            <div class="col-sm-8 col-sm-offset-2
+        <div class="row">
+            <div class="col-md-offset-2">
+                <h1>Set configuration</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-8 col-sm-offset-3
                             col-md-6">
-                <p>
-                    <a class="btn btn-default" href="{% url 'webinterface:cleaners' %}" role="button">
-                    <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
-                </p>
-
-                <form method="POST" class="form">
+                <form method="POST" class="form form-inline">
                     {% csrf_token %}
                     {% crispy form %}
                 </form>
-
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-sm-6">
+                <h2>Cleaning schedules <a class="btn btn-primary" href="{% url 'webinterface:cleaning-schedule-new' %}" role="button">
+                    <span class="glyphicon glyphicon-plus"></span> New schedule</a></h2>
+                {% for schedule in schedule_list %}
+                    <div class="panel panel-info">
+                        <div class="panel-heading">
+                            <h2 class="panel-title">{{ schedule.name }}</h2>
+                        </div>
+                        <div class="panel-footer">
+                            <a class="btn btn-info" href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}"
+                               role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
+                            <a class="btn btn-danger" href="{% url 'webinterface:cleaning-schedule-delete' schedule.pk %}"
+                               role="button"><span class="glyphicon glyphicon-trash"></span> Delete</a>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p>No schedules to show...</p>
+                {% endfor %}
+            </div>
+            <div class="col-xs-12 col-sm-6">
+                <h2>Cleaners <small>Number of cleaners: {{ cleaner_list.count }}</small> <a class="btn btn-primary" href="{% url 'webinterface:cleaners-new' %}" role="button">
+                    <span class="glyphicon glyphicon-plus"></span> New cleaner</a></h2>
+                {% for cleaner in cleaner_list %}
+                        <div class="panel panel-info">
+                            <div class="panel-heading">
+                                <h2 class="panel-title">{{ cleaner.name }}
+                                    <small>Cleans on {{ cleaner.assigned_to.all.count }} schedules</small></h2>
+                            </div>
+                            <div class="panel-footer">
+                                <a class="btn btn-info" href="{% url 'webinterface:cleaners-edit' cleaner.pk %}"
+                                   role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
+                                <a class="btn btn-danger" href="{% url 'webinterface:cleaners-delete' cleaner.pk %}"
+                                   role="button"><span class="glyphicon glyphicon-trash"></span> Delete</a>
+                            </div>
+                        </div>
+                {% empty %}
+                    <h2>Nothing to display here...</h2>
+                {% endfor %}
             </div>
         </div>
     </div>

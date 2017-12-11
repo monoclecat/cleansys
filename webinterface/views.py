@@ -65,6 +65,12 @@ class ConfigView(FormView):
     template_name = 'webinterface/config.html'
     form_class = ConfigForm
 
+    def get_context_data(self, **kwargs):
+        keywords = super(ConfigView, self).get_context_data(**kwargs)
+        keywords['schedule_list'] = CleaningSchedule.objects.all()
+        keywords['cleaner_list'] = Cleaner.objects.all()
+        return keywords
+
     def post(self, request, *args, **kwargs):
         """
         Handles POST requests, instantiating a form instance with the passed
@@ -202,57 +208,47 @@ class ResultsView(TemplateView):
             dutys_on_date.append(schedules)
             keywords['duties'].append(dutys_on_date)
 
-        print(keywords)
+        keywords['statistics'] = get_distribution_structure(kwargs['from_date'], kwargs['to_date'])
         return keywords
-
-
-class CleanersView(ListView):
-    model = Cleaner
-    template_name = 'webinterface/cleaner.html'
 
 
 class CleanersNewView(CreateView):
     form_class = CleanerForm
     model = Cleaner
-    success_url = reverse_lazy('webinterface:cleaners')
+    success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaner_new.html'
 
 
 class CleanersDeleteView(DeleteView):
     model = Cleaner
-    success_url = reverse_lazy('webinterface:cleaners')
+    success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaner_delete.html'
 
 
 class CleanersUpdateView(UpdateView):
     form_class = CleanerForm
     model = Cleaner
-    success_url = reverse_lazy('webinterface:cleaners')
+    success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaner_edit.html'
-
-
-class CleaningScheduleView(ListView):
-    model = CleaningSchedule
-    template_name = 'webinterface/cleaning_schedule.html'
 
 
 class CleaningScheduleNewView(CreateView):
     form_class = CleaningScheduleForm
     model = CleaningSchedule
-    success_url = reverse_lazy('webinterface:cleaning-schedule')
+    success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_new.html'
 
 
 class CleaningScheduleDeleteView(DeleteView):
     model = CleaningSchedule
-    success_url = reverse_lazy('webinterface:cleaning-schedule')
+    success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_delete.html'
 
 
 class CleaningScheduleUpdateView(UpdateView):
     form_class = CleaningScheduleForm
     model = CleaningSchedule
-    success_url = reverse_lazy('webinterface:cleaning-schedule')
+    success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_edit.html'
 
 
