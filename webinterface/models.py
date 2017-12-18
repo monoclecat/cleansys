@@ -5,7 +5,7 @@ from django.core.validators import validate_comma_separated_integer_list
 import logging
 
 
-class CleaningSchedule(models.Model):
+class CleaningScheduleTemplate(models.Model):
     name = models.CharField(max_length=20, unique=True)
 
     CLEANERS_PER_DATE_CHOICES = ((1, 'One'), (2, 'Two'))
@@ -28,10 +28,13 @@ class CleaningSchedule(models.Model):
     def __str__(self):
         return self.name
 
+class CleaningSchedule(CleaningScheduleTemplate):
+    pass
+
 
 class Cleaner(models.Model):
     name = models.CharField(max_length=10, unique=True)
-    assigned_to = models.ManyToManyField(CleaningSchedule)
+    assigned_to = models.ManyToManyField(CleaningScheduleTemplate)
 
     def free_on_date(self, date):
         return not CleaningDuty.objects.filter(date=date, cleaners=self).exists()
@@ -45,7 +48,7 @@ class CleaningDuty(models.Model):
         unique_together = ("date", "schedule")
     cleaners = models.ManyToManyField(Cleaner)
     date = models.DateField()
-    schedule = models.ForeignKey(CleaningSchedule, null=True)
+    schedule = models.ForeignKey(CleaningScheduleTemplate, null=True)
 
     def cleaners_missing(self):
         return self.schedule.cleaners_per_date - self.cleaners.count()

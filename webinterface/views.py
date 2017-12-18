@@ -46,7 +46,7 @@ def get_distribution_structure(start_date, end_date):
         date__range=(start_date, end_date))
 
     distribution_structure = []
-    for schedule in CleaningSchedule.objects.all().order_by('-frequency'):
+    for schedule in CleaningScheduleTemplate.objects.all().order_by('-frequency'):
         cleaners_for_schedule = Cleaner.objects.filter(assigned_to__id=schedule.id)
         cleaners_with_data = []
         for cleaner in cleaners_for_schedule:
@@ -67,7 +67,7 @@ class ConfigView(FormView):
 
     def get_context_data(self, **kwargs):
         keywords = super(ConfigView, self).get_context_data(**kwargs)
-        keywords['schedule_list'] = CleaningSchedule.objects.all()
+        keywords['schedule_list'] = CleaningScheduleTemplate.objects.all()
         keywords['cleaner_list'] = Cleaner.objects.all()
         return keywords
 
@@ -90,7 +90,7 @@ class ConfigView(FormView):
                 date_iterator = start_date
                 to_add = datetime.timedelta(days=7)
                 while date_iterator <= end_date:
-                    for job in CleaningSchedule.objects.all():
+                    for job in CleaningScheduleTemplate.objects.all():
                         if not CleaningDuty.objects.filter(date=date_iterator, schedule__id=job.id).exists():
                             # 2: Even weeks 3: Odd weeks
                             if job.frequency == 1 or \
@@ -185,7 +185,7 @@ class ResultsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         keywords = super(ResultsView, self).get_context_data(**kwargs)
-        keywords['table_header'] = CleaningSchedule.objects.all()
+        keywords['table_header'] = CleaningScheduleTemplate.objects.all()
 
         keywords['dates'] = []
         date_iterator = kwargs['from_date']
@@ -234,20 +234,20 @@ class CleanersUpdateView(UpdateView):
 
 class CleaningScheduleNewView(CreateView):
     form_class = CleaningScheduleForm
-    model = CleaningSchedule
+    model = CleaningScheduleTemplate
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_new.html'
 
 
 class CleaningScheduleDeleteView(DeleteView):
-    model = CleaningSchedule
+    model = CleaningScheduleTemplate
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_delete.html'
 
 
 class CleaningScheduleUpdateView(UpdateView):
     form_class = CleaningScheduleForm
-    model = CleaningSchedule
+    model = CleaningScheduleTemplate
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_edit.html'
 

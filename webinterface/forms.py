@@ -34,7 +34,7 @@ class CleanerForm(forms.ModelForm):
     name = forms.CharField(max_length=10, label="Cleaner name", help_text="Please only the first name",
                            required=True, widget=forms.TextInput)
 
-    assigned_to = forms.ModelMultipleChoiceField(queryset=CleaningSchedule.objects.all(), widget=forms.CheckboxSelectMultiple())
+    assigned_to = forms.ModelMultipleChoiceField(queryset=CleaningScheduleTemplate.objects.all(), widget=forms.CheckboxSelectMultiple())
 
     def __init__(self, *args, **kwargs):
         super(CleanerForm, self).__init__(*args, **kwargs)
@@ -54,18 +54,18 @@ class CleanerForm(forms.ModelForm):
 
 class CleaningScheduleForm(forms.ModelForm):
     class Meta:
-        model = CleaningSchedule
+        model = CleaningScheduleTemplate
         fields = '__all__'
 
     name = forms.CharField(max_length=20, label="Cleaning plan name", help_text="The title of the cleaning plan",
                            required=True, widget=forms.TextInput)
 
-    cleaners_per_date = forms.ChoiceField(choices=CleaningSchedule.CLEANERS_PER_DATE_CHOICES,
+    cleaners_per_date = forms.ChoiceField(choices=CleaningScheduleTemplate.CLEANERS_PER_DATE_CHOICES,
                                           label="Number of cleaners per cleaning date",
                                           help_text="Bathroom only needs 1 but kitchen needs 2.",
                                           required=True, initial=1)
 
-    frequency = forms.ChoiceField(choices=CleaningSchedule.FREQUENCY_CHOICES, required=True, initial=1)
+    frequency = forms.ChoiceField(choices=CleaningScheduleTemplate.FREQUENCY_CHOICES, required=True, initial=1)
 
     task1 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
                             help_text=" ")
