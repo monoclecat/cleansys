@@ -13,12 +13,15 @@ Cleaners
             </div>
         </div>
         <div class="row">
-            <div class="col-sm-8 col-sm-offset-3
-                            col-md-6">
-                <form method="POST" class="form form-inline">
-                    {% csrf_token %}
-                    {% crispy form %}
-                </form>
+            <div class="col-sm-10 col-sm-offset-1
+                        col-md-8  col-md-offset-3
+                        col-lg-6">
+
+                    <form method="POST" class="form form-inline">
+                        {% csrf_token %}
+                        {% crispy form %}
+                    </form>
+
             </div>
         </div>
         <div class="row">
@@ -48,7 +51,14 @@ Cleaners
                         <div class="panel panel-info">
                             <div class="panel-heading">
                                 <h2 class="panel-title">{{ cleaner.name }}
-                                    <small>Cleans on {{ cleaner.assigned_to.all.count }} schedules</small></h2>
+                                    <small>
+                                        {% ifnotequal cleaner.nr_of_assigned_schedules 0 %}
+                                            Cleans on {{ cleaner.nr_of_assigned_schedules }} schedules
+                                        {% else %}
+                                            Not assigned to any schedules
+                                        {% endifnotequal %}
+                                    </small>
+                                 </h2>
                             </div>
                             <div class="panel-footer">
                                 <a class="btn btn-info" href="{% url 'webinterface:cleaners-edit' cleaner.pk %}"
@@ -58,7 +68,7 @@ Cleaners
                             </div>
                         </div>
                 {% empty %}
-                    <h2>Nothing to display here...</h2>
+                    <p>Nothing to display here...</p>
                 {% endfor %}
             </div>
         </div>

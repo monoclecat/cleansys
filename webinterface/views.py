@@ -29,9 +29,9 @@ def correct_date_to_weekday(days, weekday):
     return corrected_days
 
 
-def get_distribution_structure(start_date, end_date):
-    """Used to assign cleaners to their cleaning duties, as well as get the statistics of the cleaners in the
-    timeframe.
+def create_distribution_structure(start_date, end_date):
+    """Used to assign cleaners to their cleaning duties in the time frame.
+    Creates copies of all Schedules and Cleaners involved.
     distribution_structure ==
     [
         for every schedule:
@@ -41,16 +41,25 @@ def get_distribution_structure(start_date, end_date):
             [list of [<cleaner assigned to this schedule>, <times he/she already cleaned this>] ]
         ], ...
     ]
-                """
-    duties = CleaningDuty.objects.filter(
-        date__range=(start_date, end_date))
+    """
+    duties = CleaningDuty.objects.filter(date__range=(start_date, end_date))
+
+    schedule_templates = CleaningSchedule.objects.all().filter(template=True).order_by('-frequency')
+    schedule_copies = []
+    for schedule in schedule_templates:
+        schedule_copies.append(schedule.copy())
+
+    cleaner_templates = Cleaner.objects.filter(template=True)
+    cleaner_copies = []
+    for cleaner in cleaner_templates:
+        cleaner_copies.append(cleaner.copy())
 
     distribution_structure = []
-    for schedule in CleaningScheduleTemplate.objects.all().order_by('-frequency'):
-        cleaners_for_schedule = Cleaner.objects.filter(assigned_to__id=schedule.id)
+    for schedule in schedule_copies:
         cleaners_with_data = []
-        for cleaner in cleaners_for_schedule:
-            cleaners_with_data.append([cleaner, 0])
+        for cleaner in cleaner_copies:
+            if schedule in cleaner.assigned_to:
+                cleaners_with_data.append([cleaner, 0])
         distribution_structure.append(
             [schedule, duties.filter(schedule__id=schedule.id), cleaners_with_data])
 
@@ -67,7 +76,7 @@ class ConfigView(FormView):
 
     def get_context_data(self, **kwargs):
         keywords = super(ConfigView, self).get_context_data(**kwargs)
-        keywords['schedule_list'] = CleaningScheduleTemplate.objects.all()
+        keywords['schedule_list'] = CleaningSchedule.objects.all()
         keywords['cleaner_list'] = Cleaner.objects.all()
         return keywords
 
@@ -90,7 +99,7 @@ class ConfigView(FormView):
                 date_iterator = start_date
                 to_add = datetime.timedelta(days=7)
                 while date_iterator <= end_date:
-                    for job in CleaningScheduleTemplate.objects.all():
+                    for job in CleaningSchedule.objects.all():
                         if not CleaningDuty.objects.filter(date=date_iterator, schedule__id=job.id).exists():
                             # 2: Even weeks 3: Odd weeks
                             if job.frequency == 1 or \
@@ -100,56 +109,6 @@ class ConfigView(FormView):
                                 CleaningDuty.objects.create(schedule=job, date=date_iterator)
                     date_iterator += to_add
 
-                distribution_structure = get_distribution_structure(start_date, end_date)
-
-                for schedule in distribution_structure:
-                    print("-----------------------------------------------")
-                    print("Schedule: {}".format(schedule[0].name))
-                    print("")
-
-                    max_cleaning_times = len(schedule[1])*schedule[0].cleaners_per_date / len(schedule[2])
-                    for cleaning_duty in schedule[1]:
-                        random.shuffle(schedule[2])
-
-                        schedule[2] = sorted(schedule[2], key=itemgetter(1), reverse=False)
-                        cleaner_data_index = 0
-                        index_overflow = 0
-
-                        print("Will insert {} cleaners of the sorted cleaner list for {} on the {}: {}".format(cleaning_duty.cleaners_missing(), cleaning_duty.schedule.name, cleaning_duty.date, schedule[2]))
-
-                        while cleaning_duty.cleaners_missing() != 0:
-
-                            # A cleaner should never have more duties in time frame than
-                            # <total number of duties in time frame>/<number of cleaners>
-                            if schedule[2][cleaner_data_index][1] < max_cleaning_times:
-                                potential_cleaner = schedule[2][cleaner_data_index][0]
-
-                                print("          Cleaner data: {}  Free: {}  Index overflow: {}".format(
-                                    schedule[2][cleaner_data_index], potential_cleaner.free_on_date(cleaning_duty.date),
-                                    index_overflow))
-
-                                # This prevents the while loop from never ending when there are
-                                # less cleaners than cleaners_per_date
-                                if not cleaning_duty.cleaners.filter(pk=potential_cleaner.pk).exists():
-                                    if index_overflow == 0 and potential_cleaner.free_on_date(cleaning_duty.date) \
-                                            or index_overflow == 1:
-                                        print("          {} was inserted".format(potential_cleaner.name))
-                                        cleaning_duty.cleaners.add(potential_cleaner)
-                                        schedule[2][cleaner_data_index][1] += 1
-
-                            if cleaner_data_index < schedule[2].__len__() - 1:
-                                cleaner_data_index += 1
-                            else:
-                                index_overflow += 1
-                                cleaner_data_index = 0
-                                if index_overflow == 2:
-                                    break
-                    print("")
-                    print("Statistics: {}".format(schedule[2]))
-                    print("")
-                    print("")
-
-                print("---------------------END-----------------------")
 
                 return HttpResponseRedirect(
                     reverse_lazy('webinterface:results',
@@ -185,7 +144,7 @@ class ResultsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         keywords = super(ResultsView, self).get_context_data(**kwargs)
-        keywords['table_header'] = CleaningScheduleTemplate.objects.all()
+        keywords['table_header'] = CleaningSchedule.objects.all()
 
         keywords['dates'] = []
         date_iterator = kwargs['from_date']
@@ -207,8 +166,6 @@ class ResultsView(TemplateView):
                     schedules[schedule] = ""
             dutys_on_date.append(schedules)
             keywords['duties'].append(dutys_on_date)
-
-        keywords['statistics'] = get_distribution_structure(kwargs['from_date'], kwargs['to_date'])
         return keywords
 
 
@@ -234,22 +191,50 @@ class CleanersUpdateView(UpdateView):
 
 class CleaningScheduleNewView(CreateView):
     form_class = CleaningScheduleForm
-    model = CleaningScheduleTemplate
+    model = CleaningSchedule
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_new.html'
 
+    def form_valid(self, form):
+        print("Valid")
+        print(form)
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        print("Invalid")
+        print(form)
+        return super().form_invalid(form)
+
+    def get_context_data(self, **kwargs):
+        print(kwargs)
+        return super().get_context_data(**kwargs)
+
 
 class CleaningScheduleDeleteView(DeleteView):
-    model = CleaningScheduleTemplate
+    model = CleaningSchedule
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_delete.html'
 
 
 class CleaningScheduleUpdateView(UpdateView):
     form_class = CleaningScheduleForm
-    model = CleaningScheduleTemplate
+    model = CleaningSchedule
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_edit.html'
+
+    def form_valid(self, form):
+        print("Valid")
+        print(form)
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        print("Invalid")
+        print(form)
+        return super().form_invalid(form)
+
+    def get_context_data(self, **kwargs):
+        print(kwargs)
+        return super().get_context_data(**kwargs)
 
 
 def login_view(request):
