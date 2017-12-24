@@ -24,15 +24,14 @@ Cleaning Duties
                         <div class="panel-body">
                             <h3>Statistics</h3>
                             <table class="table table-striped table-condensed">
-                                {% for distrib_struct in statistics %}
+                                {% for schedule in statistics %}
                                     <tr>
-                                        <td><b>{{ distrib_struct.0.name }}</b></td>
-                                        {% for cleaner_stat in distrib_struct.2 %}
+                                        <td><b>{{ schedule.0 }}</b></td>
+                                        <td><b>Max ratio: {{ schedule.1 }}</b></td>
+                                        {% for cleaner, ratio in schedule.2 %}
                                             <td>
-                                                {{ cleaner_stat.0.name }}: {{ cleaner_stat.1 }}
+                                                {{ cleaner }}: {{ ratio }}
                                             </td>
-                                        {% empty %}
-                                            Nothing here
                                         {% endfor %}
                                     </tr>
                                 {% empty %}
@@ -49,7 +48,7 @@ Cleaning Duties
                                 {% for date in duties %}
                                     <tr>
                                         <td>{{ date.0 }}</td>
-                                        {% for schedule,duty in date.1.items %}
+                                        {% for duty in date.1 %}
                                             <td>
                                                 {% ifnotequal duty "" %}
                                                     {% for cleaner in duty.cleaners.all %}

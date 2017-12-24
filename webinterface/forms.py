@@ -36,8 +36,10 @@ class CleanerForm(forms.ModelForm):
 
     moved_in = forms.DateField(input_formats=['%d.%m.%Y'], label="Moved in on DD.MM.YYYY",
                                widget=forms.DateInput(format='%d.%m.%Y'))
-    moved_out = forms.DateField(input_formats=['%d.%m.%Y'], label="Moves out on DD.MM.YYYY", required=False,
-                                widget=forms.DateInput(format='%d.%m.%Y'))
+    moved_out = forms.DateField(input_formats=['%d.%m.%Y'], label="Moves out on DD.MM.YYYY",
+                                widget=forms.DateInput(format='%d.%m.%Y'),
+                                help_text="When creating a new cleaner, set this to moved-in date plus "
+                                          "3 years for good measure.")
 
     def __init__(self, *args, **kwargs):
         super(CleanerForm, self).__init__(*args, **kwargs)
@@ -59,7 +61,7 @@ class CleanerForm(forms.ModelForm):
 class CleaningScheduleForm(forms.ModelForm):
     class Meta:
         model = CleaningSchedule
-        exclude = ('duties',)
+        exclude = ('duties', )
 
     name = forms.CharField(max_length=20, label="Cleaning plan name", help_text="The title of the cleaning plan",
                            required=True, widget=forms.TextInput)
@@ -69,11 +71,15 @@ class CleaningScheduleForm(forms.ModelForm):
                                           help_text="Bathroom only needs 1 but kitchen needs 2.",
                                           required=True, initial=1)
 
-    frequency = forms.ChoiceField(choices=CleaningSchedule.FREQUENCY_CHOICES, required=True, initial=1)
+    frequency = forms.ChoiceField(choices=CleaningSchedule.FREQUENCY_CHOICES, required=True, initial=1,
+                                  label="Cleaning schedule frequency",
+                                  help_text="If you have two cleaning schedules that are due every two weeks "
+                                            "but can't be on the same dates, set one to 'Even weeks' and the other "
+                                            "to 'Odd weeks'")
 
-    cleaner = forms.ModelMultipleChoiceField(queryset=Cleaner.objects.all(),
-                                             widget=forms.CheckboxSelectMultiple(), label="Cleaners",
-                                             help_text="Select the people that are assigned to this schedule.")
+    cleaners = forms.ModelMultipleChoiceField(queryset=Cleaner.objects.all(), required=False,
+                                              widget=forms.CheckboxSelectMultiple(), label="Cleaners",
+                                              help_text="Select the people that are assigned to this schedule.")
 
     task1 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
                             help_text=" ")
@@ -105,7 +111,7 @@ class CleaningScheduleForm(forms.ModelForm):
                      'name',
                      'cleaners_per_date',
                      'frequency',
-                     'cleaner'
+                     'cleaners'
                      ),
             Fieldset("Tasks (from left to right)",
                      'task1',

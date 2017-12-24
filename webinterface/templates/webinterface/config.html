@@ -31,7 +31,15 @@ Cleaners
                 {% for schedule in schedule_list %}
                     <div class="panel panel-info">
                         <div class="panel-heading">
-                            <h2 class="panel-title">{{ schedule.name }}</h2>
+                            <h2 class="panel-title">{{ schedule.name }}
+                                <small>
+                                    {% ifnotequal schedule.cleaners.count 0 %}
+                                        Has
+                                        {{ schedule.cleaners.count }} cleaner(s)
+                                    {% else %}
+                                        Not assigned any cleaners
+                                    {% endifnotequal %}
+                                </small></h2>
                         </div>
                         <div class="panel-footer">
                             <a class="btn btn-info" href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}"
@@ -53,7 +61,8 @@ Cleaners
                                 <h2 class="panel-title">{{ cleaner.name }}
                                     <small>
                                         {% ifnotequal cleaner.nr_of_assigned_schedules 0 %}
-                                            Cleans on {{ cleaner.nr_of_assigned_schedules }} schedules
+                                            Cleans on
+                                            {{ cleaner.nr_of_assigned_schedules }} schedule(s)
                                         {% else %}
                                             Not assigned to any schedules
                                         {% endifnotequal %}

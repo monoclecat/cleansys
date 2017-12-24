@@ -99,16 +99,9 @@ class ConfigView(FormView):
                 date_iterator = start_date
                 to_add = datetime.timedelta(days=7)
                 while date_iterator <= end_date:
-                    for job in CleaningSchedule.objects.all():
-                        if not CleaningDuty.objects.filter(date=date_iterator, schedule__id=job.id).exists():
-                            # 2: Even weeks 3: Odd weeks
-                            if job.frequency == 1 or \
-                                    job.frequency == 2 and date_iterator.isocalendar()[1] % 2 == 0 or \
-                                    job.frequency == 3 and date_iterator.isocalendar()[1] % 2 == 1:
-
-                                CleaningDuty.objects.create(schedule=job, date=date_iterator)
+                    for schedule in CleaningSchedule.objects.all():
+                        schedule.new_cleaning_duty(date_iterator)
                     date_iterator += to_add
-
 
                 return HttpResponseRedirect(
                     reverse_lazy('webinterface:results',
@@ -155,17 +148,24 @@ class ResultsView(TemplateView):
 
         keywords['duties'] = []
         for date in keywords['dates']:
-            dutys_on_date = []
-            dutys_on_date.append(date)
-            schedules = {}
+            duties_on_date = [date]
+            schedules = []
             for schedule in keywords['table_header']:
-                duty = CleaningDuty.objects.filter(schedule__id=schedule.id, date=date)
+                duty = schedule.duties.filter(date=date)
                 if duty.exists():
-                    schedules[schedule] = duty.first()
+                    schedules.append(duty.first())
                 else:
-                    schedules[schedule] = ""
-            dutys_on_date.append(schedules)
-            keywords['duties'].append(dutys_on_date)
+                    schedules.append("")
+                duties_on_date.append(schedules)
+            keywords['duties'].append(duties_on_date)
+
+        keywords['statistics'] = []
+        for schedule in CleaningSchedule.objects.all():
+            element = [schedule.name, round(schedule.max_cleaning_ratio(kwargs['to_date']), 2), []]
+            for cleaner_pk, ratio in schedule.deployment_ratios(kwargs['to_date']):
+                element[2].append([Cleaner.objects.get(pk=cleaner_pk).name, round(ratio, 2)])
+
+            keywords['statistics'].append(element)
         return keywords
 
 
@@ -195,20 +195,6 @@ class CleaningScheduleNewView(CreateView):
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_new.html'
 
-    def form_valid(self, form):
-        print("Valid")
-        print(form)
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        print("Invalid")
-        print(form)
-        return super().form_invalid(form)
-
-    def get_context_data(self, **kwargs):
-        print(kwargs)
-        return super().get_context_data(**kwargs)
-
 
 class CleaningScheduleDeleteView(DeleteView):
     model = CleaningSchedule
@@ -221,20 +207,6 @@ class CleaningScheduleUpdateView(UpdateView):
     model = CleaningSchedule
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_edit.html'
-
-    def form_valid(self, form):
-        print("Valid")
-        print(form)
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        print("Invalid")
-        print(form)
-        return super().form_invalid(form)
-
-    def get_context_data(self, **kwargs):
-        print(kwargs)
-        return super().get_context_data(**kwargs)
 
 
 def login_view(request):
