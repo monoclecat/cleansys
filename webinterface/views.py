@@ -11,6 +11,7 @@ from .models import *
 from .forms import *
 
 import datetime
+import timeit
 from copy import deepcopy
 from operator import itemgetter
 import random, math
@@ -45,8 +46,7 @@ class ConfigView(FormView):
 
             start_date, end_date = correct_dates_to_weekday([start_date, end_date], 6)
 
-            for schedule in CleaningSchedule.objects.all().order_by().order_by('cleaners_per_date'):
-                print(schedule)
+            for schedule in CleaningSchedule.objects.all().order_by('cleaners_per_date'):
                 schedule.new_cleaning_duties(start_date, end_date)
 
             return HttpResponseRedirect(
@@ -146,28 +146,57 @@ class ResultsView(TemplateView):
                 for schedule in keywords['table_header']:
                     duty = schedule.duties.filter(date=date_iterator)
                     if duty.exists():
-                        schedules.append(duty.first())
+                        duty = duty.first()
+                        cleaners_for_duty = []
+                        for cleaner in duty.cleaners.all():
+                            ratio_list = schedule.deployment_ratios(date_iterator, [cleaner])
+                            if ratio_list:
+                                cleaners_for_duty.append([cleaner.name, round(ratio_list[0][1], 2)])
+                        schedules.append(cleaners_for_duty)
                     else:
                         schedules.append("")
                     duties_on_date.append(schedules)
                 time_frame['duties'].append(duties_on_date)
                 date_iterator += one_week
 
-        # keywords['statistics'] = []
-        # for schedule in CleaningSchedule.objects.all():
-        #     element = [schedule.name, []]
-        #     for cleaner_pk, ratio in schedule.deployment_ratios(
-        #             for_date_range=(keywords['from_date'], keywords['to_date'])):
-        #         element[1].append([Cleaner.objects.get(pk=cleaner_pk).name, round(ratio, 2)])
-        #     keywords['statistics'].append(element)
+        keywords['deviations_by_schedule'] = []
+        for schedule in keywords['table_header']:
+            schedule_data = [schedule.name]
 
-        for time_frame in keywords['results']:
-            time_frame['statistics'] = []
-            for schedule in CleaningSchedule.objects.all():
-                element = [schedule.name, []]
-                for cleaner_pk, ratio in schedule.deployment_ratios(for_date=time_frame['end_date']):
-                    element[1].append([Cleaner.objects.get(pk=cleaner_pk).name, round(ratio, 2)])
-                time_frame['statistics'].append(element)
+            sum_of_ratios = {}
+            date_iterator = keywords['from_date']
+            divider = 0
+            while date_iterator <= keywords['to_date']:
+                ratios = schedule.deployment_ratios(date_iterator)
+                for cleaner, ratio in ratios:
+                    if cleaner not in sum_of_ratios:
+                        sum_of_ratios[cleaner] = abs(1 - ratio)
+                    else:
+                        sum_of_ratios[cleaner] += abs(1 - ratio)
+                divider += 1
+                date_iterator += one_week
+            for key in sum_of_ratios:
+                sum_of_ratios[key] /= divider
+                sum_of_ratios[key] = round(sum_of_ratios[key], 4)
+            schedule_data.append(sum_of_ratios)
+            keywords['deviations_by_schedule'].append(schedule_data)
+
+        keywords['deviations_by_cleaner'] = {}
+        for schedule, deviations in keywords['deviations_by_schedule']:
+            for key in deviations:
+                divider = CleaningSchedule.objects.filter(cleaners=key).count()
+                if key not in keywords['deviations_by_cleaner']:
+                    keywords['deviations_by_cleaner'][key] = deviations[key]/divider
+                else:
+                    keywords['deviations_by_cleaner'][key] += deviations[key]/divider
+
+        keywords['complete_deviation'] = 0
+        for key in keywords['deviations_by_cleaner']:
+            keywords['complete_deviation'] += keywords['deviations_by_cleaner'][key]
+            keywords['deviations_by_cleaner'][key] = round(keywords['deviations_by_cleaner'][key], 4)
+        if keywords['deviations_by_cleaner']:
+            keywords['complete_deviation'] /= len(keywords['deviations_by_cleaner'])
+            keywords['complete_deviation'] = round(keywords['complete_deviation'], 4)
 
         # for time_frame in keywords['results']:
         #     time_frame['statistics'] = []
@@ -181,9 +210,12 @@ class ResultsView(TemplateView):
         #                                         schedule.cleaners_per_date / relevant_cleaners.count())
         #
         #         element = [schedule.name, max_cleaning_duties, []]
-        #         for cleaner in relevant_cleaners:
-        #             element[2].append([cleaner.name, duties_in_timeframe.filter(cleaners=cleaner).count()])
+        #         for cleaner_pk, ratio in schedule.deployment_ratios(for_date=time_frame['end_date']):
+        #             element[2].append([Cleaner.objects.get(pk=cleaner_pk).name, round(ratio, 2),
+        #                                duties_in_timeframe.filter(cleaners=Cleaner.objects.get(pk=cleaner_pk)).count()])
+        #         element[2] = sorted(element[2], key=itemgetter(2))
         #         time_frame['statistics'].append(element)
+
         return keywords
 
 
