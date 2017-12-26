@@ -20,56 +20,6 @@ class WelcomeView(TemplateView):
     template_name = "webinterface/welcome.html"
 
 
-def correct_date_to_weekday(days, weekday):
-    """Days is a list of datetime.date objects you want converted. 0 = Monday, 6 = Sunday"""
-    corrected_days = []
-    for day in days:
-        day += datetime.timedelta(days=weekday - day.weekday())
-        corrected_days.append(day)
-    return corrected_days
-
-
-def create_distribution_structure(start_date, end_date):
-    """Used to assign cleaners to their cleaning duties in the time frame.
-    Creates copies of all Schedules and Cleaners involved.
-    distribution_structure ==
-    [
-        for every schedule:
-        [
-            <schedule object>
-            [list of all CleaningDuties in time frame],
-            [list of [<cleaner assigned to this schedule>, <times he/she already cleaned this>] ]
-        ], ...
-    ]
-    """
-    duties = CleaningDuty.objects.filter(date__range=(start_date, end_date))
-
-    schedule_templates = CleaningSchedule.objects.all().filter(template=True).order_by('-frequency')
-    schedule_copies = []
-    for schedule in schedule_templates:
-        schedule_copies.append(schedule.copy())
-
-    cleaner_templates = Cleaner.objects.filter(template=True)
-    cleaner_copies = []
-    for cleaner in cleaner_templates:
-        cleaner_copies.append(cleaner.copy())
-
-    distribution_structure = []
-    for schedule in schedule_copies:
-        cleaners_with_data = []
-        for cleaner in cleaner_copies:
-            if schedule in cleaner.assigned_to:
-                cleaners_with_data.append([cleaner, 0])
-        distribution_structure.append(
-            [schedule, duties.filter(schedule__id=schedule.id), cleaners_with_data])
-
-    for schedule in distribution_structure:
-        for cleaner in schedule[2]:
-            cleaner[1] = duties.filter(schedule__id=schedule[0].id, cleaners=cleaner[0]).count()
-
-    return distribution_structure
-
-
 class ConfigView(FormView):
     template_name = 'webinterface/config.html'
     form_class = ConfigForm
@@ -93,21 +43,17 @@ class ConfigView(FormView):
             start_date = datetime.date(int(start_date_raw[2]), int(start_date_raw[1]), int(start_date_raw[0]))
             end_date = datetime.date(int(end_date_raw[2]), int(end_date_raw[1]), int(end_date_raw[0]))
 
-            start_date, end_date = correct_date_to_weekday([start_date, end_date], 6)
+            start_date, end_date = correct_dates_to_weekday([start_date, end_date], 6)
 
-            if end_date > start_date:
-                date_iterator = start_date
-                to_add = datetime.timedelta(days=7)
-                while date_iterator <= end_date:
-                    for schedule in CleaningSchedule.objects.all():
-                        schedule.new_cleaning_duty(date_iterator)
-                    date_iterator += to_add
+            for schedule in CleaningSchedule.objects.all().order_by().order_by('cleaners_per_date'):
+                print(schedule)
+                schedule.new_cleaning_duties(start_date, end_date)
 
-                return HttpResponseRedirect(
-                    reverse_lazy('webinterface:results',
-                                 kwargs={'from_day': start_date_raw[0], 'from_month': start_date_raw[1],
-                                         'from_year': start_date_raw[2], 'to_day': end_date_raw[0],
-                                         'to_month': end_date_raw[1], 'to_year': end_date_raw[2]}))
+            return HttpResponseRedirect(
+                reverse_lazy('webinterface:results',
+                             kwargs={'from_day': start_date_raw[0], 'from_month': start_date_raw[1],
+                                     'from_year': start_date_raw[2], 'to_day': end_date_raw[0],
+                                     'to_month': end_date_raw[1], 'to_year': end_date_raw[2]}))
         return self.form_invalid(form)
 
 
@@ -118,7 +64,7 @@ class ResultsView(TemplateView):
         from_date_raw = datetime.date(int(kwargs['from_year']), int(kwargs['from_month']), int(kwargs['from_day']))
         to_date_raw = datetime.date(int(kwargs['to_year']), int(kwargs['to_month']), int(kwargs['to_day']))
 
-        kwargs['from_date'], kwargs['to_date'] = correct_date_to_weekday([from_date_raw, to_date_raw], 6)
+        kwargs['from_date'], kwargs['to_date'] = correct_dates_to_weekday([from_date_raw, to_date_raw], 6)
 
         if from_date_raw.weekday() != 6 or to_date_raw.weekday() != 6:
             return redirect(
@@ -141,31 +87,103 @@ class ResultsView(TemplateView):
 
         keywords['dates'] = []
         date_iterator = kwargs['from_date']
-        to_add = datetime.timedelta(days=7)
+        one_week = datetime.timedelta(days=7)
         while date_iterator <= kwargs['to_date']:
             keywords['dates'].append(date_iterator)
-            date_iterator += to_add
+            date_iterator += one_week
 
-        keywords['duties'] = []
-        for date in keywords['dates']:
-            duties_on_date = [date]
-            schedules = []
-            for schedule in keywords['table_header']:
-                duty = schedule.duties.filter(date=date)
-                if duty.exists():
-                    schedules.append(duty.first())
-                else:
-                    schedules.append("")
-                duties_on_date.append(schedules)
-            keywords['duties'].append(duties_on_date)
+        relevant_cleaners = Cleaner.objects.filter(moved_in__lt=kwargs['to_date'], moved_out__gt=kwargs['from_date'])
+        moved_in_during_timeframe = sorted(relevant_cleaners.filter(
+            moved_in__gte=kwargs['from_date']).values('pk', 'moved_in'), key=itemgetter('moved_in'))
 
-        keywords['statistics'] = []
-        for schedule in CleaningSchedule.objects.all():
-            element = [schedule.name, round(schedule.max_cleaning_ratio(kwargs['to_date']), 2), []]
-            for cleaner_pk, ratio in schedule.deployment_ratios(kwargs['to_date']):
-                element[2].append([Cleaner.objects.get(pk=cleaner_pk).name, round(ratio, 2)])
+        moved_out_during_timeframe = sorted(relevant_cleaners.filter(
+            moved_out__lte=kwargs['to_date']).values('pk', 'moved_out'), key=itemgetter('moved_out'))
 
-            keywords['statistics'].append(element)
+        move_ins_and_move_outs = []
+        for move_in_event in moved_in_during_timeframe:
+            if move_ins_and_move_outs:
+                if correct_dates_to_weekday(move_in_event['moved_in'], 6) == move_ins_and_move_outs[-1]['start_date']:
+                    move_ins_and_move_outs[-1]['moved_in'].append(Cleaner.objects.get(pk=move_in_event['pk']))
+                    continue
+            move_ins_and_move_outs.append({'start_date': correct_dates_to_weekday(move_in_event['moved_in'], 6),
+                                           'moved_in': [Cleaner.objects.get(pk=move_in_event['pk'])], 'moved_out': []})
+
+        for move_out_event in moved_out_during_timeframe:
+            for move_in_event in move_ins_and_move_outs:
+                if correct_dates_to_weekday(move_out_event['moved_out'], 6) == \
+                        move_in_event['start_date']:  # Here moved_out is a date
+                    move_in_event['moved_out'].append(Cleaner.objects.get(pk=move_out_event['pk']))
+                    break
+            else:
+                move_ins_and_move_outs.append({'start_date': correct_dates_to_weekday(move_out_event['moved_out'], 6),
+                                               'moved_in': [],
+                                               'moved_out': [Cleaner.objects.get(pk=move_out_event['pk'])]})
+
+        move_ins_and_move_outs = sorted(move_ins_and_move_outs, key=itemgetter('start_date'))
+
+        keywords['results'] = []
+        if keywords['from_date'] != move_ins_and_move_outs[0]['start_date']:
+            keywords['results'].append({'start_date': keywords['from_date'],
+                                        'end_date': move_ins_and_move_outs[0]['start_date']-one_week,
+                                        'moved_in': [], 'moved_out': []})
+
+        miamo_iterator = 1
+        if move_ins_and_move_outs:
+            while miamo_iterator < len(move_ins_and_move_outs):
+                move_ins_and_move_outs[miamo_iterator-1]['end_date'] = \
+                    move_ins_and_move_outs[miamo_iterator]['start_date']-one_week
+                miamo_iterator += 1
+        move_ins_and_move_outs[-1]['end_date'] = keywords['to_date']
+
+        keywords['results'] += move_ins_and_move_outs
+
+        for time_frame in keywords['results']:
+            date_iterator = time_frame['start_date']
+            time_frame['duties'] = []
+            while date_iterator <= time_frame['end_date']:
+                duties_on_date = [date_iterator]
+                schedules = []
+                for schedule in keywords['table_header']:
+                    duty = schedule.duties.filter(date=date_iterator)
+                    if duty.exists():
+                        schedules.append(duty.first())
+                    else:
+                        schedules.append("")
+                    duties_on_date.append(schedules)
+                time_frame['duties'].append(duties_on_date)
+                date_iterator += one_week
+
+        # keywords['statistics'] = []
+        # for schedule in CleaningSchedule.objects.all():
+        #     element = [schedule.name, []]
+        #     for cleaner_pk, ratio in schedule.deployment_ratios(
+        #             for_date_range=(keywords['from_date'], keywords['to_date'])):
+        #         element[1].append([Cleaner.objects.get(pk=cleaner_pk).name, round(ratio, 2)])
+        #     keywords['statistics'].append(element)
+
+        for time_frame in keywords['results']:
+            time_frame['statistics'] = []
+            for schedule in CleaningSchedule.objects.all():
+                element = [schedule.name, []]
+                for cleaner_pk, ratio in schedule.deployment_ratios(for_date=time_frame['end_date']):
+                    element[1].append([Cleaner.objects.get(pk=cleaner_pk).name, round(ratio, 2)])
+                time_frame['statistics'].append(element)
+
+        # for time_frame in keywords['results']:
+        #     time_frame['statistics'] = []
+        #     for schedule in CleaningSchedule.objects.all():
+        #
+        #         duties_in_timeframe = schedule.duties.filter(
+        #             date__range=(time_frame['start_date'], time_frame['end_date']))
+        #         relevant_cleaners = schedule.cleaners.filter(
+        #             moved_in__lte=time_frame['end_date'], moved_out__gte=time_frame['start_date'])
+        #         max_cleaning_duties = math.ceil(duties_in_timeframe.count() *
+        #                                         schedule.cleaners_per_date / relevant_cleaners.count())
+        #
+        #         element = [schedule.name, max_cleaning_duties, []]
+        #         for cleaner in relevant_cleaners:
+        #             element[2].append([cleaner.name, duties_in_timeframe.filter(cleaners=cleaner).count()])
+        #         time_frame['statistics'].append(element)
         return keywords
 
 

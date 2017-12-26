@@ -14,23 +14,37 @@ Cleaning Duties
                     <a class="btn btn-default" href="{% url 'webinterface:config' %}" role="button">
                     <span class="glyphicon glyphicon-chevron-left"></span> Back</a>
                 </p>
-
-                <div class="">
+                {% for time_frame in results %}
                     <div class="panel panel-primary">
                         <div class="panel-heading">
-                            <h3>Cleaning duties from {{ duties.0.0 }} until
-                                {% with duties|last as last %}{{ last.0 }}{% endwith %}</h3>
+                            <h3>Cleaning duties from <b>{{ time_frame.start_date }}</b>
+                                {% if time_frame.moved_in %}
+                                    <span class="label label-default">
+                                        {% for cleaner in time_frame.moved_in %}
+                                            {{ cleaner.name }}
+                                        {% endfor %}
+                                        moved in</span>
+                                {% endif %}
+                                {% if time_frame.moved_out %}
+                                    <span class="label label-default">
+                                        {% for cleaner in time_frame.moved_out %}
+                                            {{ cleaner.name }}
+                                        {% endfor %}
+                                        moved out</span>
+                                {% endif %}
+                                until <b>{{ time_frame.end_date }}</b>
+                            </h3>
                         </div>
                         <div class="panel-body">
                             <h3>Statistics</h3>
                             <table class="table table-striped table-condensed">
-                                {% for schedule in statistics %}
+                                {% for schedule in time_frame.statistics %}
                                     <tr>
                                         <td><b>{{ schedule.0 }}</b></td>
-                                        <td><b>Max ratio: {{ schedule.1 }}</b></td>
-                                        {% for cleaner, ratio in schedule.2 %}
+                                        {% for cleaner, times in schedule.1 %}
                                             <td>
-                                                {{ cleaner }}: {{ ratio }}
+                                                {{ cleaner }}<br>
+                                                <span class="badge">{{ times }}</span>
                                             </td>
                                         {% endfor %}
                                     </tr>
@@ -45,7 +59,7 @@ Cleaning Duties
                                         <th>{{ schedule_name }}</th>
                                     {% endfor %}
                                 </tr>
-                                {% for date in duties %}
+                                {% for date in time_frame.duties %}
                                     <tr>
                                         <td>{{ date.0 }}</td>
                                         {% for duty in date.1 %}
@@ -66,7 +80,9 @@ Cleaning Duties
                             </table>
                         </div>
                     </div>
-                </div>
+                {% empty %}
+                    <h4>No duties in this time frame.</h4>
+                {% endfor %}
 
 
             </div>
