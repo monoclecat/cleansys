@@ -13,7 +13,7 @@ from .forms import *
 import datetime
 import timeit
 from operator import itemgetter
-import logging
+import logging, math
 
 
 class WelcomeView(TemplateView):
@@ -46,7 +46,7 @@ class ConfigView(FormView):
                               'to_month': end_date_raw[1], 'to_year': end_date_raw[2]}
 
             if 'show_deviations' in request.POST:
-                results_kwargs['options'] = 'deviations'
+                results_kwargs['options'] = 'stats'
             return HttpResponseRedirect(reverse_lazy('webinterface:results', kwargs=results_kwargs))
         return self.form_invalid(form)
 
@@ -181,69 +181,34 @@ class ResultsView(TemplateView):
                 time_frame['duties'].append(duties_on_date)
                 date_iterator += one_week
 
-        if 'options' in kwargs and kwargs['options'] == 'deviations':
-            keywords['deviations_by_schedule'] = []
-            for schedule in keywords['table_header']:
-                logging.debug("------------- CALCULATING DEVIATION FOR {} -------------".format(schedule.name))
-                schedule_data = [schedule.name]
+        if 'options' in kwargs and kwargs['options'] == 'stats':
+            for time_frame in keywords['results']:
+                time_frame['duty_counter'] = []
+                time_frame['deviations_by_schedule'] = []
+                for schedule in CleaningSchedule.objects.all():
+                    duties_in_timeframe = schedule.duties.filter(
+                        date__range=(time_frame['start_date'], time_frame['end_date']))
 
-                sum_of_ratios = {}
-                date_iterator = kwargs['from_date']
-                divider = 0
-                while date_iterator <= kwargs['to_date']:
-                    ratios = schedule.deployment_ratios(date_iterator)
-                    logging_text = "Ratios on {}: ".format(date_iterator)
-                    for cleaner, ratio in ratios:
-                        logging_text += "{}:{}".format(cleaner.name, round(ratio, 3)) + "  "
-                        if cleaner not in sum_of_ratios:
-                            sum_of_ratios[cleaner] = abs(1 - ratio)
-                        else:
-                            sum_of_ratios[cleaner] += abs(1 - ratio)
-                    logging.debug(logging_text)
-                    divider += 1
-                    date_iterator += one_week
-                for key in sum_of_ratios:
-                    sum_of_ratios[key] /= divider
-                    sum_of_ratios[key] = round(sum_of_ratios[key], 4)
-                schedule_data.append(sum_of_ratios)
-                keywords['deviations_by_schedule'].append(schedule_data)
-                logging.debug("")
+                    element = [schedule.name, 0, 0, []]
 
-            keywords['deviations_by_cleaner'] = {}
-            for schedule, deviations in keywords['deviations_by_schedule']:
-                for key in deviations:
-                    divider = CleaningSchedule.objects.filter(cleaners=key).count()
-                    if key not in keywords['deviations_by_cleaner']:
-                        keywords['deviations_by_cleaner'][key] = deviations[key]/divider
-                    else:
-                        keywords['deviations_by_cleaner'][key] += deviations[key]/divider
+                    deviation_of = []
+                    sum_deviation_values = 0
+                    ratios = schedule.deployment_ratios(for_date=time_frame['end_date'])
+                    if ratios:
+                        for cleaner, ratio in ratios:
+                            element[3].append([cleaner.name, duties_in_timeframe.filter(cleaners=cleaner).count()])
 
-            keywords['complete_deviation'] = 0
-            for key in keywords['deviations_by_cleaner']:
-                keywords['complete_deviation'] += keywords['deviations_by_cleaner'][key]
-                keywords['deviations_by_cleaner'][key] = round(keywords['deviations_by_cleaner'][key], 4)
-            if keywords['deviations_by_cleaner']:
-                keywords['complete_deviation'] /= len(keywords['deviations_by_cleaner'])
-                keywords['complete_deviation'] = round(keywords['complete_deviation'], 4)
+                            deviation_of.append([cleaner, round(abs(1 - ratio), 3)])
+                            sum_deviation_values += abs(1 - ratio)
 
-            # for time_frame in keywords['results']:
-            #     time_frame['statistics'] = []
-            #     for schedule in CleaningSchedule.objects.all():
-            #
-            #         duties_in_timeframe = schedule.duties.filter(
-            #             date__range=(time_frame['start_date'], time_frame['end_date']))
-            #         relevant_cleaners = schedule.cleaners.filter(
-            #             moved_in__lte=time_frame['end_date'], moved_out__gte=time_frame['start_date'])
-            #         max_cleaning_duties = math.ceil(duties_in_timeframe.count() *
-            #                                         schedule.cleaners_per_date / relevant_cleaners.count())
-            #
-            #         element = [schedule.name, max_cleaning_duties, []]
-            #         for cleaner_pk, ratio in schedule.deployment_ratios(for_date=time_frame['end_date']):
-            #             element[2].append([Cleaner.objects.get(pk=cleaner_pk).name, round(ratio, 2),
-            #                                duties_in_timeframe.filter(cleaners=Cleaner.objects.get(pk=cleaner_pk)).count()])
-            #         element[2] = sorted(element[2], key=itemgetter(2))
-            #         time_frame['statistics'].append(element)
+                        element[3] = sorted(element[3], key=itemgetter(1), reverse=True)
+                        element[1] = element[3][0][1]
+                        element[2] = element[3][-1][1]
+                        time_frame['duty_counter'].append(element)
 
+                        schedule_data = [[schedule.name, round(sum_deviation_values/len(deviation_of), 3)]]
+                        schedule_data.append(sorted(deviation_of, key=itemgetter(1), reverse=True))
+                        time_frame['deviations_by_schedule'].append(schedule_data)
         return keywords
 
 

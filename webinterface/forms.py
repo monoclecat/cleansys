@@ -10,8 +10,7 @@ class ConfigForm(forms.Form):
     start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Start date DD.MM.YYYY")
     end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="End date DD.MM.YYYY")
 
-    show_deviations = forms.BooleanField(widget=forms.CheckboxInput, required=False,
-                                         label="Show average absolute deviations (not really important)")
+    # show_deviations = forms.BooleanField(widget=forms.CheckboxInput, required=False, label="Show average absolute deviations (not really important)")
 
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
@@ -27,7 +26,6 @@ class ConfigForm(forms.Form):
                 "<button class=\"btn btn-success\" type=\"submit\" name=\"save\" style=\"margin:0.5em 0.5em 0.5em 1em\">"
                 "<span class=\"glyphicon glyphicon-chevron-right\"></span> Next</button> "),
             HTML("<br>"),
-            Field('show_deviations')
         )
 
 

@@ -4,6 +4,7 @@ import datetime
 from django.db.models.signals import m2m_changed
 
 import logging
+import random
 
 
 def correct_dates_to_weekday(days, weekday):
@@ -11,7 +12,8 @@ def correct_dates_to_weekday(days, weekday):
     if isinstance(days, list):
         corrected_days = []
         for day in days:
-            day += datetime.timedelta(days=weekday - day.weekday())
+            if day:
+                day += datetime.timedelta(days=weekday - day.weekday())
             corrected_days.append(day)
         return corrected_days
     if isinstance(days, datetime.date):
@@ -22,8 +24,6 @@ class Cleaner(models.Model):
     name = models.CharField(max_length=10)
     moved_in = models.DateField()
     moved_out = models.DateField()
-
-    # TODO Cleaners can't just be deleted, first their associations to Schedules must be broken!
 
     def __init__(self, *args, **kwargs):
         super(Cleaner, self).__init__(*args, **kwargs)
@@ -39,23 +39,31 @@ class Cleaner(models.Model):
     def nr_of_assigned_schedules(self):
         return CleaningSchedule.objects.filter(cleaners=self).count()
 
+    def delete(self, using=None, keep_parents=False):
+        associated_schedules = CleaningSchedule.objects.filter(cleaners=self)
+        for schedule in associated_schedules:
+            schedule.cleaners.remove(self)
+
+        super().delete(using, keep_parents)
+
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         super().save(force_insert, force_update, using, update_fields)
 
         associated_schedules = CleaningSchedule.objects.filter(cleaners=self)
 
-        if self.moved_out != self.__last_moved_out:
-            prev_last_duty, new_last_duty = correct_dates_to_weekday([self.__last_moved_out, self.moved_out], 6)
-            if prev_last_duty != new_last_duty:
-                for schedule in associated_schedules:
-                    schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
+        if associated_schedules:
+            if self.moved_out != self.__last_moved_out:
+                prev_last_duty, new_last_duty = correct_dates_to_weekday([self.__last_moved_out, self.moved_out], 6)
+                if prev_last_duty != new_last_duty:
+                    for schedule in associated_schedules:
+                        schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
 
-        if self.moved_in != self.__last_moved_in:
-            prev_first_duty, new_first_duty = correct_dates_to_weekday([self.__last_moved_in, self.moved_in], 6)
-            if prev_first_duty != new_first_duty:
-                for schedule in associated_schedules:
-                    schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
+            if self.moved_in != self.__last_moved_in:
+                prev_first_duty, new_first_duty = correct_dates_to_weekday([self.__last_moved_in, self.moved_in], 6)
+                if prev_first_duty != new_first_duty:
+                    for schedule in associated_schedules:
+                        schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
         self.__last_moved_in = self.moved_in
         self.__last_moved_out = self.moved_out
@@ -157,36 +165,29 @@ class CleaningSchedule(models.Model):
             self.duties.add(duty)
 
             ratios = self.deployment_ratios(date)
-            logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'.format(self.name, date))
-            logging_text = "All cleaners' ratios: "
-            for cleaner, ratio in ratios:
-                logging_text += "{}:{}".format(cleaner.name, round(ratio, 3)) + "  "
-            logging.debug(logging_text)
-
-            modified_ratios = []
-            logging_text = "All cleaners with ratio <= 1: "
-            for cleaner, ratio in ratios:
-                if ratio <= 1:
-                    modified_ratios.append([cleaner, ratio])
+            if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
+                logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'.format(self.name, date))
+                logging_text = "All cleaners' ratios: "
+                for cleaner, ratio in ratios:
                     logging_text += "{}:{}".format(cleaner.name, round(ratio, 3)) + "  "
-            logging.debug(logging_text)
+                logging.debug(logging_text)
 
             if ratios:
                 for i in range(min(self.cleaners_per_date, self.cleaners.count())):
-                    for cleaner, ratio in modified_ratios:
+                    for cleaner, ratio in ratios:
                         if cleaner not in duty.cleaners.all():
                             if cleaner.free_on_date(date):
                                 duty.cleaners.add(cleaner)
                                 logging.debug("          {} inserted!".format(cleaner.name))
                                 break
-                            else:
-                                pass
-                                logging.debug("{} is not free.".format(cleaner.name))
+                            logging.debug("{} is not free.".format(cleaner.name))
                     else:
-                        for cleaner, ratio in modified_ratios:
-                            if cleaner not in duty.cleaners.all():
-                                logging.debug("Nobody is free, we choose {}".format(ratios[0][0]))
-                                duty.cleaners.add(ratios[0][0])
+                        for cleaner, ratio in ratios:
+                            if cleaner not in duty.cleaners.all() and \
+                                    CleaningDuty.objects.filter(date=date, cleaners=cleaner).count() <= 2:
+                                logging.debug("Nobody is free, we choose {}".format(cleaner))
+                                duty.cleaners.add(cleaner)
+                                break
             logging.debug("")
 
 

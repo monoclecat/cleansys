@@ -23,42 +23,6 @@ Cleaning Duties
                 </form>
                 <br>
 
-                {% if deviations_by_schedule %}
-                    <h2>Average absolute deviations by schedule</h2>
-                    <table class="table table-striped table-bordered">
-                        {% for schedule in deviations_by_schedule %}
-                            <tr>
-                                <td><b>{{ schedule.0 }}</b></td>
-                                {% for key, value in schedule.1.items %}
-                                    <td>{{ key }}: {{ value }}</td>
-                                {% endfor %}
-                            </tr>
-                        {% empty %}
-                            Nothing to show
-                        {% endfor %}
-                    </table>
-                {% endif %}
-
-                {% if deviations_by_cleaner %}
-                    <h2>Average absolute deviations by cleaner</h2>
-                    <table class="table table-striped table-bordered">
-                        <tr>
-                            {% for cleaner, value in deviations_by_cleaner.items %}
-                                <th>{{ cleaner }}</th>
-                            {% endfor %}
-                        </tr>
-                        <tr>
-                            {% for cleaner, value in deviations_by_cleaner.items %}
-                                <td>{{ value }}</td>
-                            {% endfor %}
-                        </tr>
-                    </table>
-                {% endif %}
-
-                {% if complete_deviation %}
-                    <h2>Complete average absolute deviation: {{ complete_deviation }}</h2>
-                {% endif %}
-
                 {% for time_frame in results %}
                     <div class="panel panel-primary">
                         <div class="panel-heading">
@@ -81,24 +45,37 @@ Cleaning Duties
                             </h3>
                         </div>
                         <div class="panel-body">
-                        <!--
-                            <h3>Statistics</h3>
-                            <table class="table table-striped table-condensed">
-                                {% for schedule in time_frame.statistics %}
-                                    <tr>
-                                        <td><b>{{ schedule.0 }}</b></td>
-                                        {% for cleaner, ratio, times in schedule.2 %}
-                                            <td>
-                                                {{ cleaner }}<br>
-                                                <span class="badge">{{ ratio }}</span>
-                                                <span class="badge">{{ times }}</span>
-                                            </td>
-                                        {% endfor %}
-                                    </tr>
-                                {% empty %}
-                                    Nothing here
-                                {% endfor %}
-                            </table> -->
+                            {% if time_frame.duty_counter %}
+                                <h3>Statistics</h3>
+                                <h4>Please note that while a cleaner might be unfairly assigned in this period,
+                                he will find justice in the periods before and after.</h4>
+                                <table class="table table-striped table-condensed">
+                                    {% for schedule in time_frame.duty_counter %}
+                                        <tr>
+                                            <td><b>{{ schedule.0 }}</b></td>
+                                            <td><b>Max: {{ schedule.1 }}<br>Min: {{ schedule.2 }}</b></td>
+                                            {% for cleaner, times in schedule.3 %}
+                                                <td>{{ cleaner }}: {{ times }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% empty %}
+                                        Nothing here
+                                    {% endfor %}
+                                </table>
+                                <h3>Average absolute deviations by schedule</h3>
+                                <table class="table table-striped table-bordered">
+                                    {% for schedule in time_frame.deviations_by_schedule %}
+                                        <tr>
+                                            <td><b>{{ schedule.0.0 }}: {{ schedule.0.1 }}</b></td>
+                                            {% for cleaner, value in schedule.1 %}
+                                                <td>{{ cleaner }}: {{ value }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% empty %}
+                                        Nothing to show
+                                    {% endfor %}
+                                </table>
+                            {% endif %}
                             <table class="table table-striped table-bordered">
                                 <tr class="info">
                                     <th>Date</th>
