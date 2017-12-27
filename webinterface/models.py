@@ -1,9 +1,7 @@
 from django.db import models
 from operator import itemgetter
 import datetime
-import math
-from django.utils import timezone
-from django.core.validators import validate_comma_separated_integer_list
+from django.db.models.signals import m2m_changed
 
 import logging
 
@@ -51,13 +49,13 @@ class Cleaner(models.Model):
             prev_last_duty, new_last_duty = correct_dates_to_weekday([self.__last_moved_out, self.moved_out], 6)
             if prev_last_duty != new_last_duty:
                 for schedule in associated_schedules:
-                    schedule.new_cleaning_duties(prev_last_duty, new_last_duty, False)
+                    schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
 
         if self.moved_in != self.__last_moved_in:
             prev_first_duty, new_first_duty = correct_dates_to_weekday([self.__last_moved_in, self.moved_in], 6)
             if prev_first_duty != new_first_duty:
                 for schedule in associated_schedules:
-                    schedule.new_cleaning_duties(prev_first_duty, new_first_duty, False)
+                    schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
         self.__last_moved_in = self.moved_in
         self.__last_moved_out = self.moved_out
@@ -100,45 +98,6 @@ class CleaningSchedule(models.Model):
     def __str__(self):
         return self.name
 
-    def __init__(self, *args, **kwargs):
-        super(CleaningSchedule, self).__init__(*args, **kwargs)
-        self.__last_cleaners = self.cleaners.values_list('pk', flat=True)
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        super().save(force_insert, force_update, using, update_fields)
-
-        # TODO test this
-
-        cleaners_list_prev = self.cleaners.values_list('pk', flat=True)
-        cleaners_list_now = self.__last_cleaners
-        new_cleaners = []
-        deleted_cleaners = []
-        for prev_cleaner_pk in cleaners_list_prev:
-            if prev_cleaner_pk not in cleaners_list_now:
-                deleted_cleaners.append(prev_cleaner_pk)
-        for now_cleaner_pk in cleaners_list_now:
-            if now_cleaner_pk not in cleaners_list_prev:
-                new_cleaners.append(now_cleaner_pk)
-
-        dates_to_redistribute = []
-        one_week = datetime.timedelta(days=7)
-        for cleaner in new_cleaners + deleted_cleaners:
-            first_duty, last_duty = correct_dates_to_weekday([cleaner.moved_in, cleaner.moved_out], 6)
-            date_iterator = first_duty
-            while date_iterator <= last_duty:
-                if date_iterator not in dates_to_redistribute:
-                    dates_to_redistribute.append(date_iterator)
-                    date_iterator += one_week
-
-        dates_to_redistribute = sorted(dates_to_redistribute)
-        for date in dates_to_redistribute:
-            self.duties.filter(date=date).delete()
-        for date in dates_to_redistribute:
-            self.assign_cleaning_duty(date)
-
-        self.__last_cleaners = self.cleaners.values_list('pk', flat=True)
-
     def delete(self, using=None, keep_parents=False):
         for duty in self.duties.all():
             duty.delete()
@@ -152,42 +111,37 @@ class CleaningSchedule(models.Model):
         ratios = []
 
         active_cleaners_on_date = self.cleaners.filter(moved_out__gte=for_date, moved_in__lte=for_date)
-        proportion__cleaners_assigned_per_week = self.cleaners_per_date / active_cleaners_on_date.count()
+        if active_cleaners_on_date.exists():
+            proportion__cleaners_assigned_per_week = self.cleaners_per_date / active_cleaners_on_date.count()
 
-        iterate_over = cleaners if cleaners else active_cleaners_on_date
+            iterate_over = cleaners if cleaners else active_cleaners_on_date
 
-        for cleaner in iterate_over:
-            all_duties = self.duties.filter(date__range=(cleaner.moved_in, cleaner.moved_out))
-            if all_duties.exists():
-                proportion__all_duties_he_cleans = all_duties.filter(cleaners=cleaner).count() / all_duties.count()
-                ratios.append([cleaner,
-                               proportion__all_duties_he_cleans / proportion__cleaners_assigned_per_week])
+            for cleaner in iterate_over:
+                all_duties = self.duties.filter(date__range=(cleaner.moved_in, cleaner.moved_out))
+                if all_duties.exists():
+                    proportion__all_duties_he_cleans = all_duties.filter(cleaners=cleaner).count() / all_duties.count()
+                    ratios.append([cleaner,
+                                   proportion__all_duties_he_cleans / proportion__cleaners_assigned_per_week])
         return sorted(ratios, key=itemgetter(1), reverse=False)
 
-    def refine_cleaning_duties(self, date1, date2, passes):
-        """This function is used to even out Cleaners over the given time frame."""
-        start_date = min(date1, date2)
-        end_date = max(date1, date2)
-        one_week = datetime.timedelta(days=7)
+    def defined_on_date(self, date):
+        return self.frequency == 1 or self.frequency == 2 and date.isocalendar()[1] % 2 == 0 or \
+               self.frequency == 3 and date.isocalendar()[1] % 2 == 1
 
-        for i in range(passes):
-            date_iterator = start_date
-            while date_iterator <= end_date:
-                self.assign_cleaning_duty(date_iterator)
-                date_iterator += one_week
-
-    def new_cleaning_duties(self, date1, date2):
+    def new_cleaning_duties(self, date1, date2, clear_existing=True):
         """Generates new cleaning duties between date1 and date2. To ensure better distribution of cleaners,
         all duties in time frame are deleted."""
         start_date = min(date1, date2)
         end_date = max(date1, date2)
         one_week = datetime.timedelta(days=7)
 
-        self.duties.filter(date__range=(start_date, end_date)).delete()
+        if clear_existing:
+            self.duties.filter(date__range=(start_date, end_date)).delete()
 
         date_iterator = start_date
         while date_iterator <= end_date:
-            self.assign_cleaning_duty(date_iterator)
+            if clear_existing or not clear_existing and not self.duties.filter(date=date_iterator).exists():
+                self.assign_cleaning_duty(date_iterator)
             date_iterator += one_week
 
     def assign_cleaning_duty(self, date):
@@ -195,36 +149,68 @@ class CleaningSchedule(models.Model):
         If self.frequency is set to 'Even weeks' and it is not an even week, this function fails silently.
         The same is true if self.frequency is set to 'Odd weeks'."""
 
-        if self.frequency == 1 or \
-                self.frequency == 2 and date.isocalendar()[1] % 2 == 0 or \
-                self.frequency == 3 and date.isocalendar()[1] % 2 == 1:
+        if self.defined_on_date(date):
 
             duty, was_created = self.duties.get_or_create(date=date)
 
-            duty.cleaners.clear()  # TODO If duty with cleaners already exists, should we prompt for approval?
+            duty.cleaners.clear()
             self.duties.add(duty)
 
             ratios = self.deployment_ratios(date)
-            # print('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'.format(self.name, date))
-            # print("Cleaners' ratios: ")
-            # for cleaner, ratio in ratios:
-            #     print("{}:{}".format(cleaner.name, round(ratio, 3)), end=" ")
-            # print("")
+            logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'.format(self.name, date))
+            logging_text = "All cleaners' ratios: "
+            for cleaner, ratio in ratios:
+                logging_text += "{}:{}".format(cleaner.name, round(ratio, 3)) + "  "
+            logging.debug(logging_text)
 
-            for i in range(min(self.cleaners_per_date, self.cleaners.count())):
-                modified_ratios = []
-                for cleaner, ratio in ratios:
-                    if cleaner not in duty.cleaners.all() \
-                            and ratio <= 1:
-                        modified_ratios.append([cleaner, ratio])
+            modified_ratios = []
+            logging_text = "All cleaners with ratio <= 1: "
+            for cleaner, ratio in ratios:
+                if ratio <= 1:
+                    modified_ratios.append([cleaner, ratio])
+                    logging_text += "{}:{}".format(cleaner.name, round(ratio, 3)) + "  "
+            logging.debug(logging_text)
 
-                for cleaner, ratio in modified_ratios:
-                    if cleaner.free_on_date(date):
-                        duty.cleaners.add(cleaner)
-                        #print("{} inserted!".format(cleaner.name))
-                        break
+            if ratios:
+                for i in range(min(self.cleaners_per_date, self.cleaners.count())):
+                    for cleaner, ratio in modified_ratios:
+                        if cleaner not in duty.cleaners.all():
+                            if cleaner.free_on_date(date):
+                                duty.cleaners.add(cleaner)
+                                logging.debug("          {} inserted!".format(cleaner.name))
+                                break
+                            else:
+                                pass
+                                logging.debug("{} is not free.".format(cleaner.name))
                     else:
-                        pass
-                        # print("{} is not free.".format(cleaner.name))
-                else:
-                    duty.cleaners.add(modified_ratios[0][0])
+                        for cleaner, ratio in modified_ratios:
+                            if cleaner not in duty.cleaners.all():
+                                logging.debug("Nobody is free, we choose {}".format(ratios[0][0]))
+                                duty.cleaners.add(ratios[0][0])
+            logging.debug("")
+
+
+def schedule_cleaners_changed(instance, action, pk_set, **kwargs):
+    if action == 'post_add' or action == 'post_remove':
+        dates_to_delete = []
+        one_week = datetime.timedelta(days=7)
+        for cleaner_pk in pk_set:
+            cleaner = Cleaner.objects.get(pk=cleaner_pk)
+            first_duty, last_duty = correct_dates_to_weekday([cleaner.moved_in, cleaner.moved_out], 6)
+            date_iterator = first_duty
+            while date_iterator <= last_duty:
+                if date_iterator not in dates_to_delete:
+                    dates_to_delete.append(date_iterator)
+                    date_iterator += one_week
+
+        dates_to_redistribute = []
+        for date in dates_to_delete:
+            duty = instance.duties.filter(date=date)
+            if duty.exists():
+                duty.delete()
+                dates_to_redistribute.append(date)
+        for date in dates_to_redistribute:
+            instance.assign_cleaning_duty(date)
+
+
+m2m_changed.connect(schedule_cleaners_changed, sender=CleaningSchedule.cleaners.through)

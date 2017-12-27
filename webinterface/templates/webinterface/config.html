@@ -16,12 +16,14 @@ Cleaners
             <div class="col-sm-10 col-sm-offset-1
                         col-md-8  col-md-offset-3
                         col-lg-6">
-
-                    <form method="POST" class="form form-inline">
-                        {% csrf_token %}
-                        {% crispy form %}
-                    </form>
-
+                <div class="well">
+                    <div class="text-center">
+                        <form method="POST" class="form form-inline">
+                            {% csrf_token %}
+                            {% crispy form %}
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="row">
