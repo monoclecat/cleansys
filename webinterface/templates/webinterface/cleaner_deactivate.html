@@ -10,21 +10,17 @@ Delete cleaner
         <div class="row" style="margin: 1em;">
             <div class="col-sm-8 col-sm-offset-2
                     col-md-6 col-md-offset-3">
-                <h1>Delete cleaner</h1>
+                <h1>Deactivate cleaner</h1>
                 <form action="" method="post">
                     {% csrf_token %}
-                    <p>Are you sure you want to delete "{{ object.name }}"?</p>
+                    <p>Are you sure you want to deactivate "{{ object.name }}"?</p>
                             <div class="panel panel-danger">
                                 <div class="panel-heading">
                                     <h2 class="panel-title">{{ object.name }}</h2>
                                 </div>
                                 <div class="panel-body">
-                                    <h4>Cleans:</h4>
-                                    {% for job in object.assigned_to.all %}
-                                        <p style="margin-left: 1em">{{ job }}</p>
-                                    {% empty %}
-                                        <p style="margin-left: 1em">Not issued any cleaning jobs...</p>
-                                    {% endfor %}
+                                    <h4>Moved in: {{ object.moved_in }}</h4>
+                                    <h4>Moved out: {{ object.moved_out }}</h4>
                                 </div>
                             </div>
                     <button type="submit" class="btn btn-danger"><span class="glyphicon glyphicon-trash"></span> Yes</button>

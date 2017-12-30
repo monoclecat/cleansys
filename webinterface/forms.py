@@ -10,20 +10,23 @@ class ConfigForm(forms.Form):
     start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Start date DD.MM.YYYY")
     end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="End date DD.MM.YYYY")
 
-    # show_deviations = forms.BooleanField(widget=forms.CheckboxInput, required=False, label="Show average absolute deviations (not really important)")
+    # show_deviations = forms.BooleanField(widget=forms.CheckboxInput, required=False,
+    #                                      label="Show average absolute deviations (not really important)")
 
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout(
             HTML(
-                "<a class=\"btn btn-default\" href=\"{% url 'webinterface:welcome' %}\" role=\"button\" style=\"margin:0.5em 1em 0.5em 0.5em\">"
+                "<a class=\"btn btn-default\" href=\"{% url 'webinterface:welcome' %}\" "
+                "role=\"button\" style=\"margin:0.5em 1em 0.5em 0.5em\">"
                 "<span class=\"glyphicon glyphicon-chevron-left\"></span> Back</a>"
             ),
             'start_date',
             'end_date',
             HTML(
-                "<button class=\"btn btn-success\" type=\"submit\" name=\"save\" style=\"margin:0.5em 0.5em 0.5em 1em\">"
+                "<button class=\"btn btn-success\" type=\"submit\" name=\"save\" "
+                "style=\"margin:0.5em 0.5em 0.5em 1em\">"
                 "<span class=\"glyphicon glyphicon-chevron-right\"></span> Next</button> "),
             HTML("<br>"),
         )
@@ -32,7 +35,7 @@ class ConfigForm(forms.Form):
 class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
-        fields = '__all__'
+        exclude = ('deactivated', )
 
     name = forms.CharField(max_length=10, label="Cleaner name",
                            required=True, widget=forms.TextInput)
@@ -44,15 +47,32 @@ class CleanerForm(forms.ModelForm):
                                 help_text="When creating a new cleaner, set this to moved-in date plus "
                                           "3 years for good measure.")
 
-    def __init__(self, *args, **kwargs):
-        super(CleanerForm, self).__init__(*args, **kwargs)
-        self.helper = FormHelper()
+    schedule = forms.ModelMultipleChoiceField(queryset=CleaningSchedule.objects.filter(deactivated=False),
+                                               required=False,
+                                               widget=forms.CheckboxSelectMultiple(), label="Cleaning schedules",
+                                               help_text="Select the cleaning schedules that this cleaner is assigned to.")
 
+    def __init__(self, *args, **kwargs):
+        initial = kwargs.get('initial', {})
+        if 'instance' in kwargs and kwargs['instance']:
+            initial['schedules'] = CleaningSchedule.objects.filter(cleaners=kwargs['instance'], deactivated=False)
+            kwargs['initial'] = initial
+
+        super(CleanerForm, self).__init__(*args, **kwargs)
+
+        if 'instance' in kwargs and kwargs['instance']:
+            one_week = datetime.timedelta(days=7)
+            if kwargs['instance'].moved_in < datetime.datetime.now().date() + one_week:
+                dict(self.fields)['moved_in'].disabled = True
+                dict(self.fields)['name'].disabled = True
+
+        self.helper = FormHelper()
         self.helper.layout = Layout(
             Fieldset("General",
                      'name',
                      'moved_in',
-                     'moved_out'
+                     'moved_out',
+                     'schedules'
                      ),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Save</button> "
@@ -64,21 +84,10 @@ class CleanerForm(forms.ModelForm):
 class CleaningScheduleForm(forms.ModelForm):
     class Meta:
         model = CleaningSchedule
-        exclude = ('duties', )
+        exclude = ('duties', 'cleaners_per_date', 'frequency', 'deactivated')
 
     name = forms.CharField(max_length=20, label="Cleaning plan name", help_text="The title of the cleaning plan",
                            required=True, widget=forms.TextInput)
-
-    cleaners_per_date = forms.ChoiceField(choices=CleaningSchedule.CLEANERS_PER_DATE_CHOICES,
-                                          label="Number of cleaners per cleaning date",
-                                          help_text="Bathroom only needs 1 but kitchen needs 2.",
-                                          required=True, initial=1)
-
-    frequency = forms.ChoiceField(choices=CleaningSchedule.FREQUENCY_CHOICES, required=True, initial=1,
-                                  label="Cleaning schedule frequency",
-                                  help_text="If you have two cleaning schedules that are due every two weeks "
-                                            "but can't be on the same dates, set one to 'Even weeks' and the other "
-                                            "to 'Odd weeks'")
 
     cleaners = forms.ModelMultipleChoiceField(queryset=Cleaner.objects.all(), required=False,
                                               widget=forms.CheckboxSelectMultiple(), label="Cleaners",
@@ -112,6 +121,50 @@ class CleaningScheduleForm(forms.ModelForm):
         self.helper.layout = Layout(
             Fieldset("General",
                      'name',
+                     'cleaners'
+                     ),
+            Fieldset("Tasks (from left to right)",
+                     'task1',
+                     'task2',
+                     'task3',
+                     'task4',
+                     'task5',
+                     'task6',
+                     'task7',
+                     'task8',
+                     'task9',
+                     'task10',
+                     ),
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Save</button> "
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Cancel</a>"),
+        )
+
+
+class CleaningScheduleNewForm(CleaningScheduleForm):
+    class Meta:
+        model = CleaningSchedule
+        exclude = ('duties',)
+
+    cleaners_per_date = forms.ChoiceField(choices=CleaningSchedule.CLEANERS_PER_DATE_CHOICES,
+                                          label="Number of cleaners per cleaning date",
+                                          help_text="Bathroom only needs 1 but kitchen needs 2.",
+                                          required=True, initial=1)
+
+    frequency = forms.ChoiceField(choices=CleaningSchedule.FREQUENCY_CHOICES, required=True, initial=1,
+                                  label="Cleaning schedule frequency",
+                                  help_text="If you have two cleaning schedules that are due every two weeks "
+                                            "but can't be on the same dates, set one to 'Even weeks' and the other "
+                                            "to 'Odd weeks'")
+
+    def __init__(self, *args, **kwargs):
+        super(CleaningScheduleForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+
+        self.helper.layout = Layout(
+            Fieldset("General",
+                     'name',
                      'cleaners_per_date',
                      'frequency',
                      'cleaners'
@@ -133,5 +186,4 @@ class CleaningScheduleForm(forms.ModelForm):
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Cancel</a>"),
         )
-
 

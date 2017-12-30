@@ -8,16 +8,12 @@ Cleaners
 {% block body %}
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-offset-2">
-                <h1>Set configuration</h1>
-            </div>
-        </div>
-        <div class="row">
             <div class="col-sm-10 col-sm-offset-1
                         col-md-8  col-md-offset-3
                         col-lg-6">
-                <div class="well">
+                <div class="well" style="margin-top: 1em">
                     <div class="text-center">
+                        <h2 style="margin-top: 0px">View cleaning schedules</h2>
                         <form method="POST" class="form form-inline">
                             {% csrf_token %}
                             {% crispy form %}
@@ -28,7 +24,9 @@ Cleaners
         </div>
         <div class="row">
             <div class="col-xs-12 col-sm-6">
-                <h2>Cleaning schedules <a class="btn btn-primary" href="{% url 'webinterface:cleaning-schedule-new' %}" role="button">
+                <h2>Cleaning schedules
+                    <small>Active: {{ schedule_list.count }} Inactive: {{ deactivated_schedule_list.count }}</small>
+                    <a class="btn btn-primary" href="{% url 'webinterface:cleaning-schedule-new' %}" role="button">
                     <span class="glyphicon glyphicon-plus"></span> New schedule</a></h2>
                 {% for schedule in schedule_list %}
                     <div class="panel panel-info">
@@ -41,22 +39,39 @@ Cleaners
                                     {% else %}
                                         Not assigned any cleaners
                                     {% endifnotequal %}
-                                </small></h2>
-                        </div>
-                        <div class="panel-footer">
-                            <a class="btn btn-info" href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}"
-                               role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
-                            <a class="btn btn-danger" href="{% url 'webinterface:cleaning-schedule-delete' schedule.pk %}"
-                               role="button"><span class="glyphicon glyphicon-trash"></span> Delete</a>
+                                </small>
+                                <div class="btn-group pull-right" style="margin-top:-8px;">
+                                    <a class="btn btn-info" style="color:whitesmoke;"
+                                       href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}"
+                                       role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
+                                    <a class="btn btn-danger" style="color:whitesmoke;"
+                                       href="{% url 'webinterface:cleaning-schedule-deactivate' schedule.pk %}"
+                                       role="button"><span class="glyphicon glyphicon-trash"></span> Deactivate</a>
+                                </div>
+                            </h2>
                         </div>
                     </div>
                 {% empty %}
                     <p>No schedules to show...</p>
                 {% endfor %}
+                {% if deactivated_schedule_list %}
+                    <h2>Deactivated cleaning schedules</h2>
+                    <p><i>Deactivated schedules are deleted after a while</i></p>
+                {% endif %}
+                {% for schedule in deactivated_schedule_list %}
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h2 class="panel-title">{{ schedule.name }}</h2>
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
             <div class="col-xs-12 col-sm-6">
-                <h2>Cleaners <small>Number of cleaners: {{ cleaner_list.count }}</small> <a class="btn btn-primary" href="{% url 'webinterface:cleaners-new' %}" role="button">
-                    <span class="glyphicon glyphicon-plus"></span> New cleaner</a></h2>
+                <h2>Cleaners
+                    <small>Active: {{ cleaner_list.count }} Inactive: {{ deactivated_cleaner_list.count }}</small>
+                    <a class="btn btn-primary" href="{% url 'webinterface:cleaners-new' %}" role="button">
+                    <span class="glyphicon glyphicon-plus"></span> New cleaner</a>
+                </h2>
                 {% for cleaner in cleaner_list %}
                         <div class="panel panel-info">
                             <div class="panel-heading">
@@ -69,17 +84,35 @@ Cleaners
                                             Not assigned to any schedules
                                         {% endifnotequal %}
                                     </small>
+                                    <a class="btn btn-info pull-right" style="color:whitesmoke; margin-top:-8px;"
+                                       href="{% url 'webinterface:cleaners-edit' cleaner.pk %}"
+                                       role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
                                  </h2>
-                            </div>
-                            <div class="panel-footer">
-                                <a class="btn btn-info" href="{% url 'webinterface:cleaners-edit' cleaner.pk %}"
-                                   role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
-                                <a class="btn btn-danger" href="{% url 'webinterface:cleaners-delete' cleaner.pk %}"
-                                   role="button"><span class="glyphicon glyphicon-trash"></span> Delete</a>
                             </div>
                         </div>
                 {% empty %}
                     <p>Nothing to display here...</p>
+                {% endfor %}
+                {% if deactivated_cleaner_list %}
+                    <h2>Inactive cleaners</h2>
+                    <p><i>Inactive cleaners have been either deactivated or have moved out.
+                        They are deleted after a while</i></p>
+                {% endif %}
+                {% for cleaner in deactivated_cleaner_list %}
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h2 class="panel-title">{{ cleaner.name }}
+                                <div class="btn-group pull-right" style="margin-top:-8px;">
+                                    <a class="btn btn-info" style="color:whitesmoke;"
+                                       href="{% url 'webinterface:cleaners-edit' cleaner.pk %}"
+                                       role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
+                                    <a class="btn btn-danger" style="color:whitesmoke;"
+                                       href="{% url 'webinterface:cleaners-deactivate' cleaner.pk %}"
+                                       role="button"><span class="glyphicon glyphicon-trash"></span> Deactivate</a>
+                                </div>
+                            </h2>
+                        </div>
+                    </div>
                 {% endfor %}
             </div>
         </div>

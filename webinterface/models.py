@@ -4,7 +4,6 @@ import datetime
 from django.db.models.signals import m2m_changed
 
 import logging
-import random
 
 
 def correct_dates_to_weekday(days, weekday):
@@ -24,6 +23,7 @@ class Cleaner(models.Model):
     name = models.CharField(max_length=10)
     moved_in = models.DateField()
     moved_out = models.DateField()
+    deactivated = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
         super(Cleaner, self).__init__(*args, **kwargs)
@@ -37,7 +37,7 @@ class Cleaner(models.Model):
         return not CleaningDuty.objects.filter(date=date, cleaners=self).exists()
 
     def nr_of_assigned_schedules(self):
-        return CleaningSchedule.objects.filter(cleaners=self).count()
+        return CleaningSchedule.objects.filter(cleaners=self, deactivated=False).count()
 
     def delete(self, using=None, keep_parents=False):
         associated_schedules = CleaningSchedule.objects.filter(cleaners=self)
@@ -50,7 +50,7 @@ class Cleaner(models.Model):
              update_fields=None):
         super().save(force_insert, force_update, using, update_fields)
 
-        associated_schedules = CleaningSchedule.objects.filter(cleaners=self)
+        associated_schedules = CleaningSchedule.objects.filter(cleaners=self, deactivated=False)
 
         if associated_schedules:
             if self.moved_out != self.__last_moved_out:
@@ -64,9 +64,6 @@ class Cleaner(models.Model):
                 if prev_first_duty != new_first_duty:
                     for schedule in associated_schedules:
                         schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
-
-        self.__last_moved_in = self.moved_in
-        self.__last_moved_out = self.moved_out
 
 
 class CleaningDuty(models.Model):
@@ -103,8 +100,24 @@ class CleaningSchedule(models.Model):
     task9 = models.CharField(max_length=40, blank=True)
     task10 = models.CharField(max_length=40, blank=True)
 
+    deactivated = models.BooleanField(default=False)
+
     def __str__(self):
         return self.name
+
+    def __init__(self, *args, **kwargs):
+        super(CleaningSchedule, self).__init__(*args, **kwargs)
+        self.__last_cleaners_per_date = self.cleaners_per_date
+        self.__last_frequency = self.frequency
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        super(CleaningSchedule, self).save(force_insert, force_update, using, update_fields)
+
+        if self.cleaners_per_date != self.__last_cleaners_per_date or self.frequency != self.__last_frequency:
+            all_duty_dates = list(self.duties.values_list('date', flat=True))
+            self.duties.all().delete()
+            for date in all_duty_dates:
+                self.assign_cleaning_duty(date)
 
     def delete(self, using=None, keep_parents=False):
         for duty in self.duties.all():
@@ -191,18 +204,27 @@ class CleaningSchedule(models.Model):
             logging.debug("")
 
 
+class CleaningScheduleGroup(models.Model):
+    name = models.CharField(max_length=30)
+    cleaning_schedules = models.ManyToManyField(CleaningSchedule, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
 def schedule_cleaners_changed(instance, action, pk_set, **kwargs):
     if action == 'post_add' or action == 'post_remove':
         dates_to_delete = []
         one_week = datetime.timedelta(days=7)
         for cleaner_pk in pk_set:
             cleaner = Cleaner.objects.get(pk=cleaner_pk)
-            first_duty, last_duty = correct_dates_to_weekday([cleaner.moved_in, cleaner.moved_out], 6)
+            first_duty, last_duty = correct_dates_to_weekday([min(cleaner.moved_in, datetime.datetime.now().date()),
+                                                              cleaner.moved_out], 6)
             date_iterator = first_duty
             while date_iterator <= last_duty:
                 if date_iterator not in dates_to_delete:
                     dates_to_delete.append(date_iterator)
-                    date_iterator += one_week
+                date_iterator += one_week
 
         dates_to_redistribute = []
         for date in dates_to_delete:
