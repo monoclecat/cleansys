@@ -25,6 +25,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 with open('putzplan_generator/keys/django-secret-key.txt', 'r') as secret_key_file:
     SECRET_KEY = secret_key_file.read().replace('\n', '')
 
+with open('putzplan_generator/keys/slack-bot-token.txt', 'r') as slack_bot_token:
+    SLACK_BOT_TOKEN = slack_bot_token.read().replace('\n', '')
+
+os.environ['SLACK_BOT_TOKEN'] = SLACK_BOT_TOKEN
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -43,6 +48,7 @@ INSTALLED_APPS = [
     'webinterface.apps.WebinterfaceConfig',
     'bootstrap3',
     'crispy_forms',
+    'slackclient'
 ]
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'

@@ -5,8 +5,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.views.generic import TemplateView
 from django.utils.text import slugify
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
-from django.contrib.auth.mixins import LoginRequiredMixin
 
+from .slackbot import *
 from .forms import *
 from .models import *
 
@@ -22,6 +22,7 @@ class WelcomeView(TemplateView):
     def get_context_data(self, **kwargs):
         keywords = super(WelcomeView, self).get_context_data(**kwargs)
         keywords['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.datetime.now().date())
+
         return keywords
 
 
