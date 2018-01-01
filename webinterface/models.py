@@ -2,7 +2,6 @@ from django.db import models
 from operator import itemgetter
 import datetime
 from django.db.models.signals import m2m_changed
-
 import logging
 
 
@@ -23,7 +22,8 @@ class Cleaner(models.Model):
     name = models.CharField(max_length=10)
     moved_in = models.DateField()
     moved_out = models.DateField()
-    deactivated = models.BooleanField(default=False)
+
+    willing_to_switch = models.BooleanField(default=True)
 
     def __init__(self, *args, **kwargs):
         super(Cleaner, self).__init__(*args, **kwargs)
@@ -34,10 +34,7 @@ class Cleaner(models.Model):
         return self.name
 
     def free_on_date(self, date):
-        return not CleaningDuty.objects.filter(date=date, cleaners=self).exists()
-
-    def nr_of_assigned_schedules(self):
-        return CleaningSchedule.objects.filter(cleaners=self, deactivated=False).count()
+        return not self.cleaningduty_set.filter(date=date).exists()
 
     def delete(self, using=None, keep_parents=False):
         associated_schedules = CleaningSchedule.objects.filter(cleaners=self)
@@ -50,31 +47,41 @@ class Cleaner(models.Model):
              update_fields=None):
         super().save(force_insert, force_update, using, update_fields)
 
-        associated_schedules = CleaningSchedule.objects.filter(cleaners=self, deactivated=False)
+        associated_group = CleaningScheduleGroup.objects.filter(cleaners=self)
+        if associated_group.exists():
+            associated_group = associated_group.first()
 
-        if associated_schedules:
             if self.moved_out != self.__last_moved_out:
                 prev_last_duty, new_last_duty = correct_dates_to_weekday([self.__last_moved_out, self.moved_out], 6)
                 if prev_last_duty != new_last_duty:
-                    for schedule in associated_schedules:
+                    for schedule in CleaningSchedule.objects.filter(schedule_group=associated_group):
                         schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
 
             if self.moved_in != self.__last_moved_in:
                 prev_first_duty, new_first_duty = correct_dates_to_weekday([self.__last_moved_in, self.moved_in], 6)
                 if prev_first_duty != new_first_duty:
-                    for schedule in associated_schedules:
+                    for schedule in CleaningSchedule.objects.filter(schedule_group=associated_group):
                         schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
 
 class CleaningDuty(models.Model):
     cleaners = models.ManyToManyField(Cleaner)
     date = models.DateField()
+    excluded = models.ManyToManyField(Cleaner, related_name="excluded")
 
     def __str__(self):
         string = ""
         for cleaner in self.cleaners.all():
             string += cleaner.name + " "
         return string[:-1]
+
+
+class CleaningScheduleGroup(models.Model):
+    name = models.CharField(max_length=30)
+    cleaners = models.ManyToManyField(Cleaner)
+
+    def __str__(self):
+        return self.name
 
 
 class CleaningSchedule(models.Model):
@@ -87,7 +94,7 @@ class CleaningSchedule(models.Model):
     frequency = models.IntegerField(default=1, choices=FREQUENCY_CHOICES)
 
     duties = models.ManyToManyField(CleaningDuty, blank=True)
-    cleaners = models.ManyToManyField(Cleaner, blank=True)
+    schedule_group = models.ManyToManyField(CleaningScheduleGroup, blank=True)
 
     task1 = models.CharField(max_length=40, blank=True)
     task2 = models.CharField(max_length=40, blank=True)
@@ -99,8 +106,6 @@ class CleaningSchedule(models.Model):
     task8 = models.CharField(max_length=40, blank=True)
     task9 = models.CharField(max_length=40, blank=True)
     task10 = models.CharField(max_length=40, blank=True)
-
-    deactivated = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -131,9 +136,12 @@ class CleaningSchedule(models.Model):
         of cleaners, pass them in a list in the cleaners argument. Otherwise all ratios will be returned."""
         ratios = []
 
-        active_cleaners_on_date = self.cleaners.filter(moved_out__gte=for_date, moved_in__lte=for_date)
-        if active_cleaners_on_date.exists():
-            proportion__cleaners_assigned_per_week = self.cleaners_per_date / active_cleaners_on_date.count()
+        active_cleaners_on_date = []
+        for group in self.schedule_group.all():
+            active_cleaners_on_date += list(group.cleaners.filter(moved_out__gte=for_date, moved_in__lte=for_date))
+
+        if active_cleaners_on_date:
+            proportion__cleaners_assigned_per_week = self.cleaners_per_date / len(active_cleaners_on_date)
 
             iterate_over = cleaners if cleaners else active_cleaners_on_date
 
@@ -186,9 +194,9 @@ class CleaningSchedule(models.Model):
                 logging.debug(logging_text)
 
             if ratios:
-                for i in range(min(self.cleaners_per_date, self.cleaners.count())):
+                for i in range(min(self.cleaners_per_date, len(ratios))):
                     for cleaner, ratio in ratios:
-                        if cleaner not in duty.cleaners.all():
+                        if cleaner not in duty.cleaners.all() and cleaner not in duty.excluded.all():
                             if cleaner.free_on_date(date):
                                 duty.cleaners.add(cleaner)
                                 logging.debug("          {} inserted!".format(cleaner.name))
@@ -196,23 +204,15 @@ class CleaningSchedule(models.Model):
                             logging.debug("{} is not free.".format(cleaner.name))
                     else:
                         for cleaner, ratio in ratios:
-                            if cleaner not in duty.cleaners.all() and \
-                                    CleaningDuty.objects.filter(date=date, cleaners=cleaner).count() <= 2:
+                            if cleaner not in duty.cleaners.all() and cleaner not in duty.excluded.all() and \
+                                    cleaner.cleaningduty_set.filter(date=date).count() <= 2:
                                 logging.debug("Nobody is free, we choose {}".format(cleaner))
                                 duty.cleaners.add(cleaner)
                                 break
             logging.debug("")
 
 
-class CleaningScheduleGroup(models.Model):
-    name = models.CharField(max_length=30)
-    cleaning_schedules = models.ManyToManyField(CleaningSchedule, blank=True)
-
-    def __str__(self):
-        return self.name
-
-
-def schedule_cleaners_changed(instance, action, pk_set, **kwargs):
+def group_cleaners_changed(instance, action, pk_set, **kwargs):
     if action == 'post_add' or action == 'post_remove':
         dates_to_delete = []
         one_week = datetime.timedelta(days=7)
@@ -226,14 +226,15 @@ def schedule_cleaners_changed(instance, action, pk_set, **kwargs):
                     dates_to_delete.append(date_iterator)
                 date_iterator += one_week
 
-        dates_to_redistribute = []
-        for date in dates_to_delete:
-            duty = instance.duties.filter(date=date)
-            if duty.exists():
-                duty.delete()
-                dates_to_redistribute.append(date)
-        for date in dates_to_redistribute:
-            instance.assign_cleaning_duty(date)
+        for schedule in CleaningSchedule.objects.filter(schedule_group=instance):
+            dates_to_redistribute = []
+            for date in dates_to_delete:
+                duty = schedule.duties.filter(date=date)
+                if duty.exists():
+                    duty.delete()
+                    dates_to_redistribute.append(date)
+            for date in dates_to_redistribute:
+                schedule.assign_cleaning_duty(date)
 
 
-m2m_changed.connect(schedule_cleaners_changed, sender=CleaningSchedule.cleaners.through)
+m2m_changed.connect(group_cleaners_changed, sender=CleaningScheduleGroup.cleaners.through)

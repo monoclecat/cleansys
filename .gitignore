@@ -5,11 +5,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-Pycharm
+# Pycharm
 .idea/
 
-Mac OSX
+# Mac OSX
 .DS_Store
+
+# Secret keys
+keys/
 
 # C extensions
 *.so

@@ -3,12 +3,12 @@ from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
 from django.views.generic import TemplateView
-from django.views.generic.list import ListView
+from django.utils.text import slugify
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from .models import *
 from .forms import *
+from .models import *
 
 import datetime
 import timeit
@@ -19,6 +19,203 @@ import logging, math
 class WelcomeView(TemplateView):
     template_name = "webinterface/welcome.html"
 
+    def get_context_data(self, **kwargs):
+        keywords = super(WelcomeView, self).get_context_data(**kwargs)
+        keywords['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.datetime.now().date())
+        return keywords
+
+
+class DutySwitchView(TemplateView):
+    template_name = "webinterface/switch_duty.html"
+
+    def get_context_data(self, **kwargs):
+        keywords = super(DutySwitchView, self).get_context_data(**kwargs)
+        duty = CleaningDuty.objects.get(pk=kwargs['duty_pk'])
+        schedule = duty.cleaningschedule_set.first()
+
+        if duty.date <= datetime.datetime.now().date() + datetime.timedelta(days=20):
+            keywords['short_notice_flag'] = True
+
+        ratios = schedule.deployment_ratios(duty.date)
+        logging.debug("------------ Looking for replacement cleaners -----------")
+        replacement_cleaners = []
+        for cleaner, ratio in ratios:
+            logging.debug("{}:   Not in duty:{} Free:{} Willing:{}".format(cleaner.name, cleaner not in duty.cleaners.all(),
+                                                                 cleaner.free_on_date(duty.date), cleaner.willing_to_switch))
+            if cleaner not in duty.cleaners.all() and cleaner.free_on_date(duty.date) and cleaner.willing_to_switch:
+                replacement_cleaners.append(cleaner)
+            if len(replacement_cleaners) == 3:
+                break
+        else:
+            logging.debug("We need to select cleaners that are not free today.")
+            if len(replacement_cleaners) == 0:
+                keywords['double_duty_flag'] = True
+                for cleaner, ratio in ratios:
+                    logging.debug("{}:   Not in duty:{} Duties today:{} Willing:{}".format(cleaner.name, cleaner not in duty.cleaners.all(),
+                                                                         cleaner.cleaningduty_set.filter(
+                                                                             date=duty.date).count(),
+                                                                         cleaner.willing_to_switch))
+                    if cleaner not in duty.cleaners.all() and \
+                            cleaner.cleaningduty_set.filter(date=duty.date).count() <= 2 and cleaner.willing_to_switch:
+                        replacement_cleaners.append(cleaner)
+                    if len(replacement_cleaners) == 3:
+                        break
+
+        logging.debug("Replacement cleaners: {}".format(replacement_cleaners))
+        replacement_duties = []
+        for cleaner in replacement_cleaners:
+            duties = schedule.duties.filter(cleaners=cleaner, date__gt=duty.date).order_by('date')
+            if duties.count() >= 2:
+                duties = duties[:2]
+            for repl_duty in duties:
+                replacement_duties.append([cleaner, repl_duty])
+
+        keywords['duty'] = duty
+        keywords['replacement_duties'] = replacement_duties
+        keywords['old_cleaner'] = Cleaner.objects.get(pk=kwargs['old_cleaner_pk'])
+        keywords['schedule'] = schedule
+
+        return keywords
+
+    def post(self, request, *args, **kwargs):
+        """
+        Handles POST requests, instantiating a form instance with the passed
+        POST variables and then checked for validity.
+        """
+        old_cleaner = Cleaner.objects.get(pk=request.POST['old_cleaner_pk'])
+        duty_for_replacing_cleaner = CleaningDuty.objects.get(pk=request.POST['duty_pk'])
+
+        if 'short_notice_call' not in request.POST:
+            for key, val in request.POST.items():
+                banana_split = key.split("-")
+                if banana_split[0] == 'option':
+                    replacing_cleaner = Cleaner.objects.get(pk=banana_split[1])
+                    new_duty_for_old_cleaner = CleaningDuty.objects.get(pk=banana_split[2])
+                    break
+            else:
+                logging.warning("Post request tried without valid data!")
+                return HttpResponseRedirect(reverse_lazy(
+                    'webinterface:welcome'))
+
+            duty_for_replacing_cleaner.excluded.add(old_cleaner)
+            duty_for_replacing_cleaner.cleaners.remove(old_cleaner)
+            duty_for_replacing_cleaner.cleaners.add(replacing_cleaner)
+
+            new_duty_for_old_cleaner.cleaners.remove(replacing_cleaner)
+            new_duty_for_old_cleaner.cleaners.add(old_cleaner)
+
+            # TODO notify replacement cleaner and update calendars
+        else:
+            logging.debug("!!!!!!!!Short notice request sent!!!!!!!!!!")
+            pass
+            # TODO send Slack messages to other cleaners
+            # TODO when someone agrees, send message to request sender
+
+        return HttpResponseRedirect(reverse_lazy(
+            'webinterface:cleaner-duties-page1', kwargs={'pk': old_cleaner.pk, 'slug': "wrong_slug"}))
+
+
+class CleaningDutyView(TemplateView):
+    template_name = "webinterface/cleaning_duties.html"
+
+    def get(self, request, *args, **kwargs):
+        cleaner = Cleaner.objects.get(pk=kwargs['pk'])
+
+        if 'page' not in kwargs or int(kwargs['page']) <= 0:
+            return redirect(
+                reverse_lazy('webinterface:cleaner-duties',
+                             kwargs={'pk': kwargs['pk'], 'slug': slugify(cleaner.name), 'page': 1}))
+
+        if 'slug' not in kwargs or kwargs['slug'] != slugify(cleaner.name):
+            return redirect(
+                reverse_lazy('webinterface:cleaner-duties',
+                             kwargs={'pk': kwargs['pk'], 'slug': slugify(cleaner.name), 'page': kwargs['page']}))
+
+        context = self.get_context_data(**kwargs)
+        return self.render_to_response(context)
+
+    def get_context_data(self, **kwargs):
+        keywords = super(CleaningDutyView, self).get_context_data(**kwargs)
+        pagination = 25
+
+        keywords['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
+        keywords['cleaner'] = Cleaner.objects.get(pk=keywords['pk'])
+
+        page = int(keywords['page'])
+
+        duties = CleaningDuty.objects.filter(cleaners=keywords['cleaner'],
+                                             date__gte=datetime.datetime.now().date() - datetime.timedelta(days=3)
+                                             ).order_by('date')
+
+        if pagination*page <= duties.count():
+            duties = duties[pagination*(page-1):pagination*page]
+        elif pagination*(page-1) < duties.count() <= pagination*page:
+            duties = duties[pagination*(page-1):]
+        else:
+            duties = []
+
+        keywords['duties_due_now'] = []
+
+        keywords['duties'] = []
+
+        for duty in duties:
+            schedule = CleaningSchedule.objects.get(duties=duty)
+            other_cleaners_for_duty = []
+            for cleaner in duty.cleaners.all():
+                if cleaner != keywords['cleaner']:
+                    other_cleaners_for_duty.append(cleaner)
+            if duty.date == correct_dates_to_weekday(datetime.datetime.now().date(), 6):
+                keywords['duties_due_now'].append([duty.date, schedule, other_cleaners_for_duty, duty.pk])
+            else:
+                keywords['duties'].append([duty.date, schedule, other_cleaners_for_duty, duty.pk])
+
+        return keywords
+
+
+class CleaningDutyAllView(TemplateView):
+    template_name = "webinterface/cleaning_duties_all.html"
+
+    def get_context_data(self, **kwargs):
+        keywords = super(CleaningDutyAllView, self).get_context_data(**kwargs)
+        pagination = 25
+        if 'pk' in keywords:
+            keywords['cleaner'] = Cleaner.objects.get(pk=keywords['pk'])
+
+        if 'page' not in keywords:
+            keywords['page'] = 1
+
+        page = int(keywords['page'])
+
+        keywords['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
+        keywords['cleaners'] = Cleaner.objects.all()
+
+        one_week = datetime.timedelta(days=7)
+        date_iterator = datetime.datetime.now().date() + one_week * pagination * (page-1)
+
+        keywords['duties'] = []
+
+        while date_iterator < datetime.datetime.now().date() + one_week * pagination * page:
+            duties_on_date = [date_iterator]
+            schedules = []
+            for schedule in keywords['table_header']:
+                if schedule.defined_on_date(date_iterator):
+                    duty = schedule.duties.filter(date=date_iterator)
+                    if duty.exists():
+                        duty = duty.first()
+                        cleaners_for_duty = []
+                        for cleaner in duty.cleaners.all():
+                            cleaners_for_duty.append(cleaner)
+                        schedules.append(cleaners_for_duty)
+                    else:
+                        schedules.append("")
+                else:
+                    schedules.append(".")
+                duties_on_date.append(schedules)
+            keywords['duties'].append(duties_on_date)
+            date_iterator += one_week
+
+        return keywords
+
 
 class ConfigView(FormView):
     template_name = 'webinterface/config.html'
@@ -26,12 +223,9 @@ class ConfigView(FormView):
 
     def get_context_data(self, **kwargs):
         keywords = super(ConfigView, self).get_context_data(**kwargs)
-        keywords['schedule_list'] = CleaningSchedule.objects.filter(deactivated=False)
-        keywords['deactivated_schedule_list'] = CleaningSchedule.objects.filter(deactivated=True)
-        keywords['cleaner_list'] = Cleaner.objects.filter(deactivated=False,
-                                                          moved_out__gte=datetime.datetime.now().date())
-        keywords['deactivated_cleaner_list'] = Cleaner.objects.exclude(deactivated=False,
-                                                                       moved_out__gte=datetime.datetime.now().date())
+        keywords['schedule_list'] = CleaningSchedule.objects.all()
+        keywords['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.datetime.now().date())
+        keywords['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=datetime.datetime.now().date())
         return keywords
 
     def post(self, request, *args, **kwargs):
@@ -65,7 +259,7 @@ class ResultsView(TemplateView):
             clear_existing = False
 
         time_start = timeit.default_timer()
-        for schedule in CleaningSchedule.objects.filter(deactivated=False).order_by('cleaners_per_date'):
+        for schedule in CleaningSchedule.objects.all().order_by('cleaners_per_date'):
             schedule.new_cleaning_duties(
                 datetime.date(int(kwargs['from_year']), int(kwargs['from_month']), int(kwargs['from_day'])),
                 datetime.date(int(kwargs['to_year']), int(kwargs['to_month']), int(kwargs['to_day'])),
@@ -108,7 +302,7 @@ class ResultsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         keywords = super(ResultsView, self).get_context_data(**kwargs)
-        keywords['table_header'] = CleaningSchedule.objects.filter(deactivated=False).order_by('frequency')
+        keywords['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
 
         keywords['dates'] = []
         date_iterator = kwargs['from_date']
@@ -147,6 +341,7 @@ class ResultsView(TemplateView):
         move_ins_and_move_outs = sorted(move_ins_and_move_outs, key=itemgetter('start_date'))
 
         keywords['results'] = []
+
         if kwargs['from_date'] != move_ins_and_move_outs[0]['start_date']:
             keywords['results'].append({'start_date': kwargs['from_date'],
                                         'end_date': move_ins_and_move_outs[0]['start_date']-one_week,
@@ -216,20 +411,17 @@ class ResultsView(TemplateView):
         return keywords
 
 
-def update_schedules_for_cleaner(cleaner, new_associations):
+def update_groups_for_cleaner(cleaner, new_association):
     """new_associations takes a list or Queryset of schedules cleaner should now be assigned to.
     This function removes the cleaner from schedules he is not associated to anymore and adds him
     to schedules he wasn't associated with before."""
-    prev_associations = CleaningSchedule.objects.filter(cleaners=cleaner, deactivated=False)
-    for schedule in prev_associations:
-        if schedule not in new_associations:
-            schedule.cleaners.remove(cleaner)
-    for schedule in new_associations:
-        if schedule not in prev_associations:
-            schedule.cleaners.add(cleaner)
+    prev_association = CleaningScheduleGroup.objects.get(cleaners=cleaner)
+    if prev_association != new_association:
+        prev_association.cleaners.remove(cleaner)
+        new_association.cleaners.add(cleaner)
 
 
-class CleanersNewView(CreateView):
+class CleanerNewView(CreateView):
     form_class = CleanerForm
     model = Cleaner
     success_url = reverse_lazy('webinterface:config')
@@ -237,12 +429,12 @@ class CleanersNewView(CreateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        curr_schedules = form.cleaned_data['schedules']
-        update_schedules_for_cleaner(self.object, curr_schedules)
+        curr_groups = form.cleaned_data['schedule_groups']
+        update_groups_for_cleaner(self.object, curr_groups)
         return HttpResponseRedirect(self.get_success_url())
 
 
-class CleanersUpdateView(UpdateView):
+class CleanerUpdateView(UpdateView):
     form_class = CleanerForm
     model = Cleaner
     success_url = reverse_lazy('webinterface:config')
@@ -250,52 +442,28 @@ class CleanersUpdateView(UpdateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        curr_schedules = form.cleaned_data['schedules']
-        update_schedules_for_cleaner(self.object, curr_schedules)
+        curr_groups = form.cleaned_data['schedule_group']
+        update_groups_for_cleaner(self.object, curr_groups)
         return HttpResponseRedirect(self.get_success_url())
 
 
-class CleanersDeactivateView(DeleteView):
+class CleanerDeleteView(DeleteView):
     model = Cleaner
     success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/cleaner_deactivate.html'
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.deactivated = True
-        self.object.save()
-        return HttpResponseRedirect(self.get_success_url())
-
-
-# class CleaningScheduleReactivateView(DeleteView):
-#     model = CleaningSchedule
-#     success_url = reverse_lazy('webinterface:config')
-#     template_name = 'webinterface/cleaning_schedule_reactivate.html'
-#
-#     def post(self, request, *args, **kwargs):
-#         self.object = self.get_object()
-#         self.object.deactivated = False
-#         self.object.save()
-#         return HttpResponseRedirect(self.get_success_url())
+    template_name = 'webinterface/cleaner_delete.html'
 
 
 class CleaningScheduleNewView(CreateView):
-    form_class = CleaningScheduleNewForm
+    form_class = CleaningScheduleForm
     model = CleaningSchedule
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/cleaning_schedule_new.html'
 
 
-class CleaningScheduleDeactivateView(DeleteView):
+class CleaningScheduleDeleteView(DeleteView):
     model = CleaningSchedule
     success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/cleaning_schedule_deactivate.html'
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.deactivated = True
-        self.object.save()
-        return HttpResponseRedirect(self.get_success_url())
+    template_name = 'webinterface/cleaning_schedule_delete.html'
 
 
 class CleaningScheduleUpdateView(UpdateView):

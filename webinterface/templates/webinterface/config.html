@@ -25,95 +25,56 @@ Cleaners
         <div class="row">
             <div class="col-xs-12 col-sm-6">
                 <h2>Cleaning schedules
-                    <small>Active: {{ schedule_list.count }} Inactive: {{ deactivated_schedule_list.count }}</small>
-                    <a class="btn btn-primary" href="{% url 'webinterface:cleaning-schedule-new' %}" role="button">
+                    <a class="btn btn-default" href="{% url 'webinterface:cleaning-schedule-new' %}" role="button">
                     <span class="glyphicon glyphicon-plus"></span> New schedule</a></h2>
-                {% for schedule in schedule_list %}
-                    <div class="panel panel-info">
-                        <div class="panel-heading">
-                            <h2 class="panel-title">{{ schedule.name }}
-                                <small>
-                                    {% ifnotequal schedule.cleaners.count 0 %}
-                                        Has
-                                        {{ schedule.cleaners.count }} cleaner(s)
-                                    {% else %}
-                                        Not assigned any cleaners
-                                    {% endifnotequal %}
-                                </small>
-                                <div class="btn-group pull-right" style="margin-top:-8px;">
-                                    <a class="btn btn-info" style="color:whitesmoke;"
-                                       href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}"
-                                       role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
-                                    <a class="btn btn-danger" style="color:whitesmoke;"
-                                       href="{% url 'webinterface:cleaning-schedule-deactivate' schedule.pk %}"
-                                       role="button"><span class="glyphicon glyphicon-trash"></span> Deactivate</a>
-                                </div>
-                            </h2>
-                        </div>
+                <div class="well">
+                    <div class="row">
+                        {% for schedule in schedule_list %}
+                            <div class="col-xs-12 col-sm-6" style="padding: 5px">
+                                <a class="btn btn-primary btn-lg btn-block" role="button"
+                                   href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}">
+                                    <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
+                                </a>
+                            </div>
+                        {% empty %}
+                            <p>No schedules to show...</p>
+                        {% endfor %}
                     </div>
-                {% empty %}
-                    <p>No schedules to show...</p>
-                {% endfor %}
-                {% if deactivated_schedule_list %}
-                    <h2>Deactivated cleaning schedules</h2>
-                    <p><i>Deactivated schedules are deleted after a while</i></p>
-                {% endif %}
-                {% for schedule in deactivated_schedule_list %}
-                    <div class="panel panel-default">
-                        <div class="panel-heading">
-                            <h2 class="panel-title">{{ schedule.name }}</h2>
-                        </div>
-                    </div>
-                {% endfor %}
+                </div>
             </div>
             <div class="col-xs-12 col-sm-6">
                 <h2>Cleaners
                     <small>Active: {{ cleaner_list.count }} Inactive: {{ deactivated_cleaner_list.count }}</small>
-                    <a class="btn btn-primary" href="{% url 'webinterface:cleaners-new' %}" role="button">
+                    <a class="btn btn-default" href="{% url 'webinterface:cleaner-new' %}" role="button">
                     <span class="glyphicon glyphicon-plus"></span> New cleaner</a>
                 </h2>
-                {% for cleaner in cleaner_list %}
-                        <div class="panel panel-info">
-                            <div class="panel-heading">
-                                <h2 class="panel-title">{{ cleaner.name }}
-                                    <small>
-                                        {% ifnotequal cleaner.nr_of_assigned_schedules 0 %}
-                                            Cleans on
-                                            {{ cleaner.nr_of_assigned_schedules }} schedule(s)
-                                        {% else %}
-                                            Not assigned to any schedules
-                                        {% endifnotequal %}
-                                    </small>
-                                    <a class="btn btn-info pull-right" style="color:whitesmoke; margin-top:-8px;"
-                                       href="{% url 'webinterface:cleaners-edit' cleaner.pk %}"
-                                       role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
-                                 </h2>
+                <div class="well">
+                    <div class="row">
+                        {% for cleaner in cleaner_list %}
+                            <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
+                                <a class="btn btn-primary btn-lg btn-block" role="button"
+                                   href="{% url 'webinterface:cleaner-edit' cleaner.pk %}">
+                                    <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
+                                </a>
                             </div>
-                        </div>
-                {% empty %}
-                    <p>Nothing to display here...</p>
-                {% endfor %}
-                {% if deactivated_cleaner_list %}
-                    <h2>Inactive cleaners</h2>
-                    <p><i>Inactive cleaners have been either deactivated or have moved out.
-                        They are deleted after a while</i></p>
-                {% endif %}
-                {% for cleaner in deactivated_cleaner_list %}
-                    <div class="panel panel-default">
-                        <div class="panel-heading">
-                            <h2 class="panel-title">{{ cleaner.name }}
-                                <div class="btn-group pull-right" style="margin-top:-8px;">
-                                    <a class="btn btn-info" style="color:whitesmoke;"
-                                       href="{% url 'webinterface:cleaners-edit' cleaner.pk %}"
-                                       role="button"><span class="glyphicon glyphicon-wrench"></span> Edit</a>
-                                    <a class="btn btn-danger" style="color:whitesmoke;"
-                                       href="{% url 'webinterface:cleaners-deactivate' cleaner.pk %}"
-                                       role="button"><span class="glyphicon glyphicon-trash"></span> Deactivate</a>
-                                </div>
-                            </h2>
-                        </div>
+                        {% empty %}
+                            <p>Nothing to display here...</p>
+                        {% endfor %}
                     </div>
-                {% endfor %}
+                    {% if deactivated_cleaner_list %}
+                        <div class="row">
+                            <h3>Cleaners that moved out</h3>
+                            {% for cleaner in deactivated_cleaner_list %}
+                            <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
+                                <a class="btn btn-default btn-lg btn-block" role="button"
+                                   href="{% url 'webinterface:cleaner-edit' cleaner.pk %}">
+                                    <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

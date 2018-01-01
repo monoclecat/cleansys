@@ -1,0 +1,109 @@
+{% extends "webinterface/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+Cleaning Duties
+{% endblock %}
+
+{% block body %}
+    <div class="container-fluid">
+        <div class="row" style="margin: 1em;">
+            <h1>Cleaning Duties</h1>
+            <a class="btn btn-default" role="button"
+               href="{% url 'webinterface:welcome' %}">
+                <span class="glyphicon glyphicon-chevron-left"></span> Back
+            </a>
+        </div>
+        <div class="row" style="padding: 1em">
+            <div class="col-xs-6" style="padding: 5px">
+                {% if page > "1" %}
+                    <a class="btn btn-success btn-block" role="button"
+                       href="{% url 'webinterface:cleaner-duties' cleaner.pk slug page|add:"-1" %}">
+                        <span class="glyphicon glyphicon-arrow-left"></span> Previous page
+                    </a>
+                {% endif %}
+            </div>
+            <div class="col-xs-6" style="padding: 5px">
+                <a class="btn btn-success btn-block" role="button"
+                   href="{% url 'webinterface:cleaner-duties' cleaner.pk slug page|add:"1" %}">
+                    <span class="glyphicon glyphicon-arrow-right"></span> Next page
+                </a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3>Cleaning duties for {{ cleaner.name }}</h3>
+                </div>
+                <div class="panel-body">
+                    {% if duties_due_now %}
+                        <div class="well">
+                            <h3>Duties due this weekend</h3>
+                            <table class="table table-striped">
+                                {% for date, schedule, other_cleaners, duty_pk in duties_due_now %}
+                                    <tr class="danger">
+                                        <td>{{ schedule.name }}</td>
+                                        <td>{{ date }}</td>
+                                        <td>
+                                            {% if other_cleaners %}Together with
+                                                {% for cleaner in other_cleaners %}
+                                                    {{ cleaner.name }}
+                                                {% endfor %}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a class="btn btn-info"
+                                               href="{% url 'webinterface:switch-duty' duty_pk cleaner.pk %}"
+                                               role="button">
+                                                Switch <span class="glyphicon glyphicon-random"></span>
+                                            </a>
+                                            <a class="btn btn-success" href="#" role="button">Let's clean!
+                                                <span class="glyphicon glyphicon-chevron-right"></span></a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    {% endif %}
+                    <table class="table table-striped">
+                        {% for date, schedule, other_cleaners, duty_pk in duties %}
+                            <tr>
+                                <td>{{ schedule.name }}</td>
+                                <td>{{ date }}</td>
+                                <td>
+                                    {% if other_cleaners %}Together with
+                                        {% for cleaner in other_cleaners %}
+                                            {{ cleaner.name }}
+                                        {% endfor %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a class="btn btn-info" href="{% url 'webinterface:switch-duty' duty_pk cleaner.pk %}" role="button">Switch
+                                        <span class="glyphicon glyphicon-random"></span></a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            No duties to show
+                        {% endfor %}
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="row" style="padding: 1em">
+            <div class="col-xs-6" style="padding: 5px">
+                {% if page > "0" %}
+                    <a class="btn btn-success btn-block" role="button"
+                       href="{% url 'webinterface:cleaner-duties' cleaner.pk slug page|add:"-1" %}">
+                        <span class="glyphicon glyphicon-arrow-left"></span> Previous page
+                    </a>
+                {% endif %}
+            </div>
+            <div class="col-xs-6" style="padding: 5px">
+                <a class="btn btn-success btn-block" role="button"
+                   href="{% url 'webinterface:cleaner-duties' cleaner.pk slug page|add:"1" %}">
+                    <span class="glyphicon glyphicon-arrow-right"></span> Next page
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
