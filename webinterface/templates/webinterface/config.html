@@ -44,18 +44,29 @@ Cleaners
             </div>
             <div class="col-xs-12 col-sm-6">
                 <h2>Cleaners
-                    <small>Active: {{ cleaner_list.count }} Inactive: {{ deactivated_cleaner_list.count }}</small>
                     <a class="btn btn-default" href="{% url 'webinterface:cleaner-new' %}" role="button">
                     <span class="glyphicon glyphicon-plus"></span> New cleaner</a>
                 </h2>
                 <div class="well">
+                    {% if no_slack_cleaner_list %}
+                        <div class="row">
+                            {% for cleaner in no_slack_cleaner_list %}
+                            <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
+                                <a class="btn btn-warning btn-lg btn-block" role="button"
+                                       style="white-space: normal;"
+                                    href="{% url 'webinterface:cleaner-edit' cleaner.pk %}">
+                                    <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
+                                    <span class="badge">Add Slack ID</span></a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                     <div class="row">
                         {% for cleaner in cleaner_list %}
                             <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
                                 <a class="btn btn-primary btn-lg btn-block" role="button"
-                                   href="{% url 'webinterface:cleaner-edit' cleaner.pk %}">
-                                    <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
-                                </a>
+                                href="{% url 'webinterface:cleaner-edit' cleaner.pk %}">
+                                <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}</a>
                             </div>
                         {% empty %}
                             <p>Nothing to display here...</p>

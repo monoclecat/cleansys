@@ -1,19 +1,18 @@
 from django.shortcuts import render, redirect
-from django.urls import reverse, reverse_lazy
+from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
 from django.views.generic import TemplateView
 from django.utils.text import slugify
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
 
-from .slackbot import *
 from .forms import *
 from .models import *
 
 import datetime
 import timeit
 from operator import itemgetter
-import logging, math
+import logging
 
 
 class WelcomeView(TemplateView):
@@ -225,7 +224,9 @@ class ConfigView(FormView):
     def get_context_data(self, **kwargs):
         keywords = super(ConfigView, self).get_context_data(**kwargs)
         keywords['schedule_list'] = CleaningSchedule.objects.all()
-        keywords['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.datetime.now().date())
+        all_active_cleaners = Cleaner.objects.filter(moved_out__gte=datetime.datetime.now().date())
+        keywords['cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=False)
+        keywords['no_slack_cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=True)
         keywords['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=datetime.datetime.now().date())
         return keywords
 

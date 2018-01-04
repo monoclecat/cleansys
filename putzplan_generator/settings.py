@@ -18,7 +18,6 @@ logging.getLogger('').setLevel(logging.DEBUG)
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
@@ -48,7 +47,8 @@ INSTALLED_APPS = [
     'webinterface.apps.WebinterfaceConfig',
     'bootstrap3',
     'crispy_forms',
-    'slackclient'
+    'slackclient',
+    'django_celery_beat'
 ]
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
@@ -133,3 +133,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# Celery settings
+
+#CELERY_BROKER_URL = 'amqp://guest:guest@localhost//'
+
+#: Only add pickle to this list if your broker is secured
+#: from unwanted access (see userguide/security.html)
+#CELERY_ACCEPT_CONTENT = ['json']
+
+#CELERY_TASK_SERIALIZER = 'json'
+#CELERY_RESULT_SERIALIZER = 'json'
+#CELERY_TIMEZONE = 'Europe/Berlin'

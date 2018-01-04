@@ -3,6 +3,7 @@ from .models import *
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import *
+from .slackbot import get_slack_users
 
 
 class ConfigForm(forms.Form):
@@ -67,6 +68,9 @@ class CleanerForm(forms.ModelForm):
                          label="Cleaning schedule groups",
                          help_text="Select the group that this cleaner belongs to.")
 
+    slack_id = forms.ChoiceField(choices=get_slack_users(), label="Select cleaner's Slack profile.",
+                                 required=False)
+
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
         if 'instance' in kwargs and kwargs['instance']:
@@ -84,7 +88,8 @@ class CleanerForm(forms.ModelForm):
                      'moved_in',
                      'moved_out',
                      'willing_to_switch',
-                     'schedule_group'
+                     'schedule_group',
+                     'slack_id'
                      ),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Save</button> "

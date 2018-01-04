@@ -3,6 +3,7 @@ import time
 import re
 from slackclient import SlackClient
 import sched, time
+import logging
 
 
 # instantiate Slack client
@@ -10,24 +11,8 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 # starterbot's user ID in Slack: value is assigned after the bot starts up
 starterbot_id = None
 
-# constants
-RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
 EXAMPLE_COMMAND = "do"
 MENTION_REGEX = "^<@(|[WU].+)>(.*)"
-
-
-def parse_bot_commands(slack_events):
-    """
-        Parses a list of events coming from the Slack RTM API to find bot commands.
-        If a bot command is found, this function returns a tuple of command and channel.
-        If its not found, then this function returns None, None.
-    """
-    for event in slack_events:
-        if event["type"] == "message" and "subtype" not in event:
-            user_id, message = parse_direct_mention(event["text"])
-            if user_id == starterbot_id:
-                return message, event["channel"]
-    return None, None
 
 
 def parse_direct_mention(message_text):
@@ -61,21 +46,38 @@ def handle_command(command, channel):
     )
 
 
-if slack_client.rtm_connect(with_team_state=False):
-    print("Starter Bot connected and running!")
-    # Read bot's user ID by calling Web API method `auth.test`
-    starterbot_id = slack_client.api_call("auth.test")["user_id"]
-else:
-    print("Connection failed. Exception traceback printed above.")
+def get_slack_users():
+    """Returns a list of tuples (slack user id, real name) of all human users in the workspace"""
+    response = slack_client.api_call("users.list")
+    if not response:
+        return []
+    users = [(None, "--------------------")]
+    for user in response['members']:
+        if 'bot_id' not in user['profile'] and user['name'] != "slackbot":
+            users.append((user['id'], user['real_name']))
+    return users
 
 
-def poll_slack(sc):
-    command, channel = parse_bot_commands(slack_client.rtm_read())
-    if command:
-        handle_command(command, channel)
-    s.enter(60, 1, poll_slack, (sc,))
+def poll_slack():
+    """Function to be scheduled every second. Reads messages from Slack workspace and processes them with the
+    other functions."""
+    global slack_client
+    slack_events = slack_client.rtm_read()
+    for event in slack_events:
+        if event["type"] == "message" and "subtype" not in event:
+            print(event)
 
 
-s = sched.scheduler(time.time, time.sleep)
-s.enter(60, 1, poll_slack, (s,))
-s.run(blocking=False)
+def start_slack():
+    global starterbot_id, slack_client
+    if slack_client.rtm_connect(with_team_state=False):
+        print("Starter Bot connected and running!")
+        # Read bot's user ID by calling Web API method `auth.test`
+        starterbot_id = slack_client.api_call("auth.test")["user_id"]
+    else:
+        print("Connection failed. Exception traceback printed above.")
+
+
+def slack_running():
+    global starterbot_id
+    return starterbot_id is not None

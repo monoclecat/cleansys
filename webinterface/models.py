@@ -22,8 +22,8 @@ class Cleaner(models.Model):
     name = models.CharField(max_length=10)
     moved_in = models.DateField()
     moved_out = models.DateField()
-
     willing_to_switch = models.BooleanField(default=True)
+    slack_id = models.CharField(max_length=10, null=True)
 
     def __init__(self, *args, **kwargs):
         super(Cleaner, self).__init__(*args, **kwargs)
