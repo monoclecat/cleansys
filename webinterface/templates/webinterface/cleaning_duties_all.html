@@ -2,30 +2,32 @@
 {% load crispy_forms_tags %}
 
 {% block title %}
-Cleaning Duties
+Putzdienste
 {% endblock %}
 
 {% block body %}
     <div class="container-fluid">
         <div class="row" style="margin: 1em;">
-            <h1>Cleaning Duties</h1>
+            <h1>Putzdienste</h1>
             <a class="btn btn-default" role="button"
                href="{% url 'webinterface:welcome' %}">
-                <span class="glyphicon glyphicon-chevron-left"></span> Back
+                <span class="glyphicon glyphicon-chevron-left"></span> Zurück
             </a>
         </div>
         <div class="row" style="padding: 1em">
-                <h4>Highlight cleaner in table</h4>
+                <h4>Hebe Putzer hervor</h4>
                 <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
-                    <a class="btn btn-default btn-lg btn-block active" role="button"
-                       href="{% url 'webinterface:duties-all-no-pk' page %}">
-                        <span class="glyphicon glyphicon-home"></span> Reset
+                    <a class="btn btn-default btn-lg btn-block
+                        {% if not highlighted_cleaner %} active {% endif %}"
+                        role="button" href="{% url 'webinterface:duties-all-no-pk' page %}">
+                        <span class="glyphicon glyphicon-home"></span> Zurücksetzen
                     </a>
                 </div>
                 {% for cleaner in cleaners %}
                     <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
-                        <a class="btn btn-default btn-lg btn-block" role="button"
-                           href="{% url 'webinterface:duties-all-with-pk' cleaner.pk page %}">
+                        <a class="btn btn-default btn-lg btn-block
+                            {% ifequal highlighted_cleaner.name cleaner.name %} active {% endifequal %}"
+                            role="button" href="{% url 'webinterface:duties-all-with-pk' cleaner.pk page %}">
                             <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
                         </a>
                     </div>
@@ -35,40 +37,42 @@ Cleaning Duties
             <div class="col-xs-6" style="padding: 5px">
                 {% if page > "0" %}
                     <a class="btn btn-success btn-block" role="button"
-                       {% if cleaner %}
-                           href="{% url 'webinterface:duties-all-with-pk' cleaner.pk page|add:"-1" %}
+                       {% if highlighted_cleaner %}
+                           href="{% url 'webinterface:duties-all-with-pk' highlighted_cleaner.pk page|add:"-1" %}"
                        {% else %}
-                           href="{% url 'webinterface:duties-all-no-pk' page|add:"-1" %}">
-                        {% endif %}
-                        <span class="glyphicon glyphicon-arrow-left"></span> Previous page
+                           href="{% url 'webinterface:duties-all-no-pk' page|add:"-1" %}"
+                        {% endif %}>
+                        <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
                     </a>
                 {% endif %}
             </div>
             <div class="col-xs-6" style="padding: 5px">
                 <a class="btn btn-success btn-block" role="button"
-                   {% if cleaner %}
-                       href="{% url 'webinterface:duties-all-with-pk' cleaner.pk page|add:"1" %}
+                   {% if highlighted_cleaner %}
+                       href="{% url 'webinterface:duties-all-with-pk' highlighted_cleaner.pk page|add:"1" %}"
                    {% else %}
-                       href="{% url 'webinterface:duties-all-no-pk' page|add:"1" %}">
-                    {% endif %}
-                    <span class="glyphicon glyphicon-arrow-right"></span> Next page
+                       href="{% url 'webinterface:duties-all-no-pk' page|add:"1" %}"
+                    {% endif %}>
+                    <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
                 </a>
             </div>
         </div>
         <div class="row">
             <div class="panel panel-primary">
                 <div class="panel-heading">
-                    <h3>Cleaning duties {% if cleaner %} for {{ cleaner.name }}{% else %}all cleaners{% endif %}
+                    <h3>Putzdienste {% if highlighted_cleaner %} für
+                        {{ highlighted_cleaner.name }}{% else %}all cleaners{% endif %}
                     </h3>
                 </div>
                 <div class="panel-body">
                     <table class="table table-striped table-bordered">
                         <tr class="info">
-                            <th>Date</th>
+                            <th>Datum</th>
                             {% for schedule_name in table_header %}
                                 <th>{{ schedule_name }}</th>
                             {% endfor %}
                         </tr>
+
                         {% for date in duties %}
                             <tr>
                                 <td>{{ date.0 }}</td>
@@ -76,7 +80,7 @@ Cleaning Duties
                                     {% ifequal duty "." %}
                                         <td style="background-color:#d3d3d3"> </td>
                                     {% else %}
-                                        <td {% if cleaner in duty %}class="success" {% endif %}>
+                                        <td {% if highlighted_cleaner in duty %}class="success" {% endif %}>
                                             {% ifnotequal duty "" %}
                                                 {% for cleaner in duty %}
                                                     {{ cleaner.name }}
@@ -89,7 +93,7 @@ Cleaning Duties
                                 {% endfor %}
                             </tr>
                         {% empty %}
-                            No duties to show
+                            Keine Dienste zu zeigen
                         {% endfor %}
                     </table>
                 </div>
@@ -100,22 +104,22 @@ Cleaning Duties
                 {% if page > "0" %}
                     <a class="btn btn-success btn-block" role="button"
                        {% if cleaner %}
-                           href="{% url 'webinterface:duties-all-with-pk' cleaner.pk page|add:"-1" %}
+                           href="{% url 'webinterface:duties-all-with-pk' cleaner.pk page|add:"-1" %}"
                        {% else %}
-                           href="{% url 'webinterface:duties-all-no-pk' page|add:"-1" %}">
-                        {% endif %}
-                        <span class="glyphicon glyphicon-arrow-left"></span> Previous page
+                           href="{% url 'webinterface:duties-all-no-pk' page|add:"-1" %}"
+                        {% endif %}>
+                        <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
                     </a>
                 {% endif %}
             </div>
             <div class="col-xs-6" style="padding: 5px">
                 <a class="btn btn-success btn-block" role="button"
                    {% if cleaner %}
-                       href="{% url 'webinterface:duties-all-with-pk' cleaner.pk page|add:"1" %}
+                       href="{% url 'webinterface:duties-all-with-pk' cleaner.pk page|add:"1" %}"
                    {% else %}
-                       href="{% url 'webinterface:duties-all-no-pk' page|add:"1" %}">
-                    {% endif %}
-                    <span class="glyphicon glyphicon-arrow-right"></span> Next page
+                       href="{% url 'webinterface:duties-all-no-pk' page|add:"1" %}"
+                    {% endif %}>
+                    <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
                 </a>
             </div>
         </div>

@@ -1,8 +1,7 @@
 import os
-import time
+from celery import shared_task
 import re
 from slackclient import SlackClient
-import sched, time
 import logging
 
 
@@ -10,6 +9,7 @@ import logging
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 # starterbot's user ID in Slack: value is assigned after the bot starts up
 starterbot_id = None
+SLACK_BOT_START_INITIATED = False
 
 EXAMPLE_COMMAND = "do"
 MENTION_REGEX = "^<@(|[WU].+)>(.*)"
@@ -48,7 +48,11 @@ def handle_command(command, channel):
 
 def get_slack_users():
     """Returns a list of tuples (slack user id, real name) of all human users in the workspace"""
-    response = slack_client.api_call("users.list")
+    global starterbot_id
+    if starterbot_id:
+        response = slack_client.api_call("users.list")
+    else:
+        response = []
     if not response:
         return []
     users = [(None, "--------------------")]
@@ -58,7 +62,7 @@ def get_slack_users():
     return users
 
 
-def poll_slack():
+def read_slack():
     """Function to be scheduled every second. Reads messages from Slack workspace and processes them with the
     other functions."""
     global slack_client
@@ -70,12 +74,13 @@ def poll_slack():
 
 def start_slack():
     global starterbot_id, slack_client
-    if slack_client.rtm_connect(with_team_state=False):
-        print("Starter Bot connected and running!")
-        # Read bot's user ID by calling Web API method `auth.test`
-        starterbot_id = slack_client.api_call("auth.test")["user_id"]
-    else:
-        print("Connection failed. Exception traceback printed above.")
+    if not starterbot_id:
+        if slack_client.rtm_connect(with_team_state=False):
+            print("Starter Bot connected and running!")
+            # Read bot's user ID by calling Web API method `auth.test`
+            starterbot_id = slack_client.api_call("auth.test")["user_id"]
+        else:
+            print("Connection failed. Exception traceback printed above.")
 
 
 def slack_running():

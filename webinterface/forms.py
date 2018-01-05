@@ -3,12 +3,12 @@ from .models import *
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import *
-from .slackbot import get_slack_users
+from slackbot.slackbot import get_slack_users
 
 
 class ConfigForm(forms.Form):
-    start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Start date DD.MM.YYYY")
-    end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="End date DD.MM.YYYY")
+    start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Von TT.MM.YYYY")
+    end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Bis TT.MM.YYYY")
 
     # show_deviations = forms.BooleanField(widget=forms.CheckboxInput, required=False,
     #                                      label="Show average absolute deviations (not really important)")
@@ -29,14 +29,14 @@ class ConfigForm(forms.Form):
             HTML(
                 "<a class=\"btn btn-default\" href=\"{% url 'webinterface:welcome' %}\" "
                 "role=\"button\" style=\"margin:0.5em 1em 0.5em 0.5em\">"
-                "<span class=\"glyphicon glyphicon-chevron-left\"></span> Back</a>"
+                "<span class=\"glyphicon glyphicon-chevron-left\"></span> Zurück</a>"
             ),
             'start_date',
             'end_date',
             HTML(
                 "<button class=\"btn btn-success\" type=\"submit\" name=\"save\" "
                 "style=\"margin:0.5em 0.5em 0.5em 1em\">"
-                "<span class=\"glyphicon glyphicon-chevron-right\"></span> Next</button> "),
+                "<span class=\"glyphicon glyphicon-chevron-right\"></span> Weiter</button> "),
             HTML("<br>"),
         )
 
@@ -46,15 +46,15 @@ class CleanerForm(forms.ModelForm):
         model = Cleaner
         fields = '__all__'
 
-    name = forms.CharField(max_length=10, label="Cleaner name",
+    name = forms.CharField(max_length=10, label="Name des Putzers",
                            required=True, widget=forms.TextInput)
 
-    moved_in = forms.DateField(input_formats=['%d.%m.%Y'], label="Moved in on DD.MM.YYYY",
+    moved_in = forms.DateField(input_formats=['%d.%m.%Y'], label="Eingezogen am TT.MM.YYYY",
                                widget=forms.DateInput(format='%d.%m.%Y'))
-    moved_out = forms.DateField(input_formats=['%d.%m.%Y'], label="Moves out on DD.MM.YYYY",
+    moved_out = forms.DateField(input_formats=['%d.%m.%Y'], label="Ausgezogen am TT.MM.YYYY",
                                 widget=forms.DateInput(format='%d.%m.%Y'),
-                                help_text="When creating a new cleaner, set this to moved-in date plus "
-                                          "3 years for good measure.")
+                                help_text="Falls du einen neuen Putzer erstellst, ist es eine gute Idee, diesen"
+                                          "Wert auf das Einzugsdatum plus 3 Jahre zu setzen.")
 
     willing_to_switch = forms.BooleanField(label="Willing to switch duties",
                                            help_text="Select if cleaner is ok with "
@@ -65,10 +65,10 @@ class CleanerForm(forms.ModelForm):
         ModelChoiceField(queryset=CleaningScheduleGroup.objects.all(),
                          required=True, empty_label=None,
                          widget=forms.RadioSelect,
-                         label="Cleaning schedule groups",
-                         help_text="Select the group that this cleaner belongs to.")
+                         label="Zugehörigkeit",
+                         help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
 
-    slack_id = forms.ChoiceField(choices=get_slack_users(), label="Select cleaner's Slack profile.",
+    slack_id = forms.ChoiceField(choices=get_slack_users(), label="Wähle des Putzers Slackprofil aus.",
                                  required=False)
 
     def __init__(self, *args, **kwargs):
@@ -92,12 +92,12 @@ class CleanerForm(forms.ModelForm):
                      'slack_id'
                      ),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Save</button> "
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Cancel</a> "
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
                  "<a class=\"btn btn-danger\" style=\"color:whitesmoke;\""
                  "href=\"{% url 'webinterface:cleaner-delete' object.pk %}\""
-                 "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Delete</a>"),
+                 "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzer</a>"),
         )
 
 
@@ -106,19 +106,19 @@ class CleaningScheduleForm(forms.ModelForm):
         model = CleaningSchedule
         exclude = ('duties', )
 
-    name = forms.CharField(max_length=20, label="Cleaning plan name", help_text="The title of the cleaning plan",
+    name = forms.CharField(max_length=20, label="Putzplan Name", help_text="Der Name des Putzplans",
                            required=True, widget=forms.TextInput)
 
     cleaners_per_date = forms.ChoiceField(choices=CleaningSchedule.CLEANERS_PER_DATE_CHOICES,
-                                          label="Number of cleaners per cleaning date",
-                                          help_text="Bathroom only needs 1 but kitchen needs 2.",
+                                          label="Anzahl der Putzer pro Woche",
+                                          help_text="Z.B. Bad braucht nur einen, Bar braucht zwei.",
                                           required=True, initial=1)
 
     frequency = forms.ChoiceField(choices=CleaningSchedule.FREQUENCY_CHOICES, required=True, initial=1,
-                                  label="Cleaning schedule frequency",
-                                  help_text="If you have two cleaning schedules that are due every two weeks "
-                                            "but can't be on the same dates, set one to 'Even weeks' and the other "
-                                            "to 'Odd weeks'")
+                                  label="Häufigkeit der Putzdienste",
+                                  help_text="Wenn du zwei Putzdienste hast, die alle zwei Wochen dran sind, "
+                                            "aber nicht an gleichen Tagen, dann wähle bei einem 'Gerade Wochen' und "
+                                            "beim anderen 'Ungerade Wochen' aus.")
 
     task1 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
                             help_text=" ")
@@ -163,12 +163,12 @@ class CleaningScheduleForm(forms.ModelForm):
                      'task10',
                      ),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Save</button> "
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Cancel</a> "
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
                  "<a class=\"btn btn-danger\" style=\"color:whitesmoke;\""
                  "href=\"{% url 'webinterface:cleaning-schedule-delete' object.pk %}\""
-                 "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Delete</a>"),
+                 "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzplan</a>"),
         )
 
 

@@ -2,13 +2,13 @@
 {% load crispy_forms_tags %}
 
 {% block title %}
-Cleaning Duties
+Putzdienst tauschen
 {% endblock %}
 
 {% block body %}
     <div class="container-fluid">
         <div class="row" style="margin: 1em;">
-            <h1>Switch cleaning duty</h1>
+            <h1>Tausche Putzdienst</h1>
             {% comment %}<a class="btn btn-default" role="button"
                href="{% url 'webinterface:welcome' %}">
                 <span class="glyphicon glyphicon-chevron-left"></span> Back
@@ -16,35 +16,15 @@ Cleaning Duties
         </div>
         <div class="panel panel-primary">
             <div class="panel-heading">
-                <h2>Hello {{ old_cleaner.name }}, I see you want to switch your cleaning duty on the {{ duty.date }}</h2>
+                <h2>Hallo {{ old_cleaner.name }}, wie ich sehe möchtest du
+                    deinen Putzdienst am {{ duty.date }} tauschen.</h2>
             </div>
             <div class="panel-body">
-                {% if short_notice_flag %}
                     <div class="row" style="margin: 1em;">
-                        <p class="bg-danger">
-                            <b>The duty you are trying to switch is less than 2 weeks away from today.
-                               This means that someone needs to be nice enough and take your </b>
-                        </p>
-                    </div>
-                    <form class="form-inline" method="post">
-                        {% csrf_token %}
-                        <div class="row">
-                            <input type="hidden" name="old_cleaner_pk" value="{{ old_cleaner.pk }}">
-                            <input type="hidden" name="duty_pk" value="{{ duty.pk }}">
-                            <div style="padding: 5px">
-                                <input type="submit" name="short_notice_call"
-                                       style="white-space: normal;"
-                                       class="btn btn-info btn-lg btn-block"
-                                       value="Ask other cleaners to switch with me"/>
-                            </div>
-                        </div>
-                    </form>
-                {% else %}
-                    <div class="row" style="margin: 1em;">
-                        <p>I have found a few cleaning duties from people that are willing to switch their duty with you.
-                        Please select one.</p>
+                        <p>Ich habe dir ein paar Putzdienste zur Auswahl herausgesucht, bitte wähle einen aus. </p>
                         {% if double_duty_flag %}
-                            <p class="bg-warning"><i>Switching a duty will mean that the person will have two duties on this day.</i></p>
+                            <p class="bg-warning"><i>Wenn du tauscht, bedeutet dies, das der neue Putzer an diesem
+                            Tag zwei Putzdienste hat.</i></p>
                         {% endif %}
                     </div>
 
@@ -58,14 +38,13 @@ Cleaning Duties
                                     <input type="submit" name="option-{{ cleaner.pk }}-{{ repl_duty.pk }}"
                                            style="white-space: normal;"
                                            class="btn btn-info btn-lg btn-block"
-                                           value="Switch with {{ cleaner.name }} on {{ repl_duty.date }}"/>
+                                           value="Tausche mit {{ cleaner.name }} am {{ repl_duty.date }}"/>
                                 </div>
                             {% empty %}
-                                <h3>No alternatives found</h3>
+                                <h3>Keine Alternativen gefunden</h3>
                             {% endfor %}
                         </div>
                     </form>
-                {% endif %}
             </div>
         </div>
     </div>

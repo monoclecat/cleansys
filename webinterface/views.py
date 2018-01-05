@@ -33,9 +33,6 @@ class DutySwitchView(TemplateView):
         duty = CleaningDuty.objects.get(pk=kwargs['duty_pk'])
         schedule = duty.cleaningschedule_set.first()
 
-        if duty.date <= datetime.datetime.now().date() + datetime.timedelta(days=20):
-            keywords['short_notice_flag'] = True
-
         ratios = schedule.deployment_ratios(duty.date)
         logging.debug("------------ Looking for replacement cleaners -----------")
         replacement_cleaners = []
@@ -85,31 +82,18 @@ class DutySwitchView(TemplateView):
         old_cleaner = Cleaner.objects.get(pk=request.POST['old_cleaner_pk'])
         duty_for_replacing_cleaner = CleaningDuty.objects.get(pk=request.POST['duty_pk'])
 
-        if 'short_notice_call' not in request.POST:
-            for key, val in request.POST.items():
-                banana_split = key.split("-")
-                if banana_split[0] == 'option':
-                    replacing_cleaner = Cleaner.objects.get(pk=banana_split[1])
-                    new_duty_for_old_cleaner = CleaningDuty.objects.get(pk=banana_split[2])
-                    break
-            else:
-                logging.warning("Post request tried without valid data!")
-                return HttpResponseRedirect(reverse_lazy(
-                    'webinterface:welcome'))
-
-            duty_for_replacing_cleaner.excluded.add(old_cleaner)
-            duty_for_replacing_cleaner.cleaners.remove(old_cleaner)
-            duty_for_replacing_cleaner.cleaners.add(replacing_cleaner)
-
-            new_duty_for_old_cleaner.cleaners.remove(replacing_cleaner)
-            new_duty_for_old_cleaner.cleaners.add(old_cleaner)
-
-            # TODO notify replacement cleaner and update calendars
+        for key, val in request.POST.items():
+            banana_split = key.split("-")
+            if banana_split[0] == 'option':
+                replacing_cleaner = Cleaner.objects.get(pk=banana_split[1])
+                new_duty_for_old_cleaner = CleaningDuty.objects.get(pk=banana_split[2])
+                break
         else:
-            logging.debug("!!!!!!!!Short notice request sent!!!!!!!!!!")
-            pass
-            # TODO send Slack messages to other cleaners
-            # TODO when someone agrees, send message to request sender
+            logging.warning("Post request tried without valid data!")
+            return HttpResponseRedirect(reverse_lazy(
+                'webinterface:welcome'))
+
+        # TODO when someone agrees, send message to request sender
 
         return HttpResponseRedirect(reverse_lazy(
             'webinterface:cleaner-duties-page1', kwargs={'pk': old_cleaner.pk, 'slug': "wrong_slug"}))
@@ -178,8 +162,8 @@ class CleaningDutyAllView(TemplateView):
     def get_context_data(self, **kwargs):
         keywords = super(CleaningDutyAllView, self).get_context_data(**kwargs)
         pagination = 25
-        if 'pk' in keywords:
-            keywords['cleaner'] = Cleaner.objects.get(pk=keywords['pk'])
+        if 'pk' in keywords and keywords['pk']:
+            keywords['highlighted_cleaner'] = Cleaner.objects.get(pk=keywords['pk'])
 
         if 'page' not in keywords:
             keywords['page'] = 1
@@ -190,7 +174,8 @@ class CleaningDutyAllView(TemplateView):
         keywords['cleaners'] = Cleaner.objects.all()
 
         one_week = datetime.timedelta(days=7)
-        date_iterator = datetime.datetime.now().date() + one_week * pagination * (page-1)
+        date_iterator = correct_dates_to_weekday(datetime.datetime.now().date(), 6) + \
+            one_week * pagination * (page-1)
 
         keywords['duties'] = []
 
@@ -343,19 +328,22 @@ class ResultsView(TemplateView):
         move_ins_and_move_outs = sorted(move_ins_and_move_outs, key=itemgetter('start_date'))
 
         keywords['results'] = []
-
-        if kwargs['from_date'] != move_ins_and_move_outs[0]['start_date']:
-            keywords['results'].append({'start_date': kwargs['from_date'],
-                                        'end_date': move_ins_and_move_outs[0]['start_date']-one_week,
-                                        'moved_in': [], 'moved_out': []})
-
-        miamo_iterator = 1
         if move_ins_and_move_outs:
+            if kwargs['from_date'] != move_ins_and_move_outs[0]['start_date']:
+                keywords['results'].append({'start_date': kwargs['from_date'],
+                                            'end_date': move_ins_and_move_outs[0]['start_date']-one_week,
+                                            'moved_in': [], 'moved_out': []})
+
+            miamo_iterator = 1
             while miamo_iterator < len(move_ins_and_move_outs):
                 move_ins_and_move_outs[miamo_iterator-1]['end_date'] = \
                     move_ins_and_move_outs[miamo_iterator]['start_date']-one_week
                 miamo_iterator += 1
-        move_ins_and_move_outs[-1]['end_date'] = kwargs['to_date']
+            move_ins_and_move_outs[-1]['end_date'] = kwargs['to_date']
+        else:
+            keywords['results'].append({'start_date': kwargs['from_date'],
+                                        'end_date': kwargs['to_date'],
+                                        'moved_in': [], 'moved_out': []})
 
         keywords['results'] += move_ins_and_move_outs
 

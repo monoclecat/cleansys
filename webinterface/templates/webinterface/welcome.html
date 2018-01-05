@@ -2,7 +2,7 @@
 {% load bootstrap3 %}
 
 {% block title %}
-Welcome!
+Willkommen
 {% endblock %}
 
 {% block body %}
@@ -10,15 +10,15 @@ Welcome!
         <div class="row">
             <div class="col-sm-8 col-sm-offset-2
                             col-md-6 col-md-offset-3">
-                <h1>Welcome to the cleaning plan generator 2000!</h1>
+                <h1>Willkommen zum Putzplan Guru!</h1>
             </div>
             <div class="col-sm-8 col-sm-offset-2
                             col-md-6 col-md-offset-3">
                 <a class="btn btn-primary btn-lg btn-block"
                    href="{% url 'webinterface:duties-all-no-pk-page1' %}" role="button">
-                    <span class="glyphicon glyphicon-calendar"></span> View all duties
+                    <span class="glyphicon glyphicon-calendar"></span> Siehe alle Putzdienste
                     <span class="glyphicon glyphicon-calendar"></span></a>
-                <h3>Personal pages</h3>
+                <h3>Persönliche Seiten</h3>
                 {% for cleaner in cleaner_list %}
                     <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
                         <a class="btn btn-primary btn-lg btn-block" role="button"
@@ -27,14 +27,14 @@ Welcome!
                         </a>
                     </div>
                 {% empty %}
-                    <p>Nothing to display here...</p>
+                    <p>Nichts zum Zeigen...</p>
                 {% endfor %}
             </div>
             <div class="col-sm-8 col-sm-offset-2
                             col-md-6 col-md-offset-3">
                 <br><br><br><br><br><br>
                 <a class="btn btn-default btn-lg btn-block" href="{% url 'webinterface:config' %}" role="button">
-                    XXX area</a>
+                    XXX Bereich</a>
             </div>
         </div>
     </div>

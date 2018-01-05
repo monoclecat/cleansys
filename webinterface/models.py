@@ -87,10 +87,10 @@ class CleaningScheduleGroup(models.Model):
 class CleaningSchedule(models.Model):
     name = models.CharField(max_length=20)
 
-    CLEANERS_PER_DATE_CHOICES = ((1, 'One'), (2, 'Two'))
+    CLEANERS_PER_DATE_CHOICES = ((1, 'Einen'), (2, 'Zwei'))
     cleaners_per_date = models.IntegerField(default=1, choices=CLEANERS_PER_DATE_CHOICES)
 
-    FREQUENCY_CHOICES = ((1, 'Every week'), (2, 'Even weeks'), (3, 'Odd weeks'))
+    FREQUENCY_CHOICES = ((1, 'Jede Woche'), (2, 'Gerade Wochen'), (3, 'Ungerade Wochen'))
     frequency = models.IntegerField(default=1, choices=FREQUENCY_CHOICES)
 
     duties = models.ManyToManyField(CleaningDuty, blank=True)

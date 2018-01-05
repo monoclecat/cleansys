@@ -45,10 +45,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'webinterface.apps.WebinterfaceConfig',
+    'slackbot.apps.SlackbotConfig',
     'bootstrap3',
     'crispy_forms',
     'slackclient',
-    'django_celery_beat'
+    'django_celery_beat',
+    'django_celery_results'
 ]
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
@@ -136,12 +138,6 @@ STATIC_URL = '/static/'
 
 # Celery settings
 
-#CELERY_BROKER_URL = 'amqp://guest:guest@localhost//'
-
-#: Only add pickle to this list if your broker is secured
-#: from unwanted access (see userguide/security.html)
-#CELERY_ACCEPT_CONTENT = ['json']
-
-#CELERY_TASK_SERIALIZER = 'json'
-#CELERY_RESULT_SERIALIZER = 'json'
-#CELERY_TIMEZONE = 'Europe/Berlin'
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers.DatabaseScheduler"
+CELERY_WORKER_CONCURRENCY = 1  # Alternative: Manual Routing: Only one worker for poll_slack queue

@@ -2,7 +2,7 @@
 {% load crispy_forms_tags %}
 
 {% block title %}
-Delete cleaning plan
+Lösche Putzplan
 {% endblock %}
 
 {% block body %}
@@ -10,18 +10,18 @@ Delete cleaning plan
         <div class="row" style="margin: 1em;">
             <div class="col-sm-8 col-sm-offset-2
                     col-md-6 col-md-offset-3">
-                <h1>Delete cleaning schedule</h1>
+                <h1>Lösche Putzplan</h1>
                 <form action="" method="post">
                     {% csrf_token %}
-                    <p>Are you sure you want to delete "{{ object.name }}"?</p>
+                    <p>Bist du dir sicher, dass du "{{ object.name }}" löschen möchtest?</p>
                             <div class="panel panel-danger">
                                 <div class="panel-heading">
                                     <h2 class="panel-title">{{ object.name }}</h2>
                                 </div>
                                 <div class="panel-body">
-                                    <h4>Cleaners per week: {{ object.cleaners_per_date }}</h4>
+                                    <h4>Putzer pro Woche: {{ object.cleaners_per_date }}</h4>
                                     {% if object.cleaners.all %}
-                                    <h4>Cleaners assigned: </h4>
+                                    <h4>Putzer die diesem Plan zugeordnet sind: </h4>
                                         <ul>
                                             {% for cleaner in object.cleaners.all %}
                                                 <li>{{ cleaner.name }}</li>
@@ -43,9 +43,9 @@ Delete cleaning plan
                                     </ul>
                                 </div>
                             </div>
-                    <button type="submit" class="btn btn-danger"><span class="glyphicon glyphicon-trash"></span> Yes</button>
+                    <button type="submit" class="btn btn-danger"><span class="glyphicon glyphicon-trash"></span> Ja</button>
                     <a class="btn btn-info" href="{% url 'webinterface:config' %}" role="button">
-                        <span class="glyphicon glyphicon-remove"></span> No</a>
+                        <span class="glyphicon glyphicon-remove"></span> Nein</a>
                 </form>
             </div>
         </div>
