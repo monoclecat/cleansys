@@ -5,6 +5,7 @@ from django.db.models.signals import m2m_changed
 import logging
 
 
+
 def correct_dates_to_weekday(days, weekday):
     """Days is a date or list of datetime.date objects you want converted. 0 = Monday, 6 = Sunday"""
     if isinstance(days, list):
@@ -32,9 +33,6 @@ class Cleaner(models.Model):
 
     def __str__(self):
         return self.name
-
-    def free_on_date(self, date):
-        return not self.cleaningduty_set.filter(date=date).exists()
 
     def delete(self, using=None, keep_parents=False):
         associated_schedules = CleaningSchedule.objects.filter(cleaners=self)
@@ -69,11 +67,76 @@ class CleaningDuty(models.Model):
     date = models.DateField()
     excluded = models.ManyToManyField(Cleaner, related_name="excluded")
 
+    tasks = models.CharField(max_length=200, null=True)
+    # String representation of a list of lists:[<task name>, <cleaner pk that finished task>]
+    # tasks is only filled when an assigned cleaner presses the "Lass putzen" button, initiating the cleaning process
+    # <cleaner pk that finished task> stays empty until a cleaner assigned on that date says he finished that task
+    # String representation: <task_name>,<cleaner pk that finished task>;<task_name,...
+
     def __str__(self):
         string = ""
         for cleaner in self.cleaners.all():
-            string += cleaner.name + " "
-        return string[:-1]
+            string += cleaner.name + ", "
+        return string[:-2]
+
+    def get_tasks(self):
+        """Parses destinations field into a list and
+        returns [wish destination pair], [[list of following destinations]]"""
+        task_list = []
+        if self.tasks:
+            for pair in self.tasks.split(";"):
+                task_name, cleaner_pk = pair.split(",")
+                try:
+                    if cleaner_pk:
+                        cleaner = Cleaner.objects.get(pk=cleaner_pk)
+                    else:
+                        cleaner = None
+
+                    task_list.append([task_name, cleaner])
+                except Cleaner.DoesNotExist:
+                    pass
+        return task_list
+
+    def set_tasks(self, task_list):
+        task_string = ""
+        for task_name, cleaner in task_list:
+            task_string += task_name + ","
+            if cleaner is not None:
+                task_string += str(cleaner.pk)
+            task_string += ";"
+        task_string = task_string[:-1]
+        self.tasks = task_string
+
+    def task_completed(self, completed_task_name, by_cleaner):
+        if by_cleaner not in self.cleaners.all():
+            return False
+
+        completed_task_name_exists = False
+        new_tasks = ""
+        for task_name, cleaner in self.get_tasks():
+            if task_name == completed_task_name:
+                cleaner = by_cleaner
+                completed_task_name_exists = True
+            new_tasks += task_name + ","
+            if cleaner:
+                new_tasks += str(cleaner.pk)
+            new_tasks += ";"
+
+        if not completed_task_name_exists:
+            return False
+
+        new_tasks = new_tasks[:-1]
+        self.tasks = new_tasks
+        return True
+
+    def initiate_tasks(self):
+        task_string = ""
+        task_list = self.cleaningschedule_set.first().get_tasks()
+        if not task_list == ['']:
+            for task_name in task_list:
+                task_string += task_name + ",;"
+            task_string = task_string[:-1]
+            self.tasks = task_string
 
 
 class CleaningScheduleGroup(models.Model):
@@ -96,16 +159,7 @@ class CleaningSchedule(models.Model):
     duties = models.ManyToManyField(CleaningDuty, blank=True)
     schedule_group = models.ManyToManyField(CleaningScheduleGroup, blank=True)
 
-    task1 = models.CharField(max_length=40, blank=True)
-    task2 = models.CharField(max_length=40, blank=True)
-    task3 = models.CharField(max_length=40, blank=True)
-    task4 = models.CharField(max_length=40, blank=True)
-    task5 = models.CharField(max_length=40, blank=True)
-    task6 = models.CharField(max_length=40, blank=True)
-    task7 = models.CharField(max_length=40, blank=True)
-    task8 = models.CharField(max_length=40, blank=True)
-    task9 = models.CharField(max_length=40, blank=True)
-    task10 = models.CharField(max_length=40, blank=True)
+    tasks = models.CharField(max_length=200, blank=True)
 
     def __str__(self):
         return self.name
@@ -114,6 +168,9 @@ class CleaningSchedule(models.Model):
         super(CleaningSchedule, self).__init__(*args, **kwargs)
         self.__last_cleaners_per_date = self.cleaners_per_date
         self.__last_frequency = self.frequency
+
+    def get_tasks(self):
+        return self.tasks.split(",")
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         super(CleaningSchedule, self).save(force_insert, force_update, using, update_fields)
@@ -193,22 +250,26 @@ class CleaningSchedule(models.Model):
                     logging_text += "{}:{}".format(cleaner.name, round(ratio, 3)) + "  "
                 logging.debug(logging_text)
 
+            last_resort_cleaner = None
             if ratios:
                 for i in range(min(self.cleaners_per_date, len(ratios))):
                     for cleaner, ratio in ratios:
                         if cleaner not in duty.cleaners.all() and cleaner not in duty.excluded.all():
-                            if cleaner.free_on_date(date):
+                            if cleaner.cleaningduty_set.filter(date=date).count() == 0:
                                 duty.cleaners.add(cleaner)
                                 logging.debug("          {} inserted!".format(cleaner.name))
                                 break
+                            elif not last_resort_cleaner and cleaner.cleaningduty_set.filter(date=date).count() == 1:
+                                last_resort_cleaner = cleaner
                             logging.debug("{} is not free.".format(cleaner.name))
                     else:
-                        for cleaner, ratio in ratios:
-                            if cleaner not in duty.cleaners.all() and cleaner not in duty.excluded.all() and \
-                                    cleaner.cleaningduty_set.filter(date=date).count() <= 2:
-                                logging.debug("Nobody is free, we choose {}".format(cleaner))
-                                duty.cleaners.add(cleaner)
-                                break
+                        if last_resort_cleaner:
+                            logging.debug("Nobody has 0 duties on date so we choose {}".format(last_resort_cleaner))
+                            duty.cleaners.add(last_resort_cleaner)
+                        else:
+                            logging.debug("NOBODY HAS 1 DUTY ON DATE! We choose {}".format(last_resort_cleaner))
+                            duty.cleaners.add(ratios[0][0])
+
             logging.debug("")
 
 
@@ -238,3 +299,128 @@ def group_cleaners_changed(instance, action, pk_set, **kwargs):
 
 
 m2m_changed.connect(group_cleaners_changed, sender=CleaningScheduleGroup.cleaners.through)
+
+
+class DutySwitch(models.Model):
+    source_cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
+    source_duty = models.ForeignKey(CleaningDuty, on_delete=models.CASCADE)
+
+    selected_cleaner = models.ForeignKey(Cleaner, on_delete=models.SET_NULL, null=True, related_name="selected_cleaner")
+    selected_duty = models.ForeignKey(CleaningDuty, on_delete=models.SET_NULL, null=True, related_name="selected_duty")
+
+    destinations = models.CharField(max_length=100)
+    # destinations is a string representation of a list of lists [<cleanerpk>, <dutypk>] which are suitable candidates
+    # for the source to switch with. Example: <cleanerpk>,<dutypk>;<cleanerpk>,<dutypk>;<cleanerpk>,<dutypk>
+    # destinations is a FIFO type stack, the wish destination is always the first pair of PKs
+
+    STATES = ((0, 'Waiting on source choice'), (1, 'Waiting on approval for selected'), (2, 'Selected was rejected'))
+    status = models.IntegerField(choices=STATES, default=0)
+    # DutySwitch object gets created in statue 0 as Cleaner needs to select a desired Duty destination.
+    # When the desired Duty is selected the status is set to 1 because we need approval
+    # from the destination to commence switching.
+    # If the destination denies approval, status is set to 2 because the source needs to select a new
+    # destination. The cycle begins from the start
+
+    def get_destinations(self):
+        """Parses destinations field into a list and
+        returns [wish destination pair], [[list of following destinations]]"""
+        dest_list = []
+        for pair in self.destinations.split(";"):
+            cleaner_pk, duty_pk = pair.split(",")
+            try:
+                dest_list.append([Cleaner.objects.get(pk=cleaner_pk), CleaningDuty.objects.get(pk=duty_pk)])
+            except (Cleaner.DoesNotExist, CleaningDuty.DoesNotExist):
+                pass
+        return dest_list
+
+    def set_selected(self, cleaner, duty):
+        self.selected_cleaner = cleaner
+        self.selected_duty = duty
+        self.status = 1
+
+    def set_destinations(self, dest_list):
+        dest_string = ""
+        for cleaner_pk, duty_pk in dest_list:
+            dest_string += str(cleaner_pk) + "," + str(duty_pk)
+            dest_string += ";"
+        dest_string = dest_string[:-1]
+        return dest_string
+
+    def selected_was_accepted(self):
+        self.source_duty.excluded.add(self.source_cleaner)
+        self.source_duty.cleaners.remove(self.source_cleaner)
+        self.source_duty.cleaners.add(self.selected_cleaner)
+
+        self.selected_duty.cleaners.remove(self.selected_cleaner)
+        self.selected_duty.cleaners.add(self.source_cleaner)
+
+        confirmation_text = "Dein Tausch war erfolgreich!"
+        # TODO send confirmation to source and destination
+
+        self.delete()
+
+    def selected_was_cancelled(self):
+        self.selected_duty = None
+        self.selected_cleaner = None
+        self.status = 0
+
+    def selected_was_rejected(self):
+        old_dest = self.get_destinations()
+        new_dest = []
+        for dest_cleaner, dest_duty in old_dest:
+            if not self.selected_cleaner.pk == dest_cleaner.pk and not self.selected_duty.pk == dest_duty.pk:
+                new_dest.append([dest_cleaner.pk, dest_duty.pk])
+        self.set_destinations(new_dest)
+
+        self.selected_duty = None
+        self.selected_cleaner = None
+        self.status = 2
+
+        confirmation_text = "Die Anfrage wurde erfolgreich abgelehnt"
+        new_options_text = "Deine Anfrage wurde abgeleht. Wähle bitte eine der weiteren Optionen"
+
+        # TODO send message to source with new options and confirmation to destination
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        if not self.pk:
+            duty = self.source_duty
+            schedule = duty.cleaningschedule_set.first()
+
+            ratios = schedule.deployment_ratios(duty.date)
+            logging.debug("------------ Looking for replacement cleaners -----------")
+            free_cleaners = []
+            one_duty_cleaners = []
+            for cleaner, ratio in ratios:
+                logging.debug(
+                    "{}:   Not in duty:{} Duties today:{}".format(cleaner.name, cleaner not in duty.cleaners.all(),
+                                                                             cleaner.cleaningduty_set.filter(
+                                                                                 date=duty.date).count()))
+                if cleaner not in duty.cleaners.all():
+                    if cleaner.cleaningduty_set.filter(date=duty.date).count() == 0:
+                        free_cleaners.append(cleaner)
+                    elif cleaner.cleaningduty_set.filter(date=duty.date).count() == 1:
+                        one_duty_cleaners.append(cleaner)
+
+            if free_cleaners:
+                replacement_cleaners = free_cleaners
+            else:
+                replacement_cleaners = one_duty_cleaners
+
+            if len(replacement_cleaners) >= 3:
+                replacement_cleaners = replacement_cleaners[:3]
+
+            logging.debug("Replacement cleaners: {}".format(replacement_cleaners))
+
+            replacement_duties = []
+            for cleaner in replacement_cleaners:
+                duties = schedule.duties.filter(cleaners=cleaner, date__gt=duty.date).order_by('date')
+                if duties.count() >= 2:
+                    duties = duties[:2]
+                for repl_duty in duties:
+                    replacement_duties.append([cleaner.pk, repl_duty.pk])
+
+            self.destinations = self.set_destinations(replacement_duties)
+
+        super().save(force_insert, force_update, using, update_fields)
+

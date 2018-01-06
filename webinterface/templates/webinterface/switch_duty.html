@@ -9,43 +9,88 @@ Putzdienst tauschen
     <div class="container-fluid">
         <div class="row" style="margin: 1em;">
             <h1>Tausche Putzdienst</h1>
-            {% comment %}<a class="btn btn-default" role="button"
-               href="{% url 'webinterface:welcome' %}">
-                <span class="glyphicon glyphicon-chevron-left"></span> Back
-            </a>{% endcomment %}
+            <a class="btn btn-default" role="button"
+               href="{% url 'webinterface:cleaner-duties' duty_switch.source_cleaner.pk duty_switch.source_cleaner.name|slugify 1 %}">
+                <span class="glyphicon glyphicon-chevron-left"></span> Zurück
+            </a>
         </div>
-        <div class="panel panel-primary">
-            <div class="panel-heading">
-                <h2>Hallo {{ old_cleaner.name }}, wie ich sehe möchtest du
-                    deinen Putzdienst am {{ duty.date }} tauschen.</h2>
-            </div>
-            <div class="panel-body">
+
+        {% ifequal perspective 'source' %}
+
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h2>Hallo {{ duty_switch.source_cleaner.name }}, wie ich sehe möchtest du
+                        deinen Putzdienst für {{ duty_switch.source_duty.cleaningschedule_set.all.0.name }}
+                        am {{ duty_switch.source_duty.date }} tauschen.</h2>
+                </div>
+                <div class="panel-body">
+                    {% if duty_switch.selected_cleaner %}
+                        <div class="row" style="margin: 1em;">
+                            <h4>Du hast für diesen Putzdienst eine Anrage an {{ duty_switch.selected_cleaner.name }}
+                                gestartet, um mit dem Putzdienst am {{ duty_switch.selected_duty.date }}
+                                zu tauschen.</h4>
+                        </div>
+                    {% endif %}
+                    <form class="form-inline" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="redirect_cleaner_pk"
+                               value="{{ duty_switch.source_cleaner.pk }}">
+                        <input type="submit" name="delete"
+                            class="btn btn-danger btn-lg"
+                            value="Tauschanfrage löschen"/>
+                    </form>
+
                     <div class="row" style="margin: 1em;">
                         <p>Ich habe dir ein paar Putzdienste zur Auswahl herausgesucht, bitte wähle einen aus. </p>
-                        {% if double_duty_flag %}
-                            <p class="bg-warning"><i>Wenn du tauscht, bedeutet dies, das der neue Putzer an diesem
-                            Tag zwei Putzdienste hat.</i></p>
-                        {% endif %}
                     </div>
 
                     <form class="form-inline" method="post">
                         {% csrf_token %}
                         <div class="row">
-                            <input type="hidden" name="old_cleaner_pk" value="{{ old_cleaner.pk }}">
-                            <input type="hidden" name="duty_pk" value="{{ duty.pk }}">
                             {% for cleaner, repl_duty in replacement_duties %}
                                 <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px">
-                                    <input type="submit" name="option-{{ cleaner.pk }}-{{ repl_duty.pk }}"
-                                           style="white-space: normal;"
-                                           class="btn btn-info btn-lg btn-block"
-                                           value="Tausche mit {{ cleaner.name }} am {{ repl_duty.date }}"/>
+                                    <input type="hidden" name="redirect_cleaner_pk" value="{{ duty_switch.source_cleaner.pk }}">
+                                    <input type="submit" name="select-{{ cleaner.pk }}-{{ repl_duty.pk }}"
+                                        style="white-space: normal;"
+                                        class="btn btn-info btn-lg btn-block"
+                                        value="Tausche mit {{ cleaner.name }} am {{ repl_duty.date }}"/>
                                 </div>
                             {% empty %}
                                 <h3>Keine Alternativen gefunden</h3>
                             {% endfor %}
                         </div>
                     </form>
+                </div>
             </div>
-        </div>
+
+        {% else %}
+
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3>Hallo {{ duty_switch.selected_cleaner.name }}, {{ duty_switch.source_cleaner.name }}
+                        möchte seinen Putzdienst am {{ duty_switch.source_duty.date }} für
+                        {{ duty_switch.source_duty.cleaningschedule_set.all.0.name }}
+                        mit deinem Putzdienst am {{ duty_switch.selected_duty.date }} tauschen.</h3>
+                </div>
+                <div class="panel-body">
+                    <h3>Möchtest du die Anfrage annehmen oder ablehnen?</h3>
+                    <form class="form-inline" method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <input type="hidden" name="redirect_cleaner_pk"
+                                   value="{{ duty_switch.selected_cleaner.pk }}">
+                            <div class="col-sm-6">
+                                <button class="btn btn-success btn-lg btn-block" type="submit" name="accept">
+                                    <span class="glyphicon glyphicon-ok-sign"></span> Annehmen</button>
+                            </div>
+                            <div class="col-sm-6">
+                                <button class="btn btn-danger btn-lg btn-block" type="submit" name="reject">
+                                    <span class="glyphicon glyphicon-remove-sign"></span> Ablehnen</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endifequal %}
     </div>
 {% endblock %}

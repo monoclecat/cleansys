@@ -1,0 +1,55 @@
+{% extends "webinterface/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+Putzdienst erledigen
+{% endblock %}
+
+{% block body %}
+    <div class="container-fluid">
+        <div class="row" style="margin: 1em;">
+            <h1>Putzdienste</h1>
+            <a class="btn btn-default" role="button"
+                    href="{% url 'webinterface:cleaner-duties' cleaner.pk cleaner.name|slugify 1 %}">
+                <span class="glyphicon glyphicon-chevron-left"></span> Zurück
+            </a>
+        </div>
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h2>Du putzt dieses Wochenende {{ schedule.name }} zusammen mit
+                    {% for other_cleaner in other_cleaners %}{{ other_cleaner.name }} {% endfor %}</h2>
+                </div>
+                <div class="panel-body">
+                    <h3>Folgende Aufgaben stehen an. Wenn du einen Teil geputzt hast, klicke auf die entsprechende
+                        Aufgabe, um sie abzuschließen.</h3>
+                    <p>Bitte denke daran, dass du die Verantwortung für die richtige
+                        Ausführung der Aufgaben verantwortlich bist, die du hier anklickst. Sollten die Aufgaben
+                        nicht richtig ausgeführt worden sein, so haftest du.</p>
+                    <form class="form-inline" method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            {% for task_name, by_cleaner in task_cleaner_pairs %}
+                                <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+                                    <input type="submit" name="cleaned"
+                                        style="white-space: normal;"
+                                        {% if by_cleaner %}
+                                            class="btn btn-lg btn-block btn-default active" disabled="disabled"
+                                            {% if by_cleaner == cleaner %}
+                                                value="Du hast {{ task_name }} gemacht"
+                                            {% else %}
+                                                value="{{ by_cleaner.name }} hat {{ task_name }} gemacht"
+                                            {% endif %}
+                                        {% else %}
+                                            class="btn btn-lg btn-block btn-info"
+                                            value="{{ task_name }}"
+                                        {% endif %}/>
+                                </div>
+                            {% empty %}
+                                <h3>Keine Alternativen gefunden</h3>
+                            {% endfor %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+    </div>
+{% endblock %}

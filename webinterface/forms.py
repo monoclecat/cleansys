@@ -3,7 +3,7 @@ from .models import *
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import *
-from slackbot.slackbot import get_slack_users
+from slackbot.slackbot import get_slack_users, slack_running
 
 
 class ConfigForm(forms.Form):
@@ -81,6 +81,9 @@ class CleanerForm(forms.ModelForm):
 
         super(CleanerForm, self).__init__(*args, **kwargs)
 
+        if not slack_running():
+            dict(self.fields)['slack_id'].disabled = True
+
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Fieldset("General",
@@ -95,7 +98,7 @@ class CleanerForm(forms.ModelForm):
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
-                 "<a class=\"btn btn-danger\" style=\"color:whitesmoke;\""
+                 "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
                  "href=\"{% url 'webinterface:cleaner-delete' object.pk %}\""
                  "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzer</a>"),
         )
@@ -120,53 +123,25 @@ class CleaningScheduleForm(forms.ModelForm):
                                             "aber nicht an gleichen Tagen, dann wähle bei einem 'Gerade Wochen' und "
                                             "beim anderen 'Ungerade Wochen' aus.")
 
-    task1 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task2 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task3 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task4 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task5 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task6 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task7 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task8 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task9 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                            help_text=" ")
-    task10 = forms.CharField(max_length=40, required=False, widget=forms.TextInput, label="",
-                             help_text=" ")
+    tasks = forms.CharField(max_length=200, required=False, widget=forms.TextInput, label="Aufgaben des Putzdienstes",
+                            help_text="Trage hier die Aufgaben mit Komma getrennt ein. Aus Kosmetischen Gründen "
+                                      "empfehle ich dir, vor und nach dem Komma kein Leerzeichen zu lassen, also so: "
+                                      "Herd,Ofen,Oberflächen")
 
     def __init__(self, *args, **kwargs):
         super(CleaningScheduleForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
 
         self.helper.layout = Layout(
-            Fieldset("General",
-                     'name',
-                     'cleaners_per_date',
-                     'frequency'),
-            Fieldset("Tasks (from left to right)",
-                     'task1',
-                     'task2',
-                     'task3',
-                     'task4',
-                     'task5',
-                     'task6',
-                     'task7',
-                     'task8',
-                     'task9',
-                     'task10',
-                     ),
+            'name',
+            'cleaners_per_date',
+            'frequency',
+            'tasks',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
-                 "<a class=\"btn btn-danger\" style=\"color:whitesmoke;\""
+                 "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
                  "href=\"{% url 'webinterface:cleaning-schedule-delete' object.pk %}\""
                  "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzplan</a>"),
         )

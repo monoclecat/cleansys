@@ -10,16 +10,23 @@ app_name = 'webinterface'
 urlpatterns = [
     url(r'^$', WelcomeView.as_view(), name='welcome'),
 
-    url(r'^switch/(?P<duty_pk>[\d]+)/(?P<old_cleaner_pk>[\d]+)/$',
-        DutySwitchView.as_view(), name='switch-duty'),
+    url(r'^switch/(?P<pk>[\d]+)/(?P<answer>[\S]+)/$', DutySwitchView.as_view(), name='switch-duty-answer'),
+    url(r'^switch/(?P<pk>[\d]+)/$', DutySwitchView.as_view(), name='switch-duty'),
 
-    url(r'^(?P<pk>[\d]+)/(?P<slug>[\S]+)/(?P<page>[\d]+)/$', CleaningDutyView.as_view(), name='cleaner-duties'),
-    url(r'^(?P<pk>[\d]+)/(?P<slug>[\S]+)/$', CleaningDutyView.as_view(), name='cleaner-duties-page1'),
+    url(r'^clean/(?P<duty_pk>[\d]+)/(?P<cleaner_pk>[\d]+)/$', DutyCleanView.as_view(), name='clean-duty'),
 
-    url(r'^duties/(?P<pk>[\d]+)/(?P<page>[\d]+)/$', CleaningDutyAllView.as_view(), name='duties-all-with-pk'),
-    url(r'^duties/(?P<pk>[\d]+)/$', CleaningDutyAllView.as_view(), name='duties-all-with-pk-page1'),
-    url(r'^duties/all/(?P<page>[\d]*)/$', CleaningDutyAllView.as_view(), name='duties-all-no-pk'),
-    url(r'^duties/all/$', CleaningDutyAllView.as_view(), name='duties-all-no-pk-page1'),
+    url(r'^(?P<pk>[\d]+)/(?P<slug>[\S]+)/(?P<page>[\d]+)/$', CleanerView.as_view(), name='cleaner-duties'),
+
+    #url(r'^duties/(?P<pk>[\d]+)/(?P<page>[\d]+)/$', CleaningDutyAllView.as_view(), name='duties-all-with-pk'),
+    #url(r'^duties/all/(?P<page>[\d]*)/$', CleaningDutyAllView.as_view(), name='duties-all-no-pk'),
+
+    url(r'^schedule/all/(?P<page>[\d]+)/(?P<cleaner_pk>[\d]+)/$', CleaningScheduleView.as_view(),
+        name='all-schedule-view-highlight'),
+    url(r'^schedule/all/(?P<page>[\d]+)/$', CleaningScheduleView.as_view(), name='all-schedule-view'),
+
+    url(r'^schedule/(?P<pk>[\d]+)/(?P<page>[\d]+)/(?P<cleaner_pk>[\d]+)/$', CleaningScheduleView.as_view(),
+        name='schedule-view-highlight'),
+    url(r'^schedule/(?P<pk>[\d]+)/(?P<page>[\d]+)/$', CleaningScheduleView.as_view(), name='schedule-view'),
 
     url(r'^config/$', login_required(ConfigView.as_view()), name='config'),
     url(r'^results/$', RedirectView.as_view(

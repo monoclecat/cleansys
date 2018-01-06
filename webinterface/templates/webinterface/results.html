@@ -10,17 +10,18 @@ Putzdienste
         <div class="row" style="margin: 1em;">
             <h1>Results</h1>
             <div class="">
-                <form method="POST" class="form form-inline">
-                    {% csrf_token %}
-                    <a class="btn btn-default" href="{% url 'webinterface:config' %}" role="button">
+                <a class="btn btn-default" href="{% url 'webinterface:config' %}" role="button">
                     <span class="glyphicon glyphicon-chevron-left"></span> Zurück</a>
+                <br>
+                {% comment %}<form method="POST" class="form form-inline">
+                    {% csrf_token %}
                     <input type="submit" class="btn btn-success" name="generate_missing"
                            value="Generate missing duties">
                     <input type="submit" class="btn btn-danger" name="regenerate_all"
                            value="Delete all and regenerate">
                     <br>
                     <p><i>Putzdienste zu erzeugen kann ein paar Minuten dauern. Bitte habe Geduld.</i></p>
-                </form>
+                </form>{% endcomment %}
                 <br>
 
                 {% for time_frame in results %}

@@ -10,30 +10,39 @@ Willkommen
         <div class="row">
             <div class="col-sm-8 col-sm-offset-2
                             col-md-6 col-md-offset-3">
-                <h1>Willkommen zum Putzplan Guru!</h1>
-            </div>
-            <div class="col-sm-8 col-sm-offset-2
-                            col-md-6 col-md-offset-3">
-                <a class="btn btn-primary btn-lg btn-block"
-                   href="{% url 'webinterface:duties-all-no-pk-page1' %}" role="button">
-                    <span class="glyphicon glyphicon-calendar"></span> Siehe alle Putzdienste
-                    <span class="glyphicon glyphicon-calendar"></span></a>
+
+                <h3>Putzpläne</h3>
+                <div class="row">
+                    {% for schedule in schedule_list %}
+                        <div class="col-xs-12 col-sm-4" style="padding: 5px">
+                            <a class="btn btn-primary btn-block" role="button"
+                               href="{% url 'webinterface:schedule-view' schedule.pk 1 %}">
+                                <span class="glyphicon glyphicon-calendar"></span> {{ schedule.name }}
+                            </a>
+                        </div>
+                    {% empty %}
+                        <p>Keine Putzpläne...</p>
+                    {% endfor %}
+                </div>
+
                 <h3>Persönliche Seiten</h3>
-                {% for cleaner in cleaner_list %}
-                    <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
-                        <a class="btn btn-primary btn-lg btn-block" role="button"
-                           href="{% url 'webinterface:cleaner-duties-page1' cleaner.pk cleaner.name|slugify %}">
-                            <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
-                        </a>
-                    </div>
-                {% empty %}
-                    <p>Nichts zum Zeigen...</p>
-                {% endfor %}
+                <div class="row">
+                    {% for cleaner in cleaner_list %}
+                        <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
+                            <a class="btn btn-primary btn-block" role="button"
+                               href="{% url 'webinterface:cleaner-duties' cleaner.pk cleaner.name|slugify 1 %}">
+                                <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
+                            </a>
+                        </div>
+                    {% empty %}
+                        <p>Keine Putzer...</p>
+                    {% endfor %}
+                </div>
             </div>
             <div class="col-sm-8 col-sm-offset-2
                             col-md-6 col-md-offset-3">
                 <br><br><br><br><br><br>
-                <a class="btn btn-default btn-lg btn-block" href="{% url 'webinterface:config' %}" role="button">
+                <a class="btn btn-default btn-block" href="{% url 'webinterface:config' %}" role="button">
                     XXX Bereich</a>
             </div>
         </div>
