@@ -174,7 +174,7 @@ class CleanerView(TemplateView):
         return self.render_to_response(context)
 
     def get_context_data(self, **kwargs):
-        context = super(CleaningDutyView, self).get_context_data(**kwargs)
+        context = super(CleanerView, self).get_context_data(**kwargs)
         pagination = 25
 
         context['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
