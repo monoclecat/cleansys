@@ -219,7 +219,7 @@ class CleanerView(TemplateView):
 
 
 class CleaningScheduleView(TemplateView):
-    template_name = "webinterface/cleaning_schedule_view.html"
+    template_name = "webinterface/cleaning_schedule.html"
 
     def get_context_data(self, **kwargs):
         context = super(CleaningScheduleView, self).get_context_data(**kwargs)
