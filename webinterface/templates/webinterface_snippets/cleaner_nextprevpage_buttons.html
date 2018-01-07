@@ -1,0 +1,16 @@
+<div class="row" style="padding: 1em">
+    <div class="col-xs-6" style="padding: 5px">
+        {% if page > 1 %}
+            <a class="btn btn-default btn-block" role="button"
+                    href="{% url 'webinterface:cleaner-duties' cleaner.pk cleaner.name|slugify page|add:"-1" %}">
+                <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
+            </a>
+        {% endif %}
+    </div>
+    <div class="col-xs-6" style="padding: 5px">
+        <a class="btn btn-default btn-block" role="button"
+                href="{% url 'webinterface:cleaner-duties' cleaner.pk cleaner.name|slugify page|add:"1" %}">
+            <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
+        </a>
+    </div>
+</div>

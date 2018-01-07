@@ -24,9 +24,9 @@ Putzdienste
                                 href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
 
                             <span class="glyphicon glyphicon-remove-sign"></span>
-                            {{ dutyswitch.source_duty.cleaningschedule_set.all.0.name }}
-                            <span class="badge">{{ dutyswitch.source_cleaner.name }},
-                                {{ dutyswitch.source_duty.date }}</span>
+                            {{ dutyswitch.source.duty.cleaningschedule_set.all.0.name }}
+                            <span class="badge">{{ dutyswitch.source.cleaner.name }},
+                                {{ dutyswitch.source.duty.date }}</span>
                         </a>
                     {% endfor %}
                 {% endif %}
@@ -38,12 +38,12 @@ Putzdienste
                         <a class="btn btn-warning btn-block" role="button"
                                 href="{% url 'webinterface:switch-duty-answer' dutyswitch.pk 'answer' %}">
 
-                            {{ dutyswitch.source_duty.cleaningschedule_set.all.0.name }}
-                            <span class="badge">{{ dutyswitch.source_cleaner.name }},
-                                {{ dutyswitch.source_duty.date }}</span>
+                            {{ dutyswitch.source.duty.cleaningschedule_set.all.0.name }}
+                            <span class="badge">{{ dutyswitch.source.cleaner.name }},
+                                {{ dutyswitch.source.duty.date }}</span>
                             <span class="glyphicon glyphicon-transfer"></span>
                             <span class="badge">
-                                Du, {{ dutyswitch.selected_duty.date }}
+                                Du, {{ dutyswitch.selected.duty.date }}
                             </span>
                         </a>
                     {% endfor %}
@@ -56,11 +56,11 @@ Putzdienste
                         <a class="btn btn-info btn-block" role="button"
                                 href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
 
-                            {{ dutyswitch.source_duty.cleaningschedule_set.all.0.name }}
-                            <span class="badge">Du, {{ dutyswitch.source_duty.date }}</span>
+                            {{ dutyswitch.source.duty.cleaningschedule_set.all.0.name }}
+                            <span class="badge">Du, {{ dutyswitch.source.duty.date }}</span>
                             <span class="glyphicon glyphicon-transfer"></span>
                             <span class="badge">
-                                {{ dutyswitch.selected_cleaner.name }}, {{ dutyswitch.selected_duty.date }}
+                                {{ dutyswitch.selected.cleaner.name }}, {{ dutyswitch.selected.duty.date }}
                             </span>
                         </a>
                     {% endfor %}
@@ -68,22 +68,7 @@ Putzdienste
             </div>
         </div>
 
-        <div class="row" style="padding: 1em">
-            <div class="col-xs-6" style="padding: 5px">
-                {% if page > "0" %}
-                    <a class="btn btn-default btn-block" role="button"
-                            href="{% url 'webinterface:cleaner-duties' cleaner.pk slug page|add:"-1" %}">
-                        <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
-                    </a>
-                {% endif %}
-            </div>
-            <div class="col-xs-6" style="padding: 5px">
-                <a class="btn btn-default btn-block" role="button"
-                        href="{% url 'webinterface:cleaner-duties' cleaner.pk slug page|add:"1" %}">
-                    <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
-                </a>
-            </div>
-        </div>
+        {% include "webinterface_snippets/cleaner_nextprevpage_buttons.html" %}
 
         <div class="row">
             <div class="panel panel-primary">
@@ -149,21 +134,6 @@ Putzdienste
                 </div>
             </div>
         </div>
-        <div class="row" style="padding: 1em">
-            <div class="col-xs-6" style="padding: 5px">
-                {% if page > "0" %}
-                    <a class="btn btn-default btn-block" role="button"
-                            href="{% url 'webinterface:cleaner-duties' cleaner.pk slug page|add:"-1" %}">
-                        <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
-                    </a>
-                {% endif %}
-            </div>
-            <div class="col-xs-6" style="padding: 5px">
-                <a class="btn btn-default btn-block" role="button"
-                        href="{% url 'webinterface:cleaner-duties' cleaner.pk slug page|add:"1" %}">
-                    <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
-                </a>
-            </div>
-        </div>
+        {% include "webinterface_snippets/cleaner_nextprevpage_buttons.html" %}
     </div>
 {% endblock %}
