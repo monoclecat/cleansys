@@ -2,8 +2,8 @@ from django.db import models
 from operator import itemgetter
 import datetime
 from django.db.models.signals import m2m_changed
+from django.utils.text import slugify
 import logging
-
 
 
 def correct_dates_to_weekday(days, weekday):
@@ -20,10 +20,10 @@ def correct_dates_to_weekday(days, weekday):
 
 
 class Cleaner(models.Model):
-    name = models.CharField(max_length=10)
+    name = models.CharField(max_length=10, unique=True)
+    slug = models.CharField(max_length=10)
     moved_in = models.DateField()
     moved_out = models.DateField()
-    willing_to_switch = models.BooleanField(default=True)
     slack_id = models.CharField(max_length=10, null=True)
 
     def __init__(self, *args, **kwargs):
@@ -35,15 +35,19 @@ class Cleaner(models.Model):
         return self.name
 
     def delete(self, using=None, keep_parents=False):
-        associated_schedules = CleaningSchedule.objects.filter(cleaners=self)
-        for schedule in associated_schedules:
-            schedule.cleaners.remove(self)
-
+        try:
+            associated_group = CleaningScheduleGroup.objects.get(cleaners=self)
+            associated_schedules = associated_group.cleaningschedule_set.all()
+            for schedule in associated_schedules:
+                schedule.cleaners.remove(self)
+        except CleaningScheduleGroup.DoesNotExist:
+            pass
         super().delete(using, keep_parents)
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         super().save(force_insert, force_update, using, update_fields)
+
 
         associated_group = CleaningScheduleGroup.objects.filter(cleaners=self)
         if associated_group.exists():
@@ -140,7 +144,9 @@ class CleaningDuty(models.Model):
 
 
 class CleaningScheduleGroup(models.Model):
-    name = models.CharField(max_length=30)
+    class Meta:
+        ordering = ("name", )
+    name = models.CharField(max_length=30, unique=True)
     cleaners = models.ManyToManyField(Cleaner)
 
     def __str__(self):
@@ -148,7 +154,7 @@ class CleaningScheduleGroup(models.Model):
 
 
 class CleaningSchedule(models.Model):
-    name = models.CharField(max_length=20)
+    name = models.CharField(max_length=20, unique=True)
 
     CLEANERS_PER_DATE_CHOICES = ((1, 'Einen'), (2, 'Zwei'))
     cleaners_per_date = models.IntegerField(default=1, choices=CLEANERS_PER_DATE_CHOICES)
@@ -159,7 +165,7 @@ class CleaningSchedule(models.Model):
     duties = models.ManyToManyField(CleaningDuty, blank=True)
     schedule_group = models.ManyToManyField(CleaningScheduleGroup, blank=True)
 
-    tasks = models.CharField(max_length=200, blank=True)
+    tasks = models.CharField(max_length=200, null=True)
 
     def __str__(self):
         return self.name
@@ -267,7 +273,7 @@ class CleaningSchedule(models.Model):
                             logging.debug("Nobody has 0 duties on date so we choose {}".format(last_resort_cleaner))
                             duty.cleaners.add(last_resort_cleaner)
                         else:
-                            logging.debug("NOBODY HAS 1 DUTY ON DATE! We choose {}".format(last_resort_cleaner))
+                            logging.debug("NOBODY HAS 1 DUTY ON DATE! We choose {}".format(ratios[0][0]))
                             duty.cleaners.add(ratios[0][0])
 
             logging.debug("")
@@ -308,7 +314,7 @@ class DutySwitch(models.Model):
     selected_cleaner = models.ForeignKey(Cleaner, on_delete=models.SET_NULL, null=True, related_name="selected_cleaner")
     selected_duty = models.ForeignKey(CleaningDuty, on_delete=models.SET_NULL, null=True, related_name="selected_duty")
 
-    destinations = models.CharField(max_length=100)
+    destinations = models.CharField(max_length=100, null=True)
     # destinations is a string representation of a list of lists [<cleanerpk>, <dutypk>] which are suitable candidates
     # for the source to switch with. Example: <cleanerpk>,<dutypk>;<cleanerpk>,<dutypk>;<cleanerpk>,<dutypk>
     # destinations is a FIFO type stack, the wish destination is always the first pair of PKs

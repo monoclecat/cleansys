@@ -17,6 +17,8 @@ urlpatterns = [
 
     url(r'^(?P<pk>[\d]+)/(?P<slug>[\S]+)/(?P<page>[\d]+)/$', CleanerView.as_view(), name='cleaner-duties'),
 
+    url(r'^(?P<name_slug>[\S]+)/(?P<page>[\d]+)/$', Cleaner2View.as_view(), name='cleaner'),
+
     #url(r'^duties/(?P<pk>[\d]+)/(?P<page>[\d]+)/$', CleaningDutyAllView.as_view(), name='duties-all-with-pk'),
     #url(r'^duties/all/(?P<page>[\d]*)/$', CleaningDutyAllView.as_view(), name='duties-all-no-pk'),
 
@@ -55,6 +57,13 @@ urlpatterns = [
         name='cleaning-schedule-edit'),
     url(r'^cleaning-schedule-delete/(?P<pk>[\d]+)/$', login_required(CleaningScheduleDeleteView.as_view()),
         name='cleaning-schedule-delete'),
+
+    url(r'^cleaning-schedule-group-new/$', login_required(CleaningScheduleGroupNewView.as_view()),
+        name='cleaning-schedule-group-new'),
+    url(r'^cleaning-schedule-group-edit/(?P<pk>[\d]+)/$', login_required(CleaningScheduleGroupUpdateView.as_view()),
+        name='cleaning-schedule-group-edit'),
+    url(r'^cleaning-schedule-group-delete/(?P<pk>[\d]+)/$', login_required(CleaningScheduleGroupDeleteView.as_view()),
+        name='cleaning-schedule-group-delete'),
 
     url(r'^login/$', login_view, name='login'),
     url(r'^logout/$', login_required(login_view), name='logout'),

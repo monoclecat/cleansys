@@ -28,6 +28,7 @@ Putzdienste
                         <span class="glyphicon glyphicon-home"></span> Zurücksetzen
                     </a>
                 </div>
+
                 {% for cleaner in cleaners %}
                     <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
                         <a class="btn btn-default btn-lg btn-block
@@ -49,7 +50,7 @@ Putzdienste
                     <a class="btn btn-success btn-block" role="button"
                         {% if schedule_pk %}
                             {% if highlighted_cleaner %}
-                                href="{% url 'webinterface:schedule-view-highlight' schedule_pk page cleaner.pk %}"
+                                href="{% url 'webinterface:schedule-view-highlight' schedule_pk page highlighted_cleaner.pk %}"
                             {% else %}
                                 href="{% url 'webinterface:schedule-view' schedule_pk page|add:"-1" %}"
                             {% endif %}
@@ -68,7 +69,7 @@ Putzdienste
                 <a class="btn btn-success btn-block" role="button"
                     {% if schedule_pk %}
                         {% if highlighted_cleaner %}
-                            href="{% url 'webinterface:schedule-view-highlight' schedule_pk page cleaner.pk %}"
+                            href="{% url 'webinterface:schedule-view-highlight' schedule_pk page highlighted_cleaner.pk %}"
                         {% else %}
                             href="{% url 'webinterface:schedule-view' schedule_pk page|add:"1" %}"
                         {% endif %}
@@ -140,7 +141,7 @@ Putzdienste
                     <a class="btn btn-success btn-block" role="button"
                         {% if schedule_pk %}
                             {% if highlighted_cleaner %}
-                                href="{% url 'webinterface:schedule-view-highlight' schedule_pk page cleaner.pk %}"
+                                href="{% url 'webinterface:schedule-view-highlight' schedule_pk page highlighted_cleaner.pk %}"
                             {% else %}
                                 href="{% url 'webinterface:schedule-view' schedule_pk page|add:"-1" %}"
                             {% endif %}
@@ -159,7 +160,7 @@ Putzdienste
                 <a class="btn btn-success btn-block" role="button"
                     {% if schedule_pk %}
                         {% if highlighted_cleaner %}
-                            href="{% url 'webinterface:schedule-view-highlight' schedule_pk page cleaner.pk %}"
+                            href="{% url 'webinterface:schedule-view-highlight' schedule_pk page highlighted_cleaner.pk %}"
                         {% else %}
                             href="{% url 'webinterface:schedule-view' schedule_pk page|add:"1" %}"
                         {% endif %}

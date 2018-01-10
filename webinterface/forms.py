@@ -3,6 +3,7 @@ from .models import *
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import *
+from crispy_forms.bootstrap import *
 from slackbot.slackbot import get_slack_users, slack_running
 
 
@@ -44,7 +45,10 @@ class ConfigForm(forms.Form):
 class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
-        fields = '__all__'
+        if slack_running():
+            fields = '__all__'
+        else:
+            exclude = ('slack_id',)
 
     name = forms.CharField(max_length=10, label="Name des Putzers",
                            required=True, widget=forms.TextInput)
@@ -55,11 +59,6 @@ class CleanerForm(forms.ModelForm):
                                 widget=forms.DateInput(format='%d.%m.%Y'),
                                 help_text="Falls du einen neuen Putzer erstellst, ist es eine gute Idee, diesen"
                                           "Wert auf das Einzugsdatum plus 3 Jahre zu setzen.")
-
-    willing_to_switch = forms.BooleanField(label="Willing to switch duties",
-                                           help_text="Select if cleaner is ok with "
-                                                     "switching duties with other cleaners. Please do not deselect"
-                                                     "unless it is the cleaner's explicit wish.")
 
     schedule_group = forms.\
         ModelChoiceField(queryset=CleaningScheduleGroup.objects.all(),
@@ -81,27 +80,29 @@ class CleanerForm(forms.ModelForm):
 
         super(CleanerForm, self).__init__(*args, **kwargs)
 
-        if not slack_running():
-            dict(self.fields)['slack_id'].disabled = True
-
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            Fieldset("General",
-                     'name',
-                     'moved_in',
-                     'moved_out',
-                     'willing_to_switch',
-                     'schedule_group',
-                     'slack_id'
-                     ),
+            'name',
+            'moved_in',
+            'moved_out',
+            'schedule_group',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
-                 "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
-                 "href=\"{% url 'webinterface:cleaner-delete' object.pk %}\""
-                 "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzer</a>"),
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
         )
+
+        if slack_running():
+            self.helper.layout.fields.insert(4, 'slack_id')
+        else:
+            self.helper.layout.fields.insert(4, HTML("<p><i>Slack ist ausgeschaltet. Schalte Slack ein, um "
+                                                     "dem Putzer eine Slack-ID zuordnen zu können.</i></p>"))
+
+        if kwargs['instance']:
+            self.helper.layout.fields.append(HTML(
+                "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
+                "href=\"{% url 'webinterface:cleaner-delete' object.pk %}\""
+                "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzer</a>"))
 
 
 class CleaningScheduleForm(forms.ModelForm):
@@ -123,6 +124,13 @@ class CleaningScheduleForm(forms.ModelForm):
                                             "aber nicht an gleichen Tagen, dann wähle bei einem 'Gerade Wochen' und "
                                             "beim anderen 'Ungerade Wochen' aus.")
 
+    schedule_group = forms. \
+        ModelMultipleChoiceField(queryset=CleaningScheduleGroup.objects.all(),
+                                 required=True,
+                                 widget=forms.CheckboxSelectMultiple,
+                                 label="Zugehörigkeit",
+                                 help_text="Wähle die Gruppe, zu der der Putzplan gehört.")
+
     tasks = forms.CharField(max_length=200, required=False, widget=forms.TextInput, label="Aufgaben des Putzdienstes",
                             help_text="Trage hier die Aufgaben mit Komma getrennt ein. Aus Kosmetischen Gründen "
                                       "empfehle ich dir, vor und nach dem Komma kein Leerzeichen zu lassen, also so: "
@@ -136,14 +144,58 @@ class CleaningScheduleForm(forms.ModelForm):
             'name',
             'cleaners_per_date',
             'frequency',
+            'schedule_group',
             'tasks',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
-                 "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
-                 "href=\"{% url 'webinterface:cleaning-schedule-delete' object.pk %}\""
-                 "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzplan</a>"),
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
         )
+
+        if kwargs['instance']:
+            self.helper.layout.fields.append(HTML(
+                "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
+                "href=\"{% url 'webinterface:cleaning-schedule-delete' object.pk %}\""
+                "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzplan</a>"))
+
+
+class CleaningScheduleGroupForm(forms.ModelForm):
+    class Meta:
+        model = CleaningScheduleGroup
+        exclude = ('cleaners', )
+
+    name = forms.CharField(max_length=30, label="Name der Putzplan-Gruppe",
+                           help_text="Dieser Name steht für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
+                                     "denen manche Bewohner angehören. Wenn du Putzer oder Pläne dieser Gruppe "
+                                     "hinzufügen möchtest, so tue dies in den entsprechenden Putzer- und "
+                                     "Putzplan-Änderungsformularen selbst. ",
+                           required=True, widget=forms.TextInput)
+
+    def __init__(self, *args, **kwargs):
+        super(CleaningScheduleGroupForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+
+        self.helper.layout = Layout(
+            'name',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> ")
+        )
+
+        if kwargs['instance']:
+            if not kwargs['instance'].cleaners.all():
+                self.helper.layout.fields.append(HTML(
+                    "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
+                    "href=\"{% url 'webinterface:cleaning-schedule-group-delete' object.pk %}\""
+                    "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> "
+                    "Lösche Putzplan-Gruppierung</a>"))
+            else:
+                self.helper.layout.fields.append(HTML(
+                    "<p><i>Um diese Gruppe zu löschen müssen erst alle Putzer daraus entfernt werden. <br>"
+                    "Diese sind: {% for cleaner in object.cleaners.all %} {{cleaner.name}} {% endfor %}</i></p>"))
+
+
+
 
 

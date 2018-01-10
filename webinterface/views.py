@@ -3,7 +3,7 @@ from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
 from django.views.generic import TemplateView
-from django.views.generic.list import ListView
+from django.views.generic.detail import DetailView
 from django.utils.text import slugify
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
 from django.core.exceptions import SuspiciousOperation
@@ -122,6 +122,12 @@ class DutySwitchView(TemplateView):
             kwargs={'pk': redirect_cleaner_pk.pk, 'slug': slugify(redirect_cleaner_pk.name), 'page': 1}))
 
 
+class Cleaner2View(DetailView):
+    template_name = "webinterface/cleaner2.html"
+    model = Cleaner
+    slug_url_kwarg = "name_slug"
+
+
 class CleanerView(TemplateView):
     template_name = "webinterface/cleaner.html"
 
@@ -227,7 +233,7 @@ class CleaningScheduleView(TemplateView):
 
         if 'cleaner_pk' in kwargs and kwargs['cleaner_pk']:
             try:
-                context['highlighted_cleaner'] = Cleaner.objects.filter(pk=kwargs['cleaner_pk'])
+                context['highlighted_cleaner'] = Cleaner.objects.get(pk=kwargs['cleaner_pk'])
             except Cleaner.DoesNotExist:
                 Http404("Putzer existert nicht")
 
@@ -287,6 +293,7 @@ class ConfigView(FormView):
         context['cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=False)
         context['no_slack_cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=True)
         context['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=datetime.datetime.now().date())
+        context['schedule_group_list'] = CleaningScheduleGroup.objects.all()
         return context
 
     def post(self, request, *args, **kwargs):
@@ -479,30 +486,22 @@ def update_groups_for_cleaner(cleaner, new_association):
     """new_associations takes a list or Queryset of schedules cleaner should now be assigned to.
     This function removes the cleaner from schedules he is not associated to anymore and adds him
     to schedules he wasn't associated with before."""
-    prev_association = CleaningScheduleGroup.objects.get(cleaners=cleaner)
-    if prev_association != new_association:
-        prev_association.cleaners.remove(cleaner)
+    try:
+        prev_association = CleaningScheduleGroup.objects.get(cleaners=cleaner)
+
+        if prev_association != new_association:
+            prev_association.cleaners.remove(cleaner)
+            new_association.cleaners.add(cleaner)
+    except CleaningScheduleGroup.DoesNotExist:
         new_association.cleaners.add(cleaner)
+
 
 
 class CleanerNewView(CreateView):
     form_class = CleanerForm
     model = Cleaner
     success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/cleaner_new.html'
-
-    def form_valid(self, form):
-        self.object = form.save()
-        curr_groups = form.cleaned_data['schedule_groups']
-        update_groups_for_cleaner(self.object, curr_groups)
-        return HttpResponseRedirect(self.get_success_url())
-
-
-class CleanerUpdateView(UpdateView):
-    form_class = CleanerForm
-    model = Cleaner
-    success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/cleaner_edit.html'
+    template_name = 'webinterface/generic_form.html'
 
     def form_valid(self, form):
         self.object = form.save()
@@ -510,31 +509,110 @@ class CleanerUpdateView(UpdateView):
         update_groups_for_cleaner(self.object, curr_groups)
         return HttpResponseRedirect(self.get_success_url())
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Füge neuen Putzer hinzu"
+        return context
+
+
+class CleanerUpdateView(UpdateView):
+    form_class = CleanerForm
+    model = Cleaner
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_form.html'
+
+    def form_valid(self, form):
+        self.object = form.save()
+        curr_groups = form.cleaned_data['schedule_group']
+        update_groups_for_cleaner(self.object, curr_groups)
+        return HttpResponseRedirect(self.get_success_url())
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Ändere Putzerprofil"
+        return context
+
 
 class CleanerDeleteView(DeleteView):
     model = Cleaner
     success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/cleaner_delete.html'
+    template_name = 'webinterface/generic_delete_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Lösche Putzer"
+        return context
 
 
 class CleaningScheduleNewView(CreateView):
     form_class = CleaningScheduleForm
     model = CleaningSchedule
     success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/cleaning_schedule_new.html'
+    template_name = 'webinterface/generic_form.html'
 
-
-class CleaningScheduleDeleteView(DeleteView):
-    model = CleaningSchedule
-    success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/cleaning_schedule_delete.html'
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Erzeuge neuen Putzplan"
+        return context
 
 
 class CleaningScheduleUpdateView(UpdateView):
     form_class = CleaningScheduleForm
     model = CleaningSchedule
     success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/cleaning_schedule_edit.html'
+    template_name = 'webinterface/generic_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Ändere Putzplan"
+        return context
+
+
+class CleaningScheduleDeleteView(DeleteView):
+    model = CleaningSchedule
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_delete_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Lösche Putzplan"
+        return context
+
+
+class CleaningScheduleGroupNewView(CreateView):
+    form_class = CleaningScheduleGroupForm
+    model = CleaningScheduleGroup
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Erstelle eine neue Putzplan-Gruppierung"
+        return context
+
+
+class CleaningScheduleGroupUpdateView(UpdateView):
+    form_class = CleaningScheduleGroupForm
+    model = CleaningScheduleGroup
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Ändere eine Putzplan-Gruppierung"
+        return context
+
+
+class CleaningScheduleGroupDeleteView(DeleteView):
+    form_class = CleaningScheduleGroupForm
+    model = CleaningScheduleGroup
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_delete_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Lösche Putzplan-Gruppierung"
+        return context
 
 
 def login_view(request):
