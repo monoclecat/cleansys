@@ -8,6 +8,7 @@ from django.utils.text import slugify
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
 from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
+from django.core.paginator import *
 
 
 from .forms import *
@@ -111,21 +112,14 @@ class DutySwitchView(TemplateView):
                 if key_list:
                     if key_list[0] == "select":
                         try:
-                            duty_switch.selected_cleaner = Cleaner.objects.get(pk=key_list[1])
-                            duty_switch.selected_duty = CleaningDuty.objects.get(pk=key_list[2])
+                            duty_switch.set_selected(Cleaner.objects.get(pk=key_list[1]), CleaningDuty.objects.get(pk=key_list[2]))
                             duty_switch.save()
                         except (Cleaner.DoesNotExist, CleaningDuty.DoesNotExist):
                             raise SuspiciousOperation("Invalid PKs")
 
         return HttpResponseRedirect(reverse_lazy(
             'webinterface:cleaner-duties',
-            kwargs={'pk': redirect_cleaner_pk.pk, 'slug': slugify(redirect_cleaner_pk.name), 'page': 1}))
-
-
-class Cleaner2View(DetailView):
-    template_name = "webinterface/cleaner2.html"
-    model = Cleaner
-    slug_url_kwarg = "name_slug"
+            kwargs={'slug': redirect_cleaner_pk.slug, 'page': 1}))
 
 
 class CleanerView(TemplateView):
@@ -161,20 +155,19 @@ class CleanerView(TemplateView):
 
         return HttpResponseRedirect(reverse_lazy(
             'webinterface:cleaner-duties',
-            kwargs={'pk': kwargs['pk'], 'slug': kwargs['slug'], 'page': kwargs['page']}))
+            kwargs={'slug': kwargs['slug'], 'page': kwargs['page']}))
 
     def get(self, request, *args, **kwargs):
-        cleaner = Cleaner.objects.get(pk=kwargs['pk'])
+        try:
+            cleaner = Cleaner.objects.get(slug=kwargs['slug'])
 
-        if 'page' not in kwargs or int(kwargs['page']) <= 0:
-            return redirect(
-                reverse_lazy('webinterface:cleaner-duties',
-                             kwargs={'pk': kwargs['pk'], 'slug': slugify(cleaner.name), 'page': 1}))
+            if 'page' not in kwargs or int(kwargs['page']) <= 0:
+                return redirect(
+                    reverse_lazy('webinterface:cleaner-duties',
+                                 kwargs={'slug': cleaner.slug, 'page': 1}))
 
-        if 'slug' not in kwargs or kwargs['slug'] != slugify(cleaner.name):
-            return redirect(
-                reverse_lazy('webinterface:cleaner-duties',
-                             kwargs={'pk': kwargs['pk'], 'slug': slugify(cleaner.name), 'page': kwargs['page']}))
+        except Cleaner.DoesNotExist:
+            Http404("Putzer existiert nicht!")
 
         context = self.get_context_data(**kwargs)
         return self.render_to_response(context)
@@ -184,7 +177,7 @@ class CleanerView(TemplateView):
         pagination = 25
 
         context['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
-        context['cleaner'] = Cleaner.objects.get(pk=context['pk'])
+        context['cleaner'] = Cleaner.objects.get(slug=kwargs['slug'])
 
         page = int(context['page'])
 
@@ -213,13 +206,6 @@ class CleanerView(TemplateView):
                 context['duties_due_now'].append([duty.date, schedule, other_cleaners_for_duty, duty.pk])
             else:
                 context['duties'].append([duty.date, schedule, other_cleaners_for_duty, duty.pk])
-
-        context['as_dutyswitch_source_pending'] = DutySwitch.objects.\
-            filter(source_cleaner=context['cleaner'], status=0,
-                   selected_cleaner__isnull=False, selected_duty__isnull=False)
-        context['as_dutyswitch_source_rejected'] = DutySwitch.objects. \
-            filter(source_cleaner=context['cleaner'], status=2)
-        context['as_dutyswitch_selected'] = DutySwitch.objects.filter(selected_cleaner=context['cleaner'])
 
         return context
 
@@ -494,7 +480,6 @@ def update_groups_for_cleaner(cleaner, new_association):
             new_association.cleaners.add(cleaner)
     except CleaningScheduleGroup.DoesNotExist:
         new_association.cleaners.add(cleaner)
-
 
 
 class CleanerNewView(CreateView):

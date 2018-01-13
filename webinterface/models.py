@@ -3,6 +3,7 @@ from operator import itemgetter
 import datetime
 from django.db.models.signals import m2m_changed
 from django.utils.text import slugify
+from django.core.paginator import Paginator
 import logging
 
 
@@ -21,7 +22,7 @@ def correct_dates_to_weekday(days, weekday):
 
 class Cleaner(models.Model):
     name = models.CharField(max_length=10, unique=True)
-    slug = models.CharField(max_length=10)
+    slug = models.CharField(max_length=10, unique=True)
     moved_in = models.DateField()
     moved_out = models.DateField()
     slack_id = models.CharField(max_length=10, null=True)
@@ -33,6 +34,21 @@ class Cleaner(models.Model):
 
     def __str__(self):
         return self.name
+
+    def rejected_dutyswitch_requests(self):
+        return DutySwitch.objects.filter(source_cleaner=self, status=2)
+
+    def dutyswitch_requests_received(self):
+        return DutySwitch.objects.filter(selected_cleaner=self)
+
+    def pending_dutyswitch_requests(self):
+        return DutySwitch.objects.filter(source_cleaner=self, status=1)
+
+    def paginated_duties(self):
+        page_size = 25
+        start_from = datetime.datetime.now().date() - datetime.timedelta(days=3)
+        duties = CleaningDuty.objects.filter(date__gte=correct_dates_to_weekday(start_from, 6))
+
 
     def delete(self, using=None, keep_parents=False):
         try:
@@ -46,8 +62,8 @@ class Cleaner(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
+        self.slug = slugify(self.name)
         super().save(force_insert, force_update, using, update_fields)
-
 
         associated_group = CleaningScheduleGroup.objects.filter(cleaners=self)
         if associated_group.exists():
@@ -389,7 +405,7 @@ class DutySwitch(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
-        if not self.pk:
+        if not self.destinations:
             duty = self.source_duty
             schedule = duty.cleaningschedule_set.first()
 

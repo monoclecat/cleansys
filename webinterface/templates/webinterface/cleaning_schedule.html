@@ -91,48 +91,46 @@ Putzdienste
                         {{ highlighted_cleaner.name }}{% endif %}
                     </h3>
                 </div>
-                <div class="panel-body">
-                    <div class="row">
-                        {% if table_header.count <= 3 %}
-                            <div class="col-sm-8 col-sm-offset-2
-                            col-md-6 col-md-offset-3">
-                        {% endif %}
-                        <table class="table table-striped table-bordered">
-                            <tr class="info">
-                                <th>Datum</th>
-                                {% for schedule_name in table_header %}
-                                    <th>{{ schedule_name }}</th>
-                                {% endfor %}
-                            </tr>
+            </div>
+            <div class="row">
+                {% if table_header.count <= 3 %}
+                    <div class="col-sm-8 col-sm-offset-2
+                    col-md-6 col-md-offset-3">
+                {% endif %}
+                <table class="table table-striped table-bordered">
+                    <tr class="info">
+                        <th>Datum</th>
+                        {% for schedule_name in table_header %}
+                            <th>{{ schedule_name }}</th>
+                        {% endfor %}
+                    </tr>
 
-                            {% for date in duties %}
-                                <tr>
-                                    <td>{{ date.0 }}</td>
-                                    {% for duty in date.1 %}
-                                        {% ifequal duty "." %}
-                                            <td style="background-color:#d3d3d3"> </td>
-                                        {% else %}
-                                            <td {% if highlighted_cleaner in duty %}class="success" {% endif %}>
-                                                {% ifnotequal duty "" %}
-                                                    {% for cleaner in duty %}
-                                                        {{ cleaner.name }}
-                                                    {% empty %}
-                                                        No cleaners
-                                                    {% endfor %}
-                                                {% endifnotequal %}
-                                            </td>
-                                        {% endifequal %}
-                                    {% endfor %}
-                                </tr>
-                            {% empty %}
-
+                    {% for date in duties %}
+                        <tr>
+                            <td>{{ date.0 }}</td>
+                            {% for duty in date.1 %}
+                                {% ifequal duty "." %}
+                                    <td style="background-color:#d3d3d3"> </td>
+                                {% else %}
+                                    <td {% if highlighted_cleaner in duty %}class="success" {% endif %}>
+                                        {% ifnotequal duty "" %}
+                                            {% for cleaner in duty %}
+                                                {{ cleaner.name }}
+                                            {% empty %}
+                                                No cleaners
+                                            {% endfor %}
+                                        {% endifnotequal %}
+                                    </td>
+                                {% endifequal %}
                             {% endfor %}
-                        </table>
-                        {% if table_header.count <= 3 %}
-                            </div>
-                        {% endif %}
+                        </tr>
+                    {% empty %}
+
+                    {% endfor %}
+                </table>
+                {% if table_header.count <= 3 %}
                     </div>
-                </div>
+                {% endif %}
             </div>
         </div>
         <div class="row" style="padding: 1em">

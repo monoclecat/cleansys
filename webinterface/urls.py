@@ -15,12 +15,7 @@ urlpatterns = [
 
     url(r'^clean/(?P<duty_pk>[\d]+)/(?P<cleaner_pk>[\d]+)/$', DutyCleanView.as_view(), name='clean-duty'),
 
-    url(r'^(?P<pk>[\d]+)/(?P<slug>[\S]+)/(?P<page>[\d]+)/$', CleanerView.as_view(), name='cleaner-duties'),
-
-    url(r'^(?P<name_slug>[\S]+)/(?P<page>[\d]+)/$', Cleaner2View.as_view(), name='cleaner'),
-
-    #url(r'^duties/(?P<pk>[\d]+)/(?P<page>[\d]+)/$', CleaningDutyAllView.as_view(), name='duties-all-with-pk'),
-    #url(r'^duties/all/(?P<page>[\d]*)/$', CleaningDutyAllView.as_view(), name='duties-all-no-pk'),
+    url(r'^putzer/(?P<slug>[\S]+)/(?P<page>[\d]+)/$', CleanerView.as_view(), name='cleaner-duties'),
 
     url(r'^schedule/all/(?P<page>[\d]+)/(?P<cleaner_pk>[\d]+)/$', CleaningScheduleView.as_view(),
         name='all-schedule-view-highlight'),

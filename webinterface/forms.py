@@ -46,9 +46,9 @@ class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
         if slack_running():
-            fields = '__all__'
+            exclude = ('slug',)
         else:
-            exclude = ('slack_id',)
+            exclude = ('slack_id', 'slug')
 
     name = forms.CharField(max_length=10, label="Name des Putzers",
                            required=True, widget=forms.TextInput)

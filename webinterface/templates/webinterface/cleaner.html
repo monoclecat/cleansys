@@ -17,50 +17,50 @@ Putzdienste
 
         <div class="row">
             <div class="col-sm-4">
-                {% if as_dutyswitch_source_rejected %}
+                {% if cleaner.rejected_dutyswitch_requests %}
                     <h4>Folgende Tauschanfragen wurden abgelehnt, wähle einen neuen Termin aus!</h4>
-                    {% for dutyswitch in as_dutyswitch_source_rejected %}
-                        <a class="btn btn-danger btn-block" role="button"
+                    {% for dutyswitch in cleaner.rejected_dutyswitch_requests %}
+                        <a class="btn btn-danger btn-block" role="button" style="white-space: normal"
                                 href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
 
                             <span class="glyphicon glyphicon-remove-sign"></span>
-                            {{ dutyswitch.source.duty.cleaningschedule_set.all.0.name }}
-                            <span class="badge">{{ dutyswitch.source.cleaner.name }},
-                                {{ dutyswitch.source.duty.date }}</span>
+                            {{ dutyswitch.source_duty.cleaningschedule_set.all.0.name }}
+                            <span class="badge">{{ dutyswitch.source_cleaner.name }},
+                                {{ dutyswitch.source_duty.date }}</span>
                         </a>
                     {% endfor %}
                 {% endif %}
             </div>
             <div class="col-sm-4">
-                {% if as_dutyswitch_selected %}
+                {% if cleaner.dutyswitch_requests_received %}
                     <h4>Du hast Tauschanfragen! Bitte beantworte sie rasch!</h4>
-                    {% for dutyswitch in as_dutyswitch_selected %}
-                        <a class="btn btn-warning btn-block" role="button"
+                    {% for dutyswitch in cleaner.dutyswitch_requests_received %}
+                        <a class="btn btn-warning btn-block" role="button" style="white-space: normal"
                                 href="{% url 'webinterface:switch-duty-answer' dutyswitch.pk 'answer' %}">
 
-                            {{ dutyswitch.source.duty.cleaningschedule_set.all.0.name }}
-                            <span class="badge">{{ dutyswitch.source.cleaner.name }},
-                                {{ dutyswitch.source.duty.date }}</span>
+                            {{ dutyswitch.source_duty.cleaningschedule_set.all.0.name }}
+                            <span class="badge">{{ dutyswitch.source_cleaner.name }},
+                                {{ dutyswitch.source_duty.date }}</span>
                             <span class="glyphicon glyphicon-transfer"></span>
                             <span class="badge">
-                                Du, {{ dutyswitch.selected.duty.date }}
+                                Du, {{ dutyswitch.selected_duty.date }}
                             </span>
                         </a>
                     {% endfor %}
                 {% endif %}
             </div>
             <div class="col-sm-4">
-                {% if as_dutyswitch_source_pending %}
+                {% if cleaner.pending_dutyswitch_requests %}
                     <h4>Wir warten auf Antwort für folgende Dienst-Tausche</h4>
-                    {% for dutyswitch in as_dutyswitch_source_pending %}
-                        <a class="btn btn-info btn-block" role="button"
+                    {% for dutyswitch in cleaner.pending_dutyswitch_requests %}
+                        <a class="btn btn-info btn-block" role="button" style="white-space: normal"
                                 href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
 
-                            {{ dutyswitch.source.duty.cleaningschedule_set.all.0.name }}
-                            <span class="badge">Du, {{ dutyswitch.source.duty.date }}</span>
+                            {{ dutyswitch.source_duty.cleaningschedule_set.all.0.name }}
+                            <span class="badge">Du, {{ dutyswitch.source_duty.date }}</span>
                             <span class="glyphicon glyphicon-transfer"></span>
                             <span class="badge">
-                                {{ dutyswitch.selected.cleaner.name }}, {{ dutyswitch.selected.duty.date }}
+                                {{ dutyswitch.selected_cleaner.name }}, {{ dutyswitch.selected_duty.date }}
                             </span>
                         </a>
                     {% endfor %}
@@ -75,40 +75,13 @@ Putzdienste
                 <div class="panel-heading">
                     <h3>Putzdienste für {{ cleaner.name }}</h3>
                 </div>
-                <div class="panel-body">
-                    {% if duties_due_now %}
-                        <div class="well">
-                            <h3>Putzdienste, die bald anstehen</h3>
-                            <table class="table table-striped">
-                                {% for date, schedule, other_cleaners, duty_pk in duties_due_now %}
-                                    <tr class="danger">
-                                        <td>{{ schedule.name }}</td>
-                                        <td>{{ date }}</td>
-                                        <td>
-                                            {% if other_cleaners %}Together with
-                                                {% for cleaner in other_cleaners %}
-                                                    {{ cleaner.name }}
-                                                {% endfor %}
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <form class="form-inline" method="post">
-                                                {% csrf_token %}
-                                                    <input type="hidden" name="source_duty_pk" value="{{ duty_pk }}">
-                                                    <button class="btn btn-info" type="submit" name="switch">Tausche
-                                                        <span class="glyphicon glyphicon-random"></span></button>
-                                                    <button class="btn btn-success" type="submit" name="clean">Lass putzen!
-                                                        <span class="glyphicon glyphicon-chevron-right"></span></button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </table>
-                        </div>
-                    {% endif %}
+            </div>
+            {% if duties_due_now %}
+                <div class="well">
+                    <h3>Putzdienste, die bald anstehen</h3>
                     <table class="table table-striped">
-                        {% for date, schedule, other_cleaners, duty_pk in duties %}
-                            <tr>
+                        {% for date, schedule, other_cleaners, duty_pk in duties_due_now %}
+                            <tr class="danger">
                                 <td>{{ schedule.name }}</td>
                                 <td>{{ date }}</td>
                                 <td>
@@ -121,18 +94,41 @@ Putzdienste
                                 <td>
                                     <form class="form-inline" method="post">
                                         {% csrf_token %}
-                                            <input type="hidden" name="source_duty_pk" value="{{ duty_pk }}">
-                                            <button class="btn btn-info" type="submit" name="switch">Tausche
-                                                <span class="glyphicon glyphicon-random"></span></button>
+                                        <input type="hidden" name="source_duty_pk" value="{{ duty_pk }}">
+                                        {% include 'webinterface_snippets/cleaner_switch_duty_button.html' %}
+                                        <button class="btn btn-success" type="submit" name="clean"
+                                            style="white-space: normal" >Lass putzen!
+                                            <span class="glyphicon glyphicon-chevron-right"></span></button>
                                     </form>
                                 </td>
                             </tr>
-                        {% empty %}
-                            Keine Putzdienste zu zeigen
                         {% endfor %}
                     </table>
                 </div>
-            </div>
+            {% endif %}
+            <table class="table table-striped">
+                {% for date, schedule, other_cleaners, duty_pk in duties %}
+                    <tr>
+                        <td>{{ schedule.name }}</td>
+                        <td>{{ date }}</td>
+                        <td>
+                            {% if other_cleaners %}Together with
+                                {% for cleaner in other_cleaners %}
+                                    {{ cleaner.name }}
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form class="form-inline" method="post">
+                                {% csrf_token %}
+                                {% include 'webinterface_snippets/cleaner_switch_duty_button.html' %}
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    Keine Putzdienste zu zeigen
+                {% endfor %}
+            </table>
         </div>
         {% include "webinterface_snippets/cleaner_nextprevpage_buttons.html" %}
     </div>
