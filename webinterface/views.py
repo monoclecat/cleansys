@@ -4,7 +4,7 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
 from django.views.generic import TemplateView
 from django.views.generic.detail import DetailView
-from django.utils.text import slugify
+from django.core.paginator import Paginator
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
 from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
@@ -160,112 +160,59 @@ class CleanerView(TemplateView):
     def get(self, request, *args, **kwargs):
         try:
             cleaner = Cleaner.objects.get(slug=kwargs['slug'])
-
-            if 'page' not in kwargs or int(kwargs['page']) <= 0:
-                return redirect(
-                    reverse_lazy('webinterface:cleaner-duties',
-                                 kwargs={'slug': cleaner.slug, 'page': 1}))
-
         except Cleaner.DoesNotExist:
+            cleaner = None
             Http404("Putzer existiert nicht!")
 
-        context = self.get_context_data(**kwargs)
-        return self.render_to_response(context)
+        if 'page' not in kwargs or int(kwargs['page']) <= 0:
+            return redirect(
+                reverse_lazy('webinterface:cleaner-duties', kwargs={'slug': cleaner.slug, 'page': 1}))
 
-    def get_context_data(self, **kwargs):
-        context = super(CleanerView, self).get_context_data(**kwargs)
-        pagination = 25
+        context = {}
 
         context['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
-        context['cleaner'] = Cleaner.objects.get(slug=kwargs['slug'])
+        context['cleaner'] = cleaner
 
-        page = int(context['page'])
+        start_date = correct_dates_to_weekday(datetime.datetime.now().date() - datetime.timedelta(days=3), 6)
 
         duties = CleaningDuty.objects.filter(cleaners=context['cleaner'],
-                                             date__gte=datetime.datetime.now().date() - datetime.timedelta(days=3)
-                                             ).order_by('date')
+                                             date__gte=start_date + datetime.timedelta(days=7))
 
-        if pagination*page <= duties.count():
-            duties = duties[pagination*(page-1):pagination*page]
-        elif pagination*(page-1) < duties.count() <= pagination*page:
-            duties = duties[pagination*(page-1):]
-        else:
-            duties = []
+        pagination = Paginator(duties, 25)
+        context['page'] = pagination.get_page(kwargs['page'])
 
-        context['duties_due_now'] = []
+        context['duties_due_now'] = CleaningDuty.objects.filter(cleaners=context['cleaner'], date=start_date)
 
-        context['duties'] = []
-
-        for duty in duties:
-            schedule = duty.cleaningschedule_set.first()
-            other_cleaners_for_duty = []
-            for cleaner in duty.cleaners.all():
-                if cleaner != context['cleaner']:
-                    other_cleaners_for_duty.append(cleaner)
-            if duty.date == correct_dates_to_weekday(datetime.datetime.now().date(), 6):
-                context['duties_due_now'].append([duty.date, schedule, other_cleaners_for_duty, duty.pk])
-            else:
-                context['duties'].append([duty.date, schedule, other_cleaners_for_duty, duty.pk])
-
-        return context
+        return self.render_to_response(context)
 
 
 class CleaningScheduleView(TemplateView):
     template_name = "webinterface/cleaning_schedule.html"
 
-    def get_context_data(self, **kwargs):
-        context = super(CleaningScheduleView, self).get_context_data(**kwargs)
-        pagination = 25
+    def get(self, request, *args, **kwargs):
+        context = {}
 
-        if 'cleaner_pk' in kwargs and kwargs['cleaner_pk']:
+        if 'cleaner_slug' in kwargs and kwargs['cleaner_slug']:
             try:
-                context['highlighted_cleaner'] = Cleaner.objects.get(pk=kwargs['cleaner_pk'])
+                context['highlighted_cleaner'] = Cleaner.objects.get(slug=kwargs['cleaner_slug'])
             except Cleaner.DoesNotExist:
                 Http404("Putzer existert nicht")
 
-        if 'page' not in kwargs:
-            kwargs['page'] = 1
-
-        page = int(kwargs['page'])
-
-        if 'pk' in kwargs:
-            context['table_header'] = CleaningSchedule.objects.filter(pk=kwargs['pk'])
-            if not context['table_header'].exists():
-                Http404("Putzplan existiert nicht.")
-
-            context['schedule_pk'] = kwargs['pk']
-        else:
-            context['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
+        try:
+            context['schedule'] = CleaningSchedule.objects.get(slug=kwargs['slug'])
+        except CleaningSchedule.DoesNotExist:
+            Http404("Putzplan existiert nicht.")
 
         context['cleaners'] = Cleaner.objects.all()
 
-        one_week = datetime.timedelta(days=7)
-        date_iterator = correct_dates_to_weekday(datetime.datetime.now().date(), 6) + \
-            one_week * pagination * (page-1)
+        start_date = correct_dates_to_weekday(datetime.datetime.now().date() - datetime.timedelta(days=3), 6)
 
-        context['duties'] = []
+        duties = context['schedule'].duties.filter(date__gte=start_date)
 
-        while date_iterator < datetime.datetime.now().date() + one_week * pagination * page:
-            duties_on_date = [date_iterator]
-            schedules = []
-            for schedule in context['table_header']:
-                if schedule.defined_on_date(date_iterator):
-                    duty = schedule.duties.filter(date=date_iterator)
-                    if duty.exists():
-                        duty = duty.first()
-                        cleaners_for_duty = []
-                        for cleaner in duty.cleaners.all():
-                            cleaners_for_duty.append(cleaner)
-                        schedules.append(cleaners_for_duty)
-                    else:
-                        schedules.append("")
-                else:
-                    schedules.append(".")
-                duties_on_date.append(schedules)
-            context['duties'].append(duties_on_date)
-            date_iterator += one_week
+        pagination = Paginator(duties, 25)
+        context['page'] = pagination.get_page(kwargs['page'])
 
-        return context
+        return self.render_to_response(context)
 
 
 class ConfigView(FormView):

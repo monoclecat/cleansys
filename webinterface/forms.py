@@ -108,7 +108,7 @@ class CleanerForm(forms.ModelForm):
 class CleaningScheduleForm(forms.ModelForm):
     class Meta:
         model = CleaningSchedule
-        exclude = ('duties', )
+        exclude = ('duties', 'slug')
 
     name = forms.CharField(max_length=20, label="Putzplan Name", help_text="Der Name des Putzplans",
                            required=True, widget=forms.TextInput)

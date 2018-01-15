@@ -16,17 +16,13 @@ urlpatterns = [
     path('switch/<int:pk>/<answer>/', DutySwitchView.as_view(), name='switch-duty-answer'),
     path('switch/<int:pk>/', DutySwitchView.as_view(), name='switch-duty'),
 
-    path('^clean/<int:duty_pk>/<int:cleaner_pk>/', DutyCleanView.as_view(), name='clean-duty'),
+    path('clean/<int:duty_pk>/<int:cleaner_pk>/', DutyCleanView.as_view(), name='clean-duty'),
 
-    path('putzer/<slug:slug>/<int:page>/', CleanerView.as_view(), name='cleaner-duties'),
+    path('putzer/<slug:slug>/seite<int:page>/', CleanerView.as_view(), name='cleaner-duties'),
 
-    path('schedule/all/<int:page>/<int:cleaner_pk>/', CleaningScheduleView.as_view(),
-         name='all-schedule-view-highlight'),
-    path('schedule/all/<int:page>/', CleaningScheduleView.as_view(), name='all-schedule-view'),
-
-    path('schedule/<int:pk>/<int:page>/<int:cleaner_pk>/', CleaningScheduleView.as_view(),
+    path('putzplan/<slug:slug>/seite<int:page>/<slug:cleaner_slug>/', CleaningScheduleView.as_view(),
          name='schedule-view-highlight'),
-    path('schedule/<int:pk>/<int:page>/', CleaningScheduleView.as_view(), name='schedule-view'),
+    path('putzplan/<slug:slug>/seite<int:page>/', CleaningScheduleView.as_view(), name='schedule-view'),
 
     path('config/', login_required(ConfigView.as_view()), name='config'),
     path('results/', RedirectView.as_view(

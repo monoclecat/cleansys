@@ -83,6 +83,9 @@ class Cleaner(models.Model):
 
 
 class CleaningDuty(models.Model):
+    class Meta:
+        ordering = ("date",)
+
     cleaners = models.ManyToManyField(Cleaner)
     date = models.DateField()
     excluded = models.ManyToManyField(Cleaner, related_name="excluded")
@@ -171,6 +174,7 @@ class CleaningScheduleGroup(models.Model):
 
 class CleaningSchedule(models.Model):
     name = models.CharField(max_length=20, unique=True)
+    slug = models.CharField(max_length=20, unique=True)
 
     CLEANERS_PER_DATE_CHOICES = ((1, 'Einen'), (2, 'Zwei'))
     cleaners_per_date = models.IntegerField(default=1, choices=CLEANERS_PER_DATE_CHOICES)
@@ -195,6 +199,7 @@ class CleaningSchedule(models.Model):
         return self.tasks.split(",")
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.slug = slugify(self.name)
         super(CleaningSchedule, self).save(force_insert, force_update, using, update_fields)
 
         if self.cleaners_per_date != self.__last_cleaners_per_date or self.frequency != self.__last_frequency:

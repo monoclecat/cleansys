@@ -68,7 +68,7 @@ Putzdienste
             </div>
         </div>
 
-        {% include "webinterface_snippets/cleaner_nextprevpage_buttons.html" %}
+        {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
 
         <div class="row">
             <div class="panel panel-primary">
@@ -80,21 +80,19 @@ Putzdienste
                 <div class="well">
                     <h3>Putzdienste, die bald anstehen</h3>
                     <table class="table table-striped">
-                        {% for date, schedule, other_cleaners, duty_pk in duties_due_now %}
+                        {% for duty in duties_due_now.all %}
                             <tr class="danger">
-                                <td>{{ schedule.name }}</td>
-                                <td>{{ date }}</td>
+                                <td>{{ duty.cleaningschedule_set.first.name }}</td>
+                                <td>{{ duty.date }}</td>
                                 <td>
-                                    {% if other_cleaners %}Together with
-                                        {% for cleaner in other_cleaners %}
-                                            {{ cleaner.name }}
-                                        {% endfor %}
-                                    {% endif %}
+                                    {% for cleaner in duty.cleaners.all %}
+                                        {{ cleaner.name }}
+                                    {% endfor %}
                                 </td>
                                 <td>
                                     <form class="form-inline" method="post">
                                         {% csrf_token %}
-                                        <input type="hidden" name="source_duty_pk" value="{{ duty_pk }}">
+                                        <input type="hidden" name="source_duty_pk" value="{{ duty.pk }}">
                                         {% include 'webinterface_snippets/cleaner_switch_duty_button.html' %}
                                         <button class="btn btn-success" type="submit" name="clean"
                                             style="white-space: normal" >Lass putzen!
@@ -107,16 +105,14 @@ Putzdienste
                 </div>
             {% endif %}
             <table class="table table-striped">
-                {% for date, schedule, other_cleaners, duty_pk in duties %}
+                {% for duty in page %}
                     <tr>
-                        <td>{{ schedule.name }}</td>
-                        <td>{{ date }}</td>
+                        <td>{{ duty.cleaningschedule_set.first.name }}</td>
+                        <td>{{ duty.date }}</td>
                         <td>
-                            {% if other_cleaners %}Together with
-                                {% for cleaner in other_cleaners %}
-                                    {{ cleaner.name }}
-                                {% endfor %}
-                            {% endif %}
+                            {% for cleaner in duty.cleaners.all %}
+                                {{ cleaner.name }}
+                            {% endfor %}
                         </td>
                         <td>
                             <form class="form-inline" method="post">
@@ -130,6 +126,6 @@ Putzdienste
                 {% endfor %}
             </table>
         </div>
-        {% include "webinterface_snippets/cleaner_nextprevpage_buttons.html" %}
+        {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
     </div>
 {% endblock %}

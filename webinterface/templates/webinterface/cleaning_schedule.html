@@ -19,12 +19,7 @@ Putzdienste
                 <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
                     <a class="btn btn-default btn-lg btn-block
                         {% if not highlighted_cleaner %} active {% endif %}"
-                        role="button"
-                        {% if schedule_pk %}
-                                href="{% url 'webinterface:schedule-view' schedule_pk page %}"
-                            {% else %}
-                                href="{% url 'webinterface:all-schedule-view' page %}"
-                            {% endif %}>
+                        role="button" href="{% url 'webinterface:schedule-view' schedule.slug page.number %}">
                         <span class="glyphicon glyphicon-home"></span> Zurücksetzen
                     </a>
                 </div>
@@ -34,56 +29,13 @@ Putzdienste
                         <a class="btn btn-default btn-lg btn-block
                             {% ifequal highlighted_cleaner.name cleaner.name %} active {% endifequal %}"
                             role="button"
-                            {% if schedule_pk %}
-                                href="{% url 'webinterface:schedule-view-highlight' schedule_pk page cleaner.pk %}"
-                            {% else %}
-                                href="{% url 'webinterface:all-schedule-view-highlight' page cleaner.pk %}"
-                            {% endif %}>
+                            href="{% url 'webinterface:schedule-view-highlight' schedule.slug page.number cleaner.slug %}">
                             <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
                         </a>
                     </div>
                 {% endfor %}
         </div>
-        <div class="row" style="padding: 1em">
-            <div class="col-xs-6" style="padding: 5px">
-                {% if page > "0" %}
-                    <a class="btn btn-success btn-block" role="button"
-                        {% if schedule_pk %}
-                            {% if highlighted_cleaner %}
-                                href="{% url 'webinterface:schedule-view-highlight' schedule_pk page highlighted_cleaner.pk %}"
-                            {% else %}
-                                href="{% url 'webinterface:schedule-view' schedule_pk page|add:"-1" %}"
-                            {% endif %}
-                        {% else %}
-                            {% if highlighted_cleaner %}
-                                href="{% url 'webinterface:all-schedule-view-highlight' page|add:"-1" highlighted_cleaner.pk  %}"
-                            {% else %}
-                                href="{% url 'webinterface:all-schedule-view' page|add:"-1" %}"
-                            {% endif %}
-                        {% endif %}>
-                         <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
-                    </a>
-                {% endif %}
-            </div>
-            <div class="col-xs-6" style="padding: 5px">
-                <a class="btn btn-success btn-block" role="button"
-                    {% if schedule_pk %}
-                        {% if highlighted_cleaner %}
-                            href="{% url 'webinterface:schedule-view-highlight' schedule_pk page highlighted_cleaner.pk %}"
-                        {% else %}
-                            href="{% url 'webinterface:schedule-view' schedule_pk page|add:"1" %}"
-                        {% endif %}
-                    {% else %}
-                        {% if highlighted_cleaner %}
-                            href="{% url 'webinterface:all-schedule-view-highlight' page|add:"1" highlighted_cleaner.pk  %}"
-                        {% else %}
-                            href="{% url 'webinterface:all-schedule-view' page|add:"1" %}"
-                        {% endif %}
-                    {% endif %}>
-                    <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
-                </a>
-            </div>
-        </div>
+        {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
         <div class="row">
             <div class="panel panel-primary">
                 <div class="panel-heading">
@@ -93,85 +45,29 @@ Putzdienste
                 </div>
             </div>
             <div class="row">
-                {% if table_header.count <= 3 %}
-                    <div class="col-sm-8 col-sm-offset-2
-                    col-md-6 col-md-offset-3">
-                {% endif %}
-                <table class="table table-striped table-bordered">
-                    <tr class="info">
-                        <th>Datum</th>
-                        {% for schedule_name in table_header %}
-                            <th>{{ schedule_name }}</th>
-                        {% endfor %}
-                    </tr>
-
-                    {% for date in duties %}
-                        <tr>
-                            <td>{{ date.0 }}</td>
-                            {% for duty in date.1 %}
-                                {% ifequal duty "." %}
-                                    <td style="background-color:#d3d3d3"> </td>
-                                {% else %}
-                                    <td {% if highlighted_cleaner in duty %}class="success" {% endif %}>
-                                        {% ifnotequal duty "" %}
-                                            {% for cleaner in duty %}
-                                                {{ cleaner.name }}
-                                            {% empty %}
-                                                No cleaners
-                                            {% endfor %}
-                                        {% endifnotequal %}
-                                    </td>
-                                {% endifequal %}
-                            {% endfor %}
+                <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3">
+                    <table class="table table-striped table-bordered">
+                        <tr class="info">
+                            <th>Datum</th>
+                            <th>{{ schedule.name }}</th>
                         </tr>
-                    {% empty %}
 
-                    {% endfor %}
-                </table>
-                {% if table_header.count <= 3 %}
-                    </div>
-                {% endif %}
+                        {% for duty in page %}
+                            <tr>
+                                <td>{{ duty.date }}</td>
+                                <td {% if highlighted_cleaner in duty.cleaners.all %}class="success" {% endif %}>
+                                    {% for cleaner in duty.cleaners.all %}
+                                        {{ cleaner.name }}
+                                    {% empty %}
+                                        Keine Putzer
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </div>
             </div>
         </div>
-        <div class="row" style="padding: 1em">
-            <div class="col-xs-6" style="padding: 5px">
-                {% if page > "0" %}
-                    <a class="btn btn-success btn-block" role="button"
-                        {% if schedule_pk %}
-                            {% if highlighted_cleaner %}
-                                href="{% url 'webinterface:schedule-view-highlight' schedule_pk page highlighted_cleaner.pk %}"
-                            {% else %}
-                                href="{% url 'webinterface:schedule-view' schedule_pk page|add:"-1" %}"
-                            {% endif %}
-                        {% else %}
-                            {% if highlighted_cleaner %}
-                                href="{% url 'webinterface:all-schedule-view-highlight' page|add:"-1" highlighted_cleaner.pk  %}"
-                            {% else %}
-                                href="{% url 'webinterface:all-schedule-view' page|add:"-1" %}"
-                            {% endif %}
-                        {% endif %}>
-                         <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
-                    </a>
-                {% endif %}
-            </div>
-            <div class="col-xs-6" style="padding: 5px">
-                <a class="btn btn-success btn-block" role="button"
-                    {% if schedule_pk %}
-                        {% if highlighted_cleaner %}
-                            href="{% url 'webinterface:schedule-view-highlight' schedule_pk page highlighted_cleaner.pk %}"
-                        {% else %}
-                            href="{% url 'webinterface:schedule-view' schedule_pk page|add:"1" %}"
-                        {% endif %}
-                    {% else %}
-                        {% if highlighted_cleaner %}
-                            href="{% url 'webinterface:all-schedule-view-highlight' page|add:"1" highlighted_cleaner.pk  %}"
-                        {% else %}
-                            href="{% url 'webinterface:all-schedule-view' page|add:"1" %}"
-                        {% endif %}
-                    {% endif %}>
-                    <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
-                </a>
-            </div>
-        </div>
+        {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
     </div>
 {% endblock %}

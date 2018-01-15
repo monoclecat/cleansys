@@ -16,7 +16,7 @@ Willkommen
                     {% for schedule in schedule_list %}
                         <div class="col-xs-12 col-sm-4" style="padding: 5px">
                             <a class="btn btn-primary btn-block" role="button"
-                               href="{% url 'webinterface:schedule-view' schedule.pk 1 %}">
+                               href="{% url 'webinterface:schedule-view' schedule.slug 1 %}">
                                 <span class="glyphicon glyphicon-calendar"></span> {{ schedule.name }}
                             </a>
                         </div>
