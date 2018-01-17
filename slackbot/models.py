@@ -1,5 +1,5 @@
 from django.db import models
-from webinterface.models import Cleaner, CleaningDuty
+from webinterface.models import Cleaner, Duty
 
 
 

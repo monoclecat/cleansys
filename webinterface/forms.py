@@ -17,7 +17,7 @@ class ConfigForm(forms.Form):
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
 
-        start_date = datetime.datetime.now().date()
+        start_date = datetime.date.today()
         end_date = start_date + datetime.timedelta(days=3*30)
         initial['start_date'] = str(start_date.day)+"."+str(start_date.month)+"."+str(start_date.year)
         initial['end_date'] = str(end_date.day)+"."+str(end_date.month)+"."+str(end_date.year)

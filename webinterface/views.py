@@ -25,7 +25,7 @@ class WelcomeView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(WelcomeView, self).get_context_data(**kwargs)
-        context['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.datetime.now().date())
+        context['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.date.today())
         context['schedule_list'] = CleaningSchedule.objects.all()
 
         return context
@@ -37,7 +37,7 @@ class DutyCleanView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(DutyCleanView, self).get_context_data(**kwargs)
         try:
-            context['duty'] = CleaningDuty.objects.get(pk=kwargs['duty_pk'])
+            context['duty'] = Duty.objects.get(pk=kwargs['duty_pk'])
             context['cleaner'] = Cleaner.objects.get(pk=kwargs['cleaner_pk'])
 
             other_cleaners_for_duty = []
@@ -49,7 +49,7 @@ class DutyCleanView(TemplateView):
             context['schedule'] = context['duty'].cleaningschedule_set.first()
             context['task_cleaner_pairs'] = context['duty'].get_tasks()
 
-        except (CleaningDuty.DoesNotExist, Cleaner.DoesNotExist):
+        except (Duty.DoesNotExist, Cleaner.DoesNotExist):
             Http404("Dieser Putzdienst oder dieser Putzer existieren nicht.")
 
         return context
@@ -58,7 +58,7 @@ class DutyCleanView(TemplateView):
         if 'cleaned' in request.POST and request.POST['cleaned']:
             try:
                 cleaner = Cleaner.objects.get(pk=kwargs['cleaner_pk'])
-                duty = CleaningDuty.objects.get(pk=kwargs['duty_pk'])
+                duty = Duty.objects.get(pk=kwargs['duty_pk'])
                 if not duty.task_completed(request.POST['cleaned'], cleaner):
                     raise SuspiciousOperation("Task name not in tasks or cleaner not in assigned cleaners for date.")
                 duty.save()
@@ -66,8 +66,8 @@ class DutyCleanView(TemplateView):
                 return HttpResponseRedirect(reverse_lazy(
                     'webinterface:clean-duty',
                     kwargs={'cleaner_pk': cleaner.pk, 'duty_pk': duty.pk}))
-            except (Cleaner.DoesNotExist, CleaningDuty.DoesNotExist):
-                raise SuspiciousOperation("Cleaner or CleaningDuty does not exist.")
+            except (Cleaner.DoesNotExist, Duty.DoesNotExist):
+                raise SuspiciousOperation("Cleaner or Duty does not exist.")
 
 
 class DutySwitchView(TemplateView):
@@ -112,9 +112,9 @@ class DutySwitchView(TemplateView):
                 if key_list:
                     if key_list[0] == "select":
                         try:
-                            duty_switch.set_selected(Cleaner.objects.get(pk=key_list[1]), CleaningDuty.objects.get(pk=key_list[2]))
+                            duty_switch.set_selected(Cleaner.objects.get(pk=key_list[1]), Duty.objects.get(pk=key_list[2]))
                             duty_switch.save()
-                        except (Cleaner.DoesNotExist, CleaningDuty.DoesNotExist):
+                        except (Cleaner.DoesNotExist, Duty.DoesNotExist):
                             raise SuspiciousOperation("Invalid PKs")
 
         return HttpResponseRedirect(reverse_lazy(
@@ -130,19 +130,19 @@ class CleanerView(TemplateView):
             if 'source_duty_pk' in request.POST and request.POST['source_duty_pk']:
                 try:
                     source_cleaner = Cleaner.objects.get(pk=kwargs['pk'])
-                    source_duty = CleaningDuty.objects.get(pk=request.POST['source_duty_pk'])
+                    source_duty = Duty.objects.get(pk=request.POST['source_duty_pk'])
                     duty_to_switch = DutySwitch.objects.create(source_cleaner=source_cleaner,
                                                                source_duty=source_duty)
                     return HttpResponseRedirect(reverse_lazy(
                         'webinterface:switch-duty', kwargs={'pk': duty_to_switch.pk}))
-                except (Cleaner.DoesNotExist, CleaningDuty.DoesNotExist):
+                except (Cleaner.DoesNotExist, Duty.DoesNotExist):
                     raise SuspiciousOperation("Invalid PKs")
             else:
                 raise SuspiciousOperation("Invalid POST data sent by client")
         elif 'clean' in request.POST:
             if 'source_duty_pk' in request.POST and request.POST['source_duty_pk']:
                 try:
-                    duty_to_clean = CleaningDuty.objects.get(pk=request.POST['source_duty_pk'])
+                    duty_to_clean = Duty.objects.get(pk=request.POST['source_duty_pk'])
                     if duty_to_clean.tasks is None:
                         duty_to_clean.initiate_tasks()
                         duty_to_clean.save()
@@ -150,8 +150,8 @@ class CleanerView(TemplateView):
                     return HttpResponseRedirect(reverse_lazy(
                         'webinterface:clean-duty', kwargs={'duty_pk': duty_to_clean.pk, 'cleaner_pk': kwargs['pk']}))
 
-                except CleaningDuty.DoesNotExist:
-                    raise SuspiciousOperation("Invalid CleaningDuty PK")
+                except Duty.DoesNotExist:
+                    raise SuspiciousOperation("Invalid Duty PK")
 
         return HttpResponseRedirect(reverse_lazy(
             'webinterface:cleaner-duties',
@@ -173,15 +173,15 @@ class CleanerView(TemplateView):
         context['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
         context['cleaner'] = cleaner
 
-        start_date = correct_dates_to_weekday(datetime.datetime.now().date() - datetime.timedelta(days=3), 6)
+        start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=3), 6)
 
-        duties = CleaningDuty.objects.filter(cleaners=context['cleaner'],
+        duties = Duty.objects.filter(cleaners=context['cleaner'],
                                              date__gte=start_date + datetime.timedelta(days=7))
 
         pagination = Paginator(duties, 25)
         context['page'] = pagination.get_page(kwargs['page'])
 
-        context['duties_due_now'] = CleaningDuty.objects.filter(cleaners=context['cleaner'], date=start_date)
+        context['duties_due_now'] = Duty.objects.filter(cleaners=context['cleaner'], date=start_date)
 
         return self.render_to_response(context)
 
@@ -205,7 +205,7 @@ class CleaningScheduleView(TemplateView):
 
         context['cleaners'] = Cleaner.objects.all()
 
-        start_date = correct_dates_to_weekday(datetime.datetime.now().date() - datetime.timedelta(days=3), 6)
+        start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=3), 6)
 
         duties = context['schedule'].duties.filter(date__gte=start_date)
 
@@ -222,10 +222,10 @@ class ConfigView(FormView):
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
         context['schedule_list'] = CleaningSchedule.objects.all()
-        all_active_cleaners = Cleaner.objects.filter(moved_out__gte=datetime.datetime.now().date())
+        all_active_cleaners = Cleaner.objects.filter(moved_out__gte=datetime.date.today())
         context['cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=False)
         context['no_slack_cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=True)
-        context['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=datetime.datetime.now().date())
+        context['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=datetime.date.today())
         context['schedule_group_list'] = CleaningScheduleGroup.objects.all()
         return context
 

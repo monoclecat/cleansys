@@ -44,12 +44,6 @@ class Cleaner(models.Model):
     def pending_dutyswitch_requests(self):
         return DutySwitch.objects.filter(source_cleaner=self, status=1)
 
-    def paginated_duties(self):
-        page_size = 25
-        start_from = datetime.datetime.now().date() - datetime.timedelta(days=3)
-        duties = CleaningDuty.objects.filter(date__gte=correct_dates_to_weekday(start_from, 6))
-
-
     def delete(self, using=None, keep_parents=False):
         try:
             associated_group = CleaningScheduleGroup.objects.get(cleaners=self)
@@ -82,84 +76,43 @@ class Cleaner(models.Model):
                         schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
 
-class CleaningDuty(models.Model):
-    class Meta:
-        ordering = ("date",)
+class Task(models.Model):
+    name = models.CharField(max_length=20)
+    help_text = models.CharField(max_length=200, null=True)
 
-    cleaners = models.ManyToManyField(Cleaner)
+
+class InfoForDate(models.Model):
+    tasks = models.ManyToManyField(Task)
     date = models.DateField()
-    excluded = models.ManyToManyField(Cleaner, related_name="excluded")
+    excluded = models.ManyToManyField(Cleaner)
 
-    tasks = models.CharField(max_length=200, null=True)
-    # String representation of a list of lists:[<task name>, <cleaner pk that finished task>]
-    # tasks is only filled when an assigned cleaner presses the "Lass putzen" button, initiating the cleaning process
-    # <cleaner pk that finished task> stays empty until a cleaner assigned on that date says he finished that task
-    # String representation: <task_name>,<cleaner pk that finished task>;<task_name,...
+
+class Complaint(models.Model):
+    tasks_in_question = models.ManyToManyField(Task)
+    comment = models.CharField(max_length=200)
+    created = models.DateField(auto_now_add=datetime.date.today)
+
+
+class Assignment(models.Model):
+    class Meta:
+        ordering = ('created',)
+
+    cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
+    cleaners_comment = models.CharField(max_length=200)
+    created = models.DateField(auto_now_add=datetime.date.today)
+    date = models.DateField()
+    cleaned = models.ManyToManyField(Task)
 
     def __str__(self):
-        string = ""
-        for cleaner in self.cleaners.all():
-            string += cleaner.name + ", "
-        return string[:-2]
+        return self.cleaner.name
 
-    def get_tasks(self):
-        """Parses destinations field into a list and
-        returns [wish destination pair], [[list of following destinations]]"""
-        task_list = []
-        if self.tasks:
-            for pair in self.tasks.split(";"):
-                task_name, cleaner_pk = pair.split(",")
-                try:
-                    if cleaner_pk:
-                        cleaner = Cleaner.objects.get(pk=cleaner_pk)
-                    else:
-                        cleaner = None
+    def open_tasks(self):
+        # TODO
+        pass
 
-                    task_list.append([task_name, cleaner])
-                except Cleaner.DoesNotExist:
-                    pass
-        return task_list
-
-    def set_tasks(self, task_list):
-        task_string = ""
-        for task_name, cleaner in task_list:
-            task_string += task_name + ","
-            if cleaner is not None:
-                task_string += str(cleaner.pk)
-            task_string += ";"
-        task_string = task_string[:-1]
-        self.tasks = task_string
-
-    def task_completed(self, completed_task_name, by_cleaner):
-        if by_cleaner not in self.cleaners.all():
-            return False
-
-        completed_task_name_exists = False
-        new_tasks = ""
-        for task_name, cleaner in self.get_tasks():
-            if task_name == completed_task_name:
-                cleaner = by_cleaner
-                completed_task_name_exists = True
-            new_tasks += task_name + ","
-            if cleaner:
-                new_tasks += str(cleaner.pk)
-            new_tasks += ";"
-
-        if not completed_task_name_exists:
-            return False
-
-        new_tasks = new_tasks[:-1]
-        self.tasks = new_tasks
-        return True
-
-    def initiate_tasks(self):
-        task_string = ""
-        task_list = self.cleaningschedule_set.first().get_tasks()
-        if not task_list == ['']:
-            for task_name in task_list:
-                task_string += task_name + ",;"
-            task_string = task_string[:-1]
-            self.tasks = task_string
+    def task_completed(self):
+        # TODO
+        pass
 
 
 class CleaningScheduleGroup(models.Model):
@@ -182,7 +135,9 @@ class CleaningSchedule(models.Model):
     FREQUENCY_CHOICES = ((1, 'Jede Woche'), (2, 'Gerade Wochen'), (3, 'Ungerade Wochen'))
     frequency = models.IntegerField(default=1, choices=FREQUENCY_CHOICES)
 
-    duties = models.ManyToManyField(CleaningDuty, blank=True)
+    assignments = models.ManyToManyField(Assignment)
+    info_for_dates = models.ManyToManyField(InfoForDate)
+
     schedule_group = models.ManyToManyField(CleaningScheduleGroup, blank=True)
 
     tasks = models.CharField(max_length=200, null=True)
@@ -203,14 +158,15 @@ class CleaningSchedule(models.Model):
         super(CleaningSchedule, self).save(force_insert, force_update, using, update_fields)
 
         if self.cleaners_per_date != self.__last_cleaners_per_date or self.frequency != self.__last_frequency:
-            all_duty_dates = list(self.duties.values_list('date', flat=True))
-            self.duties.all().delete()
+            all_duty_dates = list(self.info_for_dates.values_list('date', flat=True))
+            self.info_for_dates.all().delete()
+            self.assignments.all().delete()
             for date in all_duty_dates:
                 self.assign_cleaning_duty(date)
 
     def delete(self, using=None, keep_parents=False):
-        for duty in self.duties.all():
-            duty.delete()
+        self.info_for_dates.all().delete()
+        self.assignments.all().delete()
         super().delete(using, keep_parents)
 
     def deployment_ratios(self, for_date, cleaners=None):
@@ -230,11 +186,13 @@ class CleaningSchedule(models.Model):
             iterate_over = cleaners if cleaners else active_cleaners_on_date
 
             for cleaner in iterate_over:
-                all_duties = self.duties.filter(date__range=(cleaner.moved_in, cleaner.moved_out))
-                if all_duties.exists():
-                    proportion__all_duties_he_cleans = all_duties.filter(cleaners=cleaner).count() / all_duties.count()
+                all_assignments = self.assignments.filter(date__range=(cleaner.moved_in, cleaner.moved_out))
+
+                if all_assignments.exists():
+                    proportion__self_assigned = all_assignments.filter(
+                        cleaner=cleaner).count() / all_assignments.count()
                     ratios.append([cleaner,
-                                   proportion__all_duties_he_cleans / proportion__cleaners_assigned_per_week])
+                                   proportion__self_assigned / proportion__cleaners_assigned_per_week])
         return sorted(ratios, key=itemgetter(1), reverse=False)
 
     def defined_on_date(self, date):
@@ -249,25 +207,21 @@ class CleaningSchedule(models.Model):
         one_week = datetime.timedelta(days=7)
 
         if clear_existing:
-            self.duties.filter(date__range=(start_date, end_date)).delete()
+            self.assignments.filter(date__range=(start_date, end_date)).delete()
 
         date_iterator = start_date
         while date_iterator <= end_date:
-            if clear_existing or not clear_existing and not self.duties.filter(date=date_iterator).exists():
+            if clear_existing or not clear_existing and not self.assignments.filter(date=date_iterator).exists():
                 self.assign_cleaning_duty(date_iterator)
             date_iterator += one_week
 
     def assign_cleaning_duty(self, date):
-        """Generates a new CleaningDuty and assigns Cleaners to it.
+        """Generates a new Duty and assigns Cleaners to it.
         If self.frequency is set to 'Even weeks' and it is not an even week, this function fails silently.
         The same is true if self.frequency is set to 'Odd weeks'."""
 
         if self.defined_on_date(date):
-
-            duty, was_created = self.duties.get_or_create(date=date)
-
-            duty.cleaners.clear()
-            self.duties.add(duty)
+            info_for_date, was_created = self.info_for_dates.get_or_create(date=date)
 
             ratios = self.deployment_ratios(date)
             if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
@@ -281,21 +235,22 @@ class CleaningSchedule(models.Model):
             if ratios:
                 for i in range(min(self.cleaners_per_date, len(ratios))):
                     for cleaner, ratio in ratios:
-                        if cleaner not in duty.cleaners.all() and cleaner not in duty.excluded.all():
-                            if cleaner.cleaningduty_set.filter(date=date).count() == 0:
-                                duty.cleaners.add(cleaner)
+                        if not self.assignments.filter(date=date, cleaner=cleaner).exists() and \
+                                cleaner not in info_for_date.excluded.all():
+                            if cleaner.assignment_set.filter(date=date).count() == 0:
+                                self.assignments.create(date=date, cleaner=cleaner)
                                 logging.debug("          {} inserted!".format(cleaner.name))
                                 break
-                            elif not last_resort_cleaner and cleaner.cleaningduty_set.filter(date=date).count() == 1:
+                            elif not last_resort_cleaner and cleaner.assignment_set.filter(date=date).count() == 1:
                                 last_resort_cleaner = cleaner
                             logging.debug("{} is not free.".format(cleaner.name))
                     else:
                         if last_resort_cleaner:
                             logging.debug("Nobody has 0 duties on date so we choose {}".format(last_resort_cleaner))
-                            duty.cleaners.add(last_resort_cleaner)
+                            self.assignments.create(date=date, cleaner=last_resort_cleaner)
                         else:
                             logging.debug("NOBODY HAS 1 DUTY ON DATE! We choose {}".format(ratios[0][0]))
-                            duty.cleaners.add(ratios[0][0])
+                            self.assignments.create(date=date, cleaner=ratios[0][0])
 
             logging.debug("")
 
@@ -306,7 +261,7 @@ def group_cleaners_changed(instance, action, pk_set, **kwargs):
         one_week = datetime.timedelta(days=7)
         for cleaner_pk in pk_set:
             cleaner = Cleaner.objects.get(pk=cleaner_pk)
-            first_duty, last_duty = correct_dates_to_weekday([min(cleaner.moved_in, datetime.datetime.now().date()),
+            first_duty, last_duty = correct_dates_to_weekday([min(cleaner.moved_in, datetime.date.today()),
                                                               cleaner.moved_out], 6)
             date_iterator = first_duty
             while date_iterator <= last_duty:
@@ -329,16 +284,13 @@ m2m_changed.connect(group_cleaners_changed, sender=CleaningScheduleGroup.cleaner
 
 
 class DutySwitch(models.Model):
-    source_cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
-    source_duty = models.ForeignKey(CleaningDuty, on_delete=models.CASCADE)
+    created = models.DateField(auto_now_add=datetime.date.today)
 
-    selected_cleaner = models.ForeignKey(Cleaner, on_delete=models.SET_NULL, null=True, related_name="selected_cleaner")
-    selected_duty = models.ForeignKey(CleaningDuty, on_delete=models.SET_NULL, null=True, related_name="selected_duty")
+    source_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
 
-    destinations = models.CharField(max_length=100, null=True)
-    # destinations is a string representation of a list of lists [<cleanerpk>, <dutypk>] which are suitable candidates
-    # for the source to switch with. Example: <cleanerpk>,<dutypk>;<cleanerpk>,<dutypk>;<cleanerpk>,<dutypk>
-    # destinations is a FIFO type stack, the wish destination is always the first pair of PKs
+    selected_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True)
+
+    destinations = models.ManyToManyField(Assignment)
 
     STATES = ((0, 'Waiting on source choice'), (1, 'Waiting on approval for selected'), (2, 'Selected was rejected'))
     status = models.IntegerField(choices=STATES, default=0)
@@ -348,106 +300,58 @@ class DutySwitch(models.Model):
     # If the destination denies approval, status is set to 2 because the source needs to select a new
     # destination. The cycle begins from the start
 
-    def get_destinations(self):
-        """Parses destinations field into a list and
-        returns [wish destination pair], [[list of following destinations]]"""
-        dest_list = []
-        for pair in self.destinations.split(";"):
-            cleaner_pk, duty_pk = pair.split(",")
-            try:
-                dest_list.append([Cleaner.objects.get(pk=cleaner_pk), CleaningDuty.objects.get(pk=duty_pk)])
-            except (Cleaner.DoesNotExist, CleaningDuty.DoesNotExist):
-                pass
-        return dest_list
-
-    def set_selected(self, cleaner, duty):
-        self.selected_cleaner = cleaner
-        self.selected_duty = duty
+    def set_selected(self, assignment):
+        self.selected_assignment = assignment
         self.status = 1
 
-    def set_destinations(self, dest_list):
-        dest_string = ""
-        for cleaner_pk, duty_pk in dest_list:
-            dest_string += str(cleaner_pk) + "," + str(duty_pk)
-            dest_string += ";"
-        dest_string = dest_string[:-1]
-        return dest_string
-
     def selected_was_accepted(self):
-        self.source_duty.excluded.add(self.source_cleaner)
-        self.source_duty.cleaners.remove(self.source_cleaner)
-        self.source_duty.cleaners.add(self.selected_cleaner)
+        try:
+            info_for_date = InfoForDate.objects.get(date=self.source_assignment.date)
+        except InfoForDate.DoesNotExist:
+            return
+        info_for_date.excluded.add(self.source_assignment.cleaner)
 
-        self.selected_duty.cleaners.remove(self.selected_cleaner)
-        self.selected_duty.cleaners.add(self.source_cleaner)
-
-        confirmation_text = "Dein Tausch war erfolgreich!"
-        # TODO send confirmation to source and destination
+        Assignment.objects.create(date=self.source_assignment.date, cleaner=self.selected_assignment.cleaner)
+        Assignment.objects.create(date=self.selected_assignment.date, cleaner=self.source_assignment.cleaner)
+        # TODO Remember to only take first n assignments when selecting assignments on date, we are not deleting old assignments!
 
         self.delete()
 
     def selected_was_cancelled(self):
-        self.selected_duty = None
-        self.selected_cleaner = None
+        self.selected_assignment = None
         self.status = 0
 
     def selected_was_rejected(self):
-        old_dest = self.get_destinations()
-        new_dest = []
-        for dest_cleaner, dest_duty in old_dest:
-            if not self.selected_cleaner.pk == dest_cleaner.pk and not self.selected_duty.pk == dest_duty.pk:
-                new_dest.append([dest_cleaner.pk, dest_duty.pk])
-        self.set_destinations(new_dest)
-
-        self.selected_duty = None
-        self.selected_cleaner = None
+        self.destinations.remove(self.selected_assignment)
+        self.selected_assignment = None
         self.status = 2
-
-        confirmation_text = "Die Anfrage wurde erfolgreich abgelehnt"
-        new_options_text = "Deine Anfrage wurde abgeleht. Wähle bitte eine der weiteren Optionen"
-
-        # TODO send message to source with new options and confirmation to destination
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         if not self.destinations:
-            duty = self.source_duty
-            schedule = duty.cleaningschedule_set.first()
+            schedule = self.source_assignment.cleaningschedule_set.first()
 
-            ratios = schedule.deployment_ratios(duty.date)
+            ratios = schedule.deployment_ratios(self.source_assignment.date)
             logging.debug("------------ Looking for replacement cleaners -----------")
-            free_cleaners = []
-            one_duty_cleaners = []
+            free_cleaners = models.ManyToManyField(Assignment)
+            one_duty_cleaners = models.ManyToManyField(Assignment)
             for cleaner, ratio in ratios:
                 logging.debug(
-                    "{}:   Not in duty:{} Duties today:{}".format(cleaner.name, cleaner not in duty.cleaners.all(),
-                                                                             cleaner.cleaningduty_set.filter(
-                                                                                 date=duty.date).count()))
-                if cleaner not in duty.cleaners.all():
-                    if cleaner.cleaningduty_set.filter(date=duty.date).count() == 0:
-                        free_cleaners.append(cleaner)
-                    elif cleaner.cleaningduty_set.filter(date=duty.date).count() == 1:
-                        one_duty_cleaners.append(cleaner)
+                    "{}:   Not in duty:{} Duties today:{}".
+                        format(cleaner.name,
+                               schedule.assignments.filter(date=self.source_assignment.date, cleaner=cleaner).exists(),
+                               cleaner.duty_set.filter(date=self.source_assignment.date).count()))
+
+                if not schedule.assignments.filter(date=self.source_assignment.date, cleaner=cleaner).exists():
+                    if cleaner.assignment_set.filter(date=self.source_assignment.date).count() == 0:
+                        free_cleaners.add(schedule.assignments.filter(cleaners=cleaner, date__gt=self.source_assignment.date))
+                    elif cleaner.assignment_set.filter(date=self.source_assignment.date).count() == 1:
+                        one_duty_cleaners.add(schedule.assignments.filter(cleaners=cleaner, date__gt=self.source_assignment.date))
 
             if free_cleaners:
-                replacement_cleaners = free_cleaners
+                self.destinations = free_cleaners
             else:
-                replacement_cleaners = one_duty_cleaners
-
-            if len(replacement_cleaners) >= 3:
-                replacement_cleaners = replacement_cleaners[:3]
-
-            logging.debug("Replacement cleaners: {}".format(replacement_cleaners))
-
-            replacement_duties = []
-            for cleaner in replacement_cleaners:
-                duties = schedule.duties.filter(cleaners=cleaner, date__gt=duty.date).order_by('date')
-                if duties.count() >= 2:
-                    duties = duties[:2]
-                for repl_duty in duties:
-                    replacement_duties.append([cleaner.pk, repl_duty.pk])
-
-            self.destinations = self.set_destinations(replacement_duties)
+                self.destinations = one_duty_cleaners
 
         super().save(force_insert, force_update, using, update_fields)
 
