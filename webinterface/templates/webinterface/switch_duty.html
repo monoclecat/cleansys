@@ -21,9 +21,9 @@ Putzdienst tauschen
             <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="padding: 0.3em">
                 <div class="panel panel-primary">
                     <div class="panel-heading">
-                        <h2>Hallo {{ duty_switch.source_assignment.cleaner.name }}, wie ich sehe möchtest du
-                            deinen Putzdienst für {{ duty_switch.source_assignment.cleaningschedule_set.first.name }}
-                            am {{ duty_switch.source_assignment.date }} tauschen.</h2>
+                        <h3>Hallo {{ duty_switch.source_assignment.cleaner.name }}, wie ich sehe möchtest du
+                            deinen Putzdienst für {{ duty_switch.source_assignment.schedule.name }}
+                            am {{ duty_switch.source_assignment.date }} tauschen.</h3>
                     </div>
                     <div class="panel-body">
                         {% if duty_switch.selected %}
@@ -76,7 +76,7 @@ Putzdienst tauschen
             <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="padding: 0.3em">
                 <div class="panel panel-primary">
                     <div class="panel-heading">
-                        <h1>{{ duty_switch.source_assignment.cleaningschedule_set.first.name }}</h1>
+                        <h1>{{ duty_switch.source_assignment.schedule.name }}</h1>
                         <h4>{{ duty_switch.source_assignment.cleaner.name }} möchte folgende Dienste tauschen:</h4>
                     </div>
                 <div class="panel-body">

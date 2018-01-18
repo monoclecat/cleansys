@@ -25,7 +25,7 @@ class WelcomeView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(WelcomeView, self).get_context_data(**kwargs)
         context['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.date.today())
-        context['schedule_list'] = CleaningSchedule.objects.all()
+        context['schedule_list'] = Schedule.objects.all()
 
         return context
 
@@ -41,10 +41,10 @@ class AssignmentView(UpdateView):
         context = super(AssignmentView, self).get_context_data(**kwargs)
 
         try:
-            context['tasks'] = self.object.cleaningschedule_set.first().info_for_dates.get(date=self.object.date).tasks.all()
-        except InfoForDate.DoesNotExist:
-            logging.error("InfoForDate does not exist on date!")
-            raise Exception("InfoForDate does not exist on date!")
+            context['tasks'] = self.object.schedule.cleaningday_set.get(date=self.object.date).tasks.all()
+        except CleaningDay.DoesNotExist:
+            logging.error("CleaningDay does not exist on date!")
+            raise Exception("CleaningDay does not exist on date!")
 
         context['assignment'] = self.object
         return context
@@ -151,16 +151,16 @@ class CleanerView(TemplateView):
             if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
                 try:
                     assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
-                    schedule = assignment.cleaningschedule_set.first()
+                    schedule = assignment.schedule
                     try:
-                        info_for_date = schedule.info_for_dates.get(date=assignment.date)
-                    except InfoForDate.DoesNotExist:
-                        info_for_date = None
-                        raise SuspiciousOperation("Invalid InfoForDate PK")
+                        cleaning_day = schedule.cleaningday_set.get(date=assignment.date)
+                    except CleaningDay.DoesNotExist:
+                        cleaning_day = None
+                        raise SuspiciousOperation("Invalid CleaningDay PK")
 
-                    if not info_for_date.tasks.all():
-                        info_for_date.initiate_tasks()
-                        info_for_date.save()
+                    if not cleaning_day.tasks.all():
+                        cleaning_day.initiate_tasks()
+                        cleaning_day.save()
 
                     return HttpResponseRedirect(reverse_lazy(
                         'webinterface:clean-duty', kwargs={'assignment_pk': assignment.pk}))
@@ -187,7 +187,7 @@ class CleanerView(TemplateView):
 
         context = {}
 
-        context['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
+        context['table_header'] = Schedule.objects.all().order_by('frequency')
         context['cleaner'] = cleaner
 
         start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=2), 6)
@@ -216,17 +216,17 @@ class CleaningScheduleView(TemplateView):
                 Http404("Putzer existert nicht")
 
         try:
-            context['schedule'] = CleaningSchedule.objects.get(slug=kwargs['slug'])
-        except CleaningSchedule.DoesNotExist:
+            context['schedule'] = Schedule.objects.get(slug=kwargs['slug'])
+        except Schedule.DoesNotExist:
             Http404("Putzplan existiert nicht.")
 
         context['cleaners'] = Cleaner.objects.all()
 
         start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=2), 6)
 
-        assignments = context['schedule'].assignments.filter(date__gte=start_date).order_by('date')
+        assignments = context['schedule'].assignment_set.filter(date__gte=start_date).order_by('date')
 
-        pagination = Paginator(assignments, 25*context['schedule'].cleaners_per_date)
+        pagination = Paginator(assignments, 10*context['schedule'].cleaners_per_date)
         context['page'] = pagination.get_page(kwargs['page'])
 
         return self.render_to_response(context)
@@ -238,12 +238,12 @@ class ConfigView(FormView):
 
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
-        context['schedule_list'] = CleaningSchedule.objects.all()
+        context['schedule_list'] = Schedule.objects.all()
         all_active_cleaners = Cleaner.objects.filter(moved_out__gte=datetime.date.today())
         context['cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=False)
         context['no_slack_cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=True)
         context['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=datetime.date.today())
-        context['schedule_group_list'] = CleaningScheduleGroup.objects.all()
+        context['schedule_group_list'] = ScheduleGroup.objects.all()
         return context
 
     def post(self, request, *args, **kwargs):
@@ -277,7 +277,7 @@ class ResultsView(TemplateView):
             clear_existing = False
 
         time_start = timeit.default_timer()
-        for schedule in CleaningSchedule.objects.all():
+        for schedule in Schedule.objects.all():
             schedule.new_cleaning_duties(
                 datetime.date(int(kwargs['from_year']), int(kwargs['from_month']), int(kwargs['from_day'])),
                 datetime.date(int(kwargs['to_year']), int(kwargs['to_month']), int(kwargs['to_day'])),
@@ -320,7 +320,7 @@ class ResultsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(ResultsView, self).get_context_data(**kwargs)
-        context['schedules'] = CleaningSchedule.objects.all().order_by('frequency')
+        context['schedules'] = Schedule.objects.all().order_by('frequency')
 
         context['dates'] = []
         date_iterator = kwargs['from_date']
@@ -386,7 +386,7 @@ class ResultsView(TemplateView):
                 schedules = []
                 for schedule in context['schedules']:
                     if schedule.defined_on_date(date_iterator):
-                        assignments = schedule.assignments.filter(date=date_iterator)
+                        assignments = schedule.assignment_set.filter(date=date_iterator)
                         if assignments.exists():
                             cleaners_for_assignment = []
                             for assignment in assignments:
@@ -405,7 +405,7 @@ class ResultsView(TemplateView):
                 time_frame['duty_counter'] = []
                 time_frame['deviations_by_schedule'] = []
                 for schedule in context['schedules']:
-                    assignments_in_timeframe = schedule.assignments.filter(
+                    assignments_in_timeframe = schedule.assignment_set.filter(
                         date__range=(time_frame['start_date'], time_frame['end_date']))
 
                     element = [schedule.name, 0, 0, []]
@@ -436,12 +436,12 @@ def update_groups_for_cleaner(cleaner, new_association):
     This function removes the cleaner from schedules he is not associated to anymore and adds him
     to schedules he wasn't associated with before."""
     try:
-        prev_association = CleaningScheduleGroup.objects.get(cleaners=cleaner)
+        prev_association = ScheduleGroup.objects.get(cleaners=cleaner)
 
         if prev_association != new_association:
             prev_association.cleaners.remove(cleaner)
             new_association.cleaners.add(cleaner)
-    except CleaningScheduleGroup.DoesNotExist:
+    except ScheduleGroup.DoesNotExist:
         new_association.cleaners.add(cleaner)
 
 
@@ -494,7 +494,7 @@ class CleanerDeleteView(DeleteView):
 
 class CleaningScheduleNewView(CreateView):
     form_class = CleaningScheduleForm
-    model = CleaningSchedule
+    model = Schedule
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
 
@@ -506,7 +506,7 @@ class CleaningScheduleNewView(CreateView):
 
 class CleaningScheduleUpdateView(UpdateView):
     form_class = CleaningScheduleForm
-    model = CleaningSchedule
+    model = Schedule
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
 
@@ -517,7 +517,7 @@ class CleaningScheduleUpdateView(UpdateView):
 
 
 class CleaningScheduleDeleteView(DeleteView):
-    model = CleaningSchedule
+    model = Schedule
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_delete_form.html'
 
@@ -529,7 +529,7 @@ class CleaningScheduleDeleteView(DeleteView):
 
 class CleaningScheduleGroupNewView(CreateView):
     form_class = CleaningScheduleGroupForm
-    model = CleaningScheduleGroup
+    model = ScheduleGroup
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
 
@@ -541,7 +541,7 @@ class CleaningScheduleGroupNewView(CreateView):
 
 class CleaningScheduleGroupUpdateView(UpdateView):
     form_class = CleaningScheduleGroupForm
-    model = CleaningScheduleGroup
+    model = ScheduleGroup
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
 
@@ -553,7 +553,7 @@ class CleaningScheduleGroupUpdateView(UpdateView):
 
 class CleaningScheduleGroupDeleteView(DeleteView):
     form_class = CleaningScheduleGroupForm
-    model = CleaningScheduleGroup
+    model = ScheduleGroup
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_delete_form.html'
 

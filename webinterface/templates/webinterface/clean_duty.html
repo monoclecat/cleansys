@@ -21,8 +21,9 @@ Putzdienst erledigen
             <div class="panel panel-primary">
 
                 <div class="panel-heading">
-                    <h2>Hallo {{ assignment.cleaner }}! Du putzt dieses Wochenende {{ assignment.cleaningschedule_set.first.name }} zusammen mit
-                    {% for other_cleaner in assignment.cleaning_buddies %}{{ other_cleaner }} {% endfor %}</h2>
+                    <h2>Hallo {{ assignment.cleaner }}! Du putzt dieses Wochenende {{ assignment.schedule.name }}
+                        zusammen mit
+                        {% for other_cleaner in assignment.cleaning_buddies %}{{ other_cleaner }} {% endfor %}</h2>
                 </div>
                 <div class="panel-body">
                     <h3>Folgende Aufgaben stehen an. Wenn du einen Teil geputzt hast, klicke auf die entsprechende

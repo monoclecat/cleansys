@@ -2,5 +2,5 @@ from django.contrib import admin
 from .models import *
 
 admin.site.register(Cleaner)
-admin.site.register(CleaningSchedule)
-admin.site.register(CleaningScheduleGroup)
+admin.site.register(Schedule)
+admin.site.register(ScheduleGroup)

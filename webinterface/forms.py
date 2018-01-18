@@ -81,7 +81,7 @@ class CleanerForm(forms.ModelForm):
                                           "Wert auf das Einzugsdatum plus 3 Jahre zu setzen.")
 
     schedule_group = forms.\
-        ModelChoiceField(queryset=CleaningScheduleGroup.objects.all(),
+        ModelChoiceField(queryset=ScheduleGroup.objects.all(),
                          required=True, empty_label=None,
                          widget=forms.RadioSelect,
                          label="Zugehörigkeit",
@@ -93,7 +93,7 @@ class CleanerForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
         if 'instance' in kwargs and kwargs['instance']:
-            initial['schedule_group'] = CleaningScheduleGroup.objects.filter(cleaners=kwargs['instance'])
+            initial['schedule_group'] = ScheduleGroup.objects.filter(cleaners=kwargs['instance'])
             if initial['schedule_group'].exists():
                 initial['schedule_group'] = initial['schedule_group'].first().pk
             kwargs['initial'] = initial
@@ -127,25 +127,25 @@ class CleanerForm(forms.ModelForm):
 
 class CleaningScheduleForm(forms.ModelForm):
     class Meta:
-        model = CleaningSchedule
-        exclude = ('assignments', 'slug', 'info_for_dates')
+        model = Schedule
+        exclude = ('slug',)
 
     name = forms.CharField(max_length=20, label="Putzplan Name", help_text="Der Name des Putzplans",
                            required=True, widget=forms.TextInput)
 
-    cleaners_per_date = forms.ChoiceField(choices=CleaningSchedule.CLEANERS_PER_DATE_CHOICES,
+    cleaners_per_date = forms.ChoiceField(choices=Schedule.CLEANERS_PER_DATE_CHOICES,
                                           label="Anzahl der Putzer pro Woche",
                                           help_text="Z.B. Bad braucht nur einen, Bar braucht zwei.",
                                           required=True, initial=1)
 
-    frequency = forms.ChoiceField(choices=CleaningSchedule.FREQUENCY_CHOICES, required=True, initial=1,
+    frequency = forms.ChoiceField(choices=Schedule.FREQUENCY_CHOICES, required=True, initial=1,
                                   label="Häufigkeit der Putzdienste",
                                   help_text="Wenn du zwei Putzdienste hast, die alle zwei Wochen dran sind, "
                                             "aber nicht an gleichen Tagen, dann wähle bei einem 'Gerade Wochen' und "
                                             "beim anderen 'Ungerade Wochen' aus.")
 
     schedule_group = forms. \
-        ModelMultipleChoiceField(queryset=CleaningScheduleGroup.objects.all(),
+        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.all(),
                                  required=True,
                                  widget=forms.CheckboxSelectMultiple,
                                  label="Zugehörigkeit",
@@ -181,7 +181,7 @@ class CleaningScheduleForm(forms.ModelForm):
 
 class CleaningScheduleGroupForm(forms.ModelForm):
     class Meta:
-        model = CleaningScheduleGroup
+        model = ScheduleGroup
         exclude = ('cleaners', )
 
     name = forms.CharField(max_length=30, label="Name der Putzplan-Gruppe",

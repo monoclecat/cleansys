@@ -25,7 +25,7 @@ Putzdienste
                                 href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
 
                             <span class="glyphicon glyphicon-remove-sign"></span>
-                            {{ dutyswitch.source_duty.cleaningschedule_set.first.name }}
+                            {{ dutyswitch.source_duty.schedule.name }}
                             <span class="badge">{{ dutyswitch.source_assignment.cleaner.name }},
                                 {{ dutyswitch.source_assignment.date }}</span>
                         </a>
@@ -39,7 +39,7 @@ Putzdienste
                         <a class="btn btn-warning btn-block" role="button" style="white-space: normal"
                                 href="{% url 'webinterface:switch-duty-answer' dutyswitch.pk 'answer' %}">
 
-                            {{ dutyswitch.source_assignment.cleaningschedule_set.first.name }}
+                            {{ dutyswitch.source_assignment.schedule.name }}
                             <span class="badge">{{ dutyswitch.source_assignment.cleaner.name }},
                                 {{ dutyswitch.source_assignment.date }}</span>
                             <span class="glyphicon glyphicon-transfer"></span>
@@ -57,7 +57,7 @@ Putzdienste
                         <a class="btn btn-info btn-block" role="button" style="white-space: normal"
                                 href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
 
-                            {{ dutyswitch.source_assignment.cleaningschedule_set.first.name }}
+                            {{ dutyswitch.source_assignment.schedule.name }}
                             <span class="badge">Du, {{ dutyswitch.source_assignment.date }}</span>
                             <span class="glyphicon glyphicon-transfer"></span>
                             <span class="badge">
@@ -85,7 +85,7 @@ Putzdienste
                     <table class="table table-striped">
                         {% for assignment in assignments_due_now.all %}
                             <tr class="danger">
-                                <td style="text-align: center">{{ assignment.cleaningschedule_set.first.name }}</td>
+                                <td style="text-align: center">{{ assignment.schedule.name }}</td>
                                 <td>{{ assignment.date }}</td>
                                 <td>
                                     {% if assignment.cleaning_buddies.all %}
@@ -120,7 +120,7 @@ Putzdienste
                 <table class="table table-striped">
                     {% for assignment in page %}
                         <tr>
-                            <td>{{ assignment.cleaningschedule_set.first.name }}</td>
+                            <td>{{ assignment.schedule.name }}</td>
                             <td>{{ assignment.date }}</td>
                             <td>
                                 {% if assignment.cleaning_buddies.all %}
