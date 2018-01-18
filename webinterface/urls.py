@@ -1,4 +1,3 @@
-from django.conf.urls import url
 from django.urls import path
 from django.contrib.auth.decorators import login_required
 from .views import *
@@ -16,7 +15,7 @@ urlpatterns = [
     path('switch/<int:pk>/<answer>/', DutySwitchView.as_view(), name='switch-duty-answer'),
     path('switch/<int:pk>/', DutySwitchView.as_view(), name='switch-duty'),
 
-    path('clean/<int:duty_pk>/<int:cleaner_pk>/', DutyCleanView.as_view(), name='clean-duty'),
+    path('clean/<int:assignment_pk>/', AssignmentView.as_view(), name='clean-duty'),
 
     path('putzer/<slug:slug>/seite<int:page>/', CleanerView.as_view(), name='cleaner-duties'),
 

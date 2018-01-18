@@ -10,14 +10,19 @@ Putzdienst erledigen
         <div class="row" style="margin: 1em;">
             <h1>Putzdienste</h1>
             <a class="btn btn-default" role="button"
-                    href="{% url 'webinterface:cleaner-duties' cleaner.slug 1 %}">
+                    href="{% url 'webinterface:cleaner-duties' assignment.cleaner.slug 1 %}">
                 <span class="glyphicon glyphicon-chevron-left"></span> Zurück
             </a>
         </div>
+        <div class="row">
+            {% if already_cleaned_error %}
+                <h3 style="padding: 1em;" class="bg-danger">{{ already_cleaned_error }}</h3>
+            {% endif %}
             <div class="panel panel-primary">
+
                 <div class="panel-heading">
-                    <h2>Du putzt dieses Wochenende {{ schedule.name }} zusammen mit
-                    {% for other_cleaner in other_cleaners %}{{ other_cleaner.name }} {% endfor %}</h2>
+                    <h2>Hallo {{ assignment.cleaner }}! Du putzt dieses Wochenende {{ assignment.cleaningschedule_set.first.name }} zusammen mit
+                    {% for other_cleaner in assignment.cleaning_buddies %}{{ other_cleaner }} {% endfor %}</h2>
                 </div>
                 <div class="panel-body">
                     <h3>Folgende Aufgaben stehen an. Wenn du einen Teil geputzt hast, klicke auf die entsprechende
@@ -25,31 +30,43 @@ Putzdienst erledigen
                     <p>Bitte denke daran, dass du die Verantwortung für die richtige
                         Ausführung der Aufgaben verantwortlich bist, die du hier anklickst. Sollten die Aufgaben
                         nicht richtig ausgeführt worden sein, so haftest du.</p>
-                    <form class="form-inline" method="post">
-                        {% csrf_token %}
-                        <div class="row">
-                            {% for task_name, by_cleaner in task_cleaner_pairs %}
-                                <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+
+                    <div class="row">
+                        {% for task in tasks %}
+                            <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+                                <form class="form-inline" method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="task_pk" value="{{ task.pk }}"/>
                                     <input type="submit" name="cleaned"
                                         style="white-space: normal;"
-                                        {% if by_cleaner %}
-                                            class="btn btn-lg btn-block btn-default active" disabled="disabled"
-                                            {% if by_cleaner == cleaner %}
-                                                value="Du hast {{ task_name }} gemacht"
+                                        {% if task.cleaned_by %}
+                                            {% if task.cleaned_by == assignment.cleaner %}
+                                                class="btn btn-lg btn-block btn-success"
+                                                value="Du hast '{{ task.name }}' gemacht"
                                             {% else %}
-                                                value="{{ by_cleaner.name }} hat {{ task_name }} gemacht"
+                                                class="btn btn-lg btn-block btn-default active" disabled="disabled"
+                                                value="{{ task.cleaned_by.name }} hat '{{ task.name }}' gemacht"
                                             {% endif %}
                                         {% else %}
                                             class="btn btn-lg btn-block btn-info"
-                                            value="{{ task_name }}"
+                                            value="{{ task.name }}"
                                         {% endif %}/>
-                                </div>
-                            {% empty %}
-                                <h3>Keine Alternativen gefunden</h3>
-                            {% endfor %}
-                        </div>
-                    </form>
+                                </form>
+                            </div>
+                        {% empty %}
+                            <h3>Keine Alternativen gefunden</h3>
+                        {% endfor %}
+                    </div>
+                    <div class="row">
+                        <form method="post" style="padding: 5px"
+                              class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3">
+                            {% csrf_token %}
+                            {% crispy form %}
+                        </form>
+                    </div>
                 </div>
+
             </div>
+        </div>
     </div>
 {% endblock %}

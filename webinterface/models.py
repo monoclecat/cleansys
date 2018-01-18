@@ -21,6 +21,8 @@ def correct_dates_to_weekday(days, weekday):
 
 
 class Cleaner(models.Model):
+    class Meta:
+        ordering = ('name',)
     name = models.CharField(max_length=10, unique=True)
     slug = models.CharField(max_length=10, unique=True)
     moved_in = models.DateField()
@@ -36,13 +38,13 @@ class Cleaner(models.Model):
         return self.name
 
     def rejected_dutyswitch_requests(self):
-        return DutySwitch.objects.filter(source_cleaner=self, status=2)
+        return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
 
     def dutyswitch_requests_received(self):
-        return DutySwitch.objects.filter(selected_cleaner=self)
+        return DutySwitch.objects.filter(selected_assignment__cleaner=self)
 
     def pending_dutyswitch_requests(self):
-        return DutySwitch.objects.filter(source_cleaner=self, status=1)
+        return DutySwitch.objects.filter(source_assignment__cleaner=self, status=1)
 
     def delete(self, using=None, keep_parents=False):
         try:
@@ -79,12 +81,23 @@ class Cleaner(models.Model):
 class Task(models.Model):
     name = models.CharField(max_length=20)
     help_text = models.CharField(max_length=200, null=True)
+    cleaned_by = models.ForeignKey(Cleaner, null=True, on_delete=models.SET_NULL)
 
 
 class InfoForDate(models.Model):
     tasks = models.ManyToManyField(Task)
     date = models.DateField()
     excluded = models.ManyToManyField(Cleaner)
+
+    def initiate_tasks(self):
+        schedule = self.cleaningschedule_set.first()
+        task_list = schedule.get_tasks()
+        for task in task_list:
+            self.tasks.create(name=task)
+
+    def delete(self, using=None, keep_parents=False):
+        self.tasks.all().delete()
+        super().delete(using, keep_parents)
 
 
 class Complaint(models.Model):
@@ -94,25 +107,23 @@ class Complaint(models.Model):
 
 
 class Assignment(models.Model):
-    class Meta:
-        ordering = ('created',)
-
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     cleaners_comment = models.CharField(max_length=200)
     created = models.DateField(auto_now_add=datetime.date.today)
     date = models.DateField()
-    cleaned = models.ManyToManyField(Task)
 
     def __str__(self):
-        return self.cleaner.name
+        return self.cleaningschedule_set.first().name + ": " + self.cleaner.name + " on the " + str(self.date)
 
-    def open_tasks(self):
-        # TODO
-        pass
+    def cleaners_on_date_for_schedule(self):
+        return Cleaner.objects.filter(assignment__cleaningschedule=self.cleaningschedule_set.first(),
+                                      assignment__date=self.date)
 
-    def task_completed(self):
-        # TODO
-        pass
+    def cleaning_buddies(self):
+        return self.cleaners_on_date_for_schedule().exclude(pk=self.cleaner.pk)
+
+    def info_for_date(self):
+        return self.cleaningschedule_set.first().info_for_dates.get(date=self.date)
 
 
 class CleaningScheduleGroup(models.Model):
@@ -126,6 +137,8 @@ class CleaningScheduleGroup(models.Model):
 
 
 class CleaningSchedule(models.Model):
+    class Meta:
+        ordering = ('cleaners_per_date',)
     name = models.CharField(max_length=20, unique=True)
     slug = models.CharField(max_length=20, unique=True)
 
@@ -193,6 +206,9 @@ class CleaningSchedule(models.Model):
                         cleaner=cleaner).count() / all_assignments.count()
                     ratios.append([cleaner,
                                    proportion__self_assigned / proportion__cleaners_assigned_per_week])
+                else:
+                    ratios.append([cleaner, 0])
+
         return sorted(ratios, key=itemgetter(1), reverse=False)
 
     def defined_on_date(self, date):
@@ -284,11 +300,13 @@ m2m_changed.connect(group_cleaners_changed, sender=CleaningScheduleGroup.cleaner
 
 
 class DutySwitch(models.Model):
+    class Meta:
+        ordering = ('created',)
     created = models.DateField(auto_now_add=datetime.date.today)
 
-    source_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
+    source_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="source")
 
-    selected_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True)
+    selected_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="selected")
 
     destinations = models.ManyToManyField(Assignment)
 
@@ -300,58 +318,76 @@ class DutySwitch(models.Model):
     # If the destination denies approval, status is set to 2 because the source needs to select a new
     # destination. The cycle begins from the start
 
+    def __str__(self):
+        return "Source assignment: "+str(self.selected_assignment)
+
     def set_selected(self, assignment):
         self.selected_assignment = assignment
         self.status = 1
+        self.save()
 
     def selected_was_accepted(self):
         try:
-            info_for_date = InfoForDate.objects.get(date=self.source_assignment.date)
+            info_for_date = self.source_assignment.info_for_date()
         except InfoForDate.DoesNotExist:
             return
         info_for_date.excluded.add(self.source_assignment.cleaner)
 
-        Assignment.objects.create(date=self.source_assignment.date, cleaner=self.selected_assignment.cleaner)
-        Assignment.objects.create(date=self.selected_assignment.date, cleaner=self.source_assignment.cleaner)
-        # TODO Remember to only take first n assignments when selecting assignments on date, we are not deleting old assignments!
+        temp_date = self.source_assignment.date
+        self.source_assignment.date = self.selected_assignment.date
+        self.source_assignment.save()
+        self.selected_assignment.date = temp_date
+        self.selected_assignment.save()
 
         self.delete()
 
     def selected_was_cancelled(self):
         self.selected_assignment = None
         self.status = 0
+        self.save()
 
     def selected_was_rejected(self):
         self.destinations.remove(self.selected_assignment)
         self.selected_assignment = None
         self.status = 2
+        self.save()
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
-        if not self.destinations:
+        super().save(force_insert, force_update, using, update_fields)
+        if not self.destinations.all():
             schedule = self.source_assignment.cleaningschedule_set.first()
 
-            ratios = schedule.deployment_ratios(self.source_assignment.date)
+            cleaners_possible = Cleaner.objects.filter(
+                cleaningschedulegroup__cleaningschedule=schedule).exclude(
+                pk=self.source_assignment.cleaner.pk, slug__in=self.source_assignment.info_for_date().excluded.all())
+
+            ratios = schedule.deployment_ratios(self.source_assignment.date, list(cleaners_possible))
+
             logging.debug("------------ Looking for replacement cleaners -----------")
-            free_cleaners = models.ManyToManyField(Assignment)
-            one_duty_cleaners = models.ManyToManyField(Assignment)
+
+            one_duty_cleaners = []
+
             for cleaner, ratio in ratios:
                 logging.debug(
                     "{}:   Not in duty:{} Duties today:{}".
                         format(cleaner.name,
                                schedule.assignments.filter(date=self.source_assignment.date, cleaner=cleaner).exists(),
-                               cleaner.duty_set.filter(date=self.source_assignment.date).count()))
+                               cleaner.assignment_set.filter(date=self.source_assignment.date).count()))
 
                 if not schedule.assignments.filter(date=self.source_assignment.date, cleaner=cleaner).exists():
+
                     if cleaner.assignment_set.filter(date=self.source_assignment.date).count() == 0:
-                        free_cleaners.add(schedule.assignments.filter(cleaners=cleaner, date__gt=self.source_assignment.date))
+                        for assignment in schedule.assignments.filter(
+                                cleaner=cleaner, date__gt=self.source_assignment.date):
+                            self.destinations.add(assignment)
+
                     elif cleaner.assignment_set.filter(date=self.source_assignment.date).count() == 1:
-                        one_duty_cleaners.add(schedule.assignments.filter(cleaners=cleaner, date__gt=self.source_assignment.date))
+                        for assignment in schedule.assignments.filter(
+                                cleaner=cleaner, date__gt=self.source_assignment.date):
+                            one_duty_cleaners.append(assignment)
 
-            if free_cleaners:
-                self.destinations = free_cleaners
-            else:
-                self.destinations = one_duty_cleaners
-
-        super().save(force_insert, force_update, using, update_fields)
+            if not self.destinations:
+                for assignment in one_duty_cleaners:
+                    self.destinations.add(assignment)
 

@@ -51,13 +51,18 @@ Putzdienste
                             <th>Datum</th>
                             <th>{{ schedule.name }}</th>
                         </tr>
-
-                        {% for duty in page %}
+                        {% comment %}We only need regrouping because we can't use
+                           distinct('date') in sqlite databases. TODO change database backend? {% endcomment %}
+                        {% regroup page by date as grouped_by_date %}
+                        {% for assignment in grouped_by_date %}
                             <tr>
-                                <td>{{ duty.date }}</td>
-                                <td {% if highlighted_cleaner in duty.cleaners.all %}class="success" {% endif %}>
-                                    {% for cleaner in duty.cleaners.all %}
+                                <td>{{ assignment.list.0.date }}</td>
+                                <td {% if highlighted_cleaner in assignment.list.0.cleaners_on_date_for_schedule.all %}
+                                    class="success" {% endif %}>
+                                    {% for cleaner in assignment.list.0.cleaners_on_date_for_schedule.all %}
                                         {{ cleaner.name }}
+                                        {% ifnotequal cleaner assignment.list.0.cleaners_on_date_for_schedule.last %},
+                                        {% endifnotequal %}
                                     {% empty %}
                                         Keine Putzer
                                     {% endfor %}

@@ -7,6 +7,26 @@ from crispy_forms.bootstrap import *
 from slackbot.slackbot import get_slack_users, slack_running
 
 
+class AssignmentForm(forms.ModelForm):
+    class Meta:
+        model = Assignment
+        fields = ('cleaners_comment',)
+
+    cleaners_comment = forms.CharField(widget=forms.Textarea, max_length=200,
+                                       label="Kommentare, Auffälligkeiten, ... (speichern nicht vergessen)",
+                                       help_text="Max. 200 Zeichen",
+                                       required=False)
+
+    def __init__(self, *args, **kwargs):
+        super(AssignmentForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+
+        self.helper.layout = Layout(
+            Div('cleaners_comment'),
+            Submit('save_comment', 'Kommentar speichern', css_class="btn btn-block"),
+        )
+
+
 class ConfigForm(forms.Form):
     start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Von TT.MM.YYYY")
     end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Bis TT.MM.YYYY")
@@ -108,7 +128,7 @@ class CleanerForm(forms.ModelForm):
 class CleaningScheduleForm(forms.ModelForm):
     class Meta:
         model = CleaningSchedule
-        exclude = ('duties', 'slug')
+        exclude = ('assignments', 'slug', 'info_for_dates')
 
     name = forms.CharField(max_length=20, label="Putzplan Name", help_text="Der Name des Putzplans",
                            required=True, widget=forms.TextInput)

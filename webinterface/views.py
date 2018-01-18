@@ -3,8 +3,7 @@ from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
 from django.views.generic import TemplateView
-from django.views.generic.detail import DetailView
-from django.core.paginator import Paginator
+from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
 from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
@@ -31,43 +30,57 @@ class WelcomeView(TemplateView):
         return context
 
 
-class DutyCleanView(TemplateView):
+class AssignmentView(UpdateView):
     template_name = "webinterface/clean_duty.html"
+    model = Assignment
+    form_class = AssignmentForm
+    pk_url_kwarg = "assignment_pk"
 
     def get_context_data(self, **kwargs):
-        context = super(DutyCleanView, self).get_context_data(**kwargs)
+        self.object = self.get_object()
+        context = super(AssignmentView, self).get_context_data(**kwargs)
+
         try:
-            context['duty'] = Duty.objects.get(pk=kwargs['duty_pk'])
-            context['cleaner'] = Cleaner.objects.get(pk=kwargs['cleaner_pk'])
+            context['tasks'] = self.object.cleaningschedule_set.first().info_for_dates.get(date=self.object.date).tasks.all()
+        except InfoForDate.DoesNotExist:
+            logging.error("InfoForDate does not exist on date!")
+            raise Exception("InfoForDate does not exist on date!")
 
-            other_cleaners_for_duty = []
-            for cleaner in context['duty'].cleaners.all():
-                if cleaner != context['cleaner']:
-                    other_cleaners_for_duty.append(cleaner)
-            context['other_cleaners'] = other_cleaners_for_duty
-
-            context['schedule'] = context['duty'].cleaningschedule_set.first()
-            context['task_cleaner_pairs'] = context['duty'].get_tasks()
-
-        except (Duty.DoesNotExist, Cleaner.DoesNotExist):
-            Http404("Dieser Putzdienst oder dieser Putzer existieren nicht.")
-
+        context['assignment'] = self.object
         return context
 
     def post(self, request, *args, **kwargs):
-        if 'cleaned' in request.POST and request.POST['cleaned']:
-            try:
-                cleaner = Cleaner.objects.get(pk=kwargs['cleaner_pk'])
-                duty = Duty.objects.get(pk=kwargs['duty_pk'])
-                if not duty.task_completed(request.POST['cleaned'], cleaner):
-                    raise SuspiciousOperation("Task name not in tasks or cleaner not in assigned cleaners for date.")
-                duty.save()
-
-                return HttpResponseRedirect(reverse_lazy(
+        try:
+            assignment = Assignment.objects.get(pk=kwargs['assignment_pk'])
+            self.success_url = reverse_lazy(
                     'webinterface:clean-duty',
-                    kwargs={'cleaner_pk': cleaner.pk, 'duty_pk': duty.pk}))
-            except (Cleaner.DoesNotExist, Duty.DoesNotExist):
-                raise SuspiciousOperation("Cleaner or Duty does not exist.")
+                    kwargs={'assignment_pk': assignment.pk})
+        except Assignment.DoesNotExist:
+            raise SuspiciousOperation("Assignment does not exist.")
+        self.object = self.get_object()
+
+        if 'cleaned' in request.POST:
+            try:
+                assignment = Assignment.objects.get(pk=kwargs['assignment_pk'])
+                task = Task.objects.get(pk=request.POST['task_pk'])
+
+                if task.cleaned_by:
+                    if task.cleaned_by == assignment.cleaner:
+                        task.cleaned_by = None
+                    else:
+                        context = self.get_context_data(**kwargs)
+                        context['already_cleaned_error'] = "{} wurde in der Zwischenzeit schon von {} gemacht!".format(
+                            task.name, task.cleaned_by)
+                        return self.render_to_response(context)
+                else:
+                    task.cleaned_by = assignment.cleaner
+                task.save()
+                return HttpResponseRedirect(self.get_success_url())
+
+            except (Task.DoesNotExist, Assignment.DoesNotExist):
+                raise SuspiciousOperation("Task or Assignment does not exist.")
+        else:
+            return super().post(args, kwargs)
 
 
 class DutySwitchView(TemplateView):
@@ -79,7 +92,6 @@ class DutySwitchView(TemplateView):
             duty_switch = DutySwitch.objects.get(pk=kwargs['pk'])
 
             context['duty_switch'] = duty_switch
-            context['replacement_duties'] = duty_switch.get_destinations()
             context['perspective'] = 'selected' if 'answer' in kwargs else 'source'
 
         except DutySwitch.DoesNotExist:
@@ -88,16 +100,13 @@ class DutySwitchView(TemplateView):
         return context
 
     def post(self, request, *args, **kwargs):
-        duty_switch = None
         try:
             duty_switch = DutySwitch.objects.get(pk=kwargs['pk'])
         except DutySwitch.DoesNotExist:
-            Http404("Diese Putzdienst-Tausch-Seite existiert nicht.")
+            raise SuspiciousOperation("Diese Putzdienst-Tausch-Seite existiert nicht.")
 
-        try:
-            redirect_cleaner_pk = Cleaner.objects.get(pk=request.POST['redirect_cleaner_pk'])
-        except Cleaner.DoesNotExist:
-            raise SuspiciousOperation("Invalid PK")
+        if 'redirect_cleaner_slug' not in request.POST:
+            raise SuspiciousOperation("Redirect_cleaner_slug not sent!")
 
         if 'delete' in request.POST:
             duty_switch.delete()
@@ -106,20 +115,21 @@ class DutySwitchView(TemplateView):
         elif 'reject' in request.POST:
             duty_switch.selected_was_rejected()
             duty_switch.save()
+        elif 'select' in request.POST:
+            if 'selected' in request.POST:
+                try:
+                    duty_switch.set_selected(Assignment.objects.get(pk=request.POST['selected']))
+
+                except Assignment.DoesNotExist:
+                    raise SuspiciousOperation("Invalid Assignment PK")
+            else:
+                raise SuspiciousOperation("Selected not sent!")
         else:
-            for key, val in request.POST.items():
-                key_list = key.split("-")
-                if key_list:
-                    if key_list[0] == "select":
-                        try:
-                            duty_switch.set_selected(Cleaner.objects.get(pk=key_list[1]), Duty.objects.get(pk=key_list[2]))
-                            duty_switch.save()
-                        except (Cleaner.DoesNotExist, Duty.DoesNotExist):
-                            raise SuspiciousOperation("Invalid PKs")
+            raise SuspiciousOperation("POST sent that didn't match a catchable case!")
 
         return HttpResponseRedirect(reverse_lazy(
             'webinterface:cleaner-duties',
-            kwargs={'slug': redirect_cleaner_pk.slug, 'page': 1}))
+            kwargs={'slug': request.POST['redirect_cleaner_slug'], 'page': 1}))
 
 
 class CleanerView(TemplateView):
@@ -127,31 +137,38 @@ class CleanerView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         if 'switch' in request.POST:
-            if 'source_duty_pk' in request.POST and request.POST['source_duty_pk']:
+            if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
                 try:
-                    source_cleaner = Cleaner.objects.get(pk=kwargs['pk'])
-                    source_duty = Duty.objects.get(pk=request.POST['source_duty_pk'])
-                    duty_to_switch = DutySwitch.objects.create(source_cleaner=source_cleaner,
-                                                               source_duty=source_duty)
+                    source_assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
+                    duty_to_switch = DutySwitch.objects.create(source_assignment=source_assignment)
                     return HttpResponseRedirect(reverse_lazy(
                         'webinterface:switch-duty', kwargs={'pk': duty_to_switch.pk}))
-                except (Cleaner.DoesNotExist, Duty.DoesNotExist):
+                except (Cleaner.DoesNotExist, Assignment.DoesNotExist):
                     raise SuspiciousOperation("Invalid PKs")
             else:
                 raise SuspiciousOperation("Invalid POST data sent by client")
         elif 'clean' in request.POST:
-            if 'source_duty_pk' in request.POST and request.POST['source_duty_pk']:
+            if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
                 try:
-                    duty_to_clean = Duty.objects.get(pk=request.POST['source_duty_pk'])
-                    if duty_to_clean.tasks is None:
-                        duty_to_clean.initiate_tasks()
-                        duty_to_clean.save()
+                    assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
+                    schedule = assignment.cleaningschedule_set.first()
+                    try:
+                        info_for_date = schedule.info_for_dates.get(date=assignment.date)
+                    except InfoForDate.DoesNotExist:
+                        info_for_date = None
+                        raise SuspiciousOperation("Invalid InfoForDate PK")
+
+                    if not info_for_date.tasks.all():
+                        info_for_date.initiate_tasks()
+                        info_for_date.save()
 
                     return HttpResponseRedirect(reverse_lazy(
-                        'webinterface:clean-duty', kwargs={'duty_pk': duty_to_clean.pk, 'cleaner_pk': kwargs['pk']}))
+                        'webinterface:clean-duty', kwargs={'assignment_pk': assignment.pk}))
 
-                except Duty.DoesNotExist:
-                    raise SuspiciousOperation("Invalid Duty PK")
+                except Assignment.DoesNotExist:
+                    raise SuspiciousOperation("Invalid Assignment PK")
+        else:
+            raise SuspiciousOperation("POST sent that didn't match a catchable case!")
 
         return HttpResponseRedirect(reverse_lazy(
             'webinterface:cleaner-duties',
@@ -173,15 +190,15 @@ class CleanerView(TemplateView):
         context['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
         context['cleaner'] = cleaner
 
-        start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=3), 6)
+        start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=2), 6)
 
-        duties = Duty.objects.filter(cleaners=context['cleaner'],
-                                             date__gte=start_date + datetime.timedelta(days=7))
+        assignments = Assignment.objects.filter(cleaner=context['cleaner'],
+                                                date__gte=start_date + datetime.timedelta(days=7)).order_by('date')
 
-        pagination = Paginator(duties, 25)
+        pagination = Paginator(assignments, 25)
         context['page'] = pagination.get_page(kwargs['page'])
 
-        context['duties_due_now'] = Duty.objects.filter(cleaners=context['cleaner'], date=start_date)
+        context['assignments_due_now'] = Assignment.objects.filter(cleaner=context['cleaner'], date=start_date)
 
         return self.render_to_response(context)
 
@@ -205,11 +222,11 @@ class CleaningScheduleView(TemplateView):
 
         context['cleaners'] = Cleaner.objects.all()
 
-        start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=3), 6)
+        start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=2), 6)
 
-        duties = context['schedule'].duties.filter(date__gte=start_date)
+        assignments = context['schedule'].assignments.filter(date__gte=start_date).order_by('date')
 
-        pagination = Paginator(duties, 25)
+        pagination = Paginator(assignments, 25*context['schedule'].cleaners_per_date)
         context['page'] = pagination.get_page(kwargs['page'])
 
         return self.render_to_response(context)
@@ -260,7 +277,7 @@ class ResultsView(TemplateView):
             clear_existing = False
 
         time_start = timeit.default_timer()
-        for schedule in CleaningSchedule.objects.all().order_by('cleaners_per_date'):
+        for schedule in CleaningSchedule.objects.all():
             schedule.new_cleaning_duties(
                 datetime.date(int(kwargs['from_year']), int(kwargs['from_month']), int(kwargs['from_day'])),
                 datetime.date(int(kwargs['to_year']), int(kwargs['to_month']), int(kwargs['to_day'])),
@@ -303,7 +320,7 @@ class ResultsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(ResultsView, self).get_context_data(**kwargs)
-        context['table_header'] = CleaningSchedule.objects.all().order_by('frequency')
+        context['schedules'] = CleaningSchedule.objects.all().order_by('frequency')
 
         context['dates'] = []
         date_iterator = kwargs['from_date']
@@ -363,33 +380,32 @@ class ResultsView(TemplateView):
 
         for time_frame in context['results']:
             date_iterator = time_frame['start_date']
-            time_frame['duties'] = []
+            time_frame['assignments'] = []
             while date_iterator <= time_frame['end_date']:
-                duties_on_date = [date_iterator]
+                assignments_on_date = [date_iterator]
                 schedules = []
-                for schedule in context['table_header']:
+                for schedule in context['schedules']:
                     if schedule.defined_on_date(date_iterator):
-                        duty = schedule.duties.filter(date=date_iterator)
-                        if duty.exists():
-                            duty = duty.first()
-                            cleaners_for_duty = []
-                            for cleaner in duty.cleaners.all():
-                                cleaners_for_duty.append(cleaner.name)
-                            schedules.append(cleaners_for_duty)
+                        assignments = schedule.assignments.filter(date=date_iterator)
+                        if assignments.exists():
+                            cleaners_for_assignment = []
+                            for assignment in assignments:
+                                cleaners_for_assignment.append(assignment.cleaner.name)
+                            schedules.append(cleaners_for_assignment)
                         else:
                             schedules.append("")
                     else:
                         schedules.append(".")
-                    duties_on_date.append(schedules)
-                time_frame['duties'].append(duties_on_date)
+                    assignments_on_date.append(schedules)
+                time_frame['assignments'].append(assignments_on_date)
                 date_iterator += one_week
 
         if 'options' in kwargs and kwargs['options'] == 'stats':
             for time_frame in context['results']:
                 time_frame['duty_counter'] = []
                 time_frame['deviations_by_schedule'] = []
-                for schedule in context['table_header']:
-                    duties_in_timeframe = schedule.duties.filter(
+                for schedule in context['schedules']:
+                    assignments_in_timeframe = schedule.assignments.filter(
                         date__range=(time_frame['start_date'], time_frame['end_date']))
 
                     element = [schedule.name, 0, 0, []]
@@ -399,7 +415,7 @@ class ResultsView(TemplateView):
                     ratios = schedule.deployment_ratios(for_date=time_frame['end_date'])
                     if ratios:
                         for cleaner, ratio in ratios:
-                            element[3].append([cleaner.name, duties_in_timeframe.filter(cleaners=cleaner).count()])
+                            element[3].append([cleaner.name, assignments_in_timeframe.filter(cleaner=cleaner).count()])
 
                             deviation_of.append([cleaner, round(abs(1 - ratio), 3)])
                             sum_deviation_values += abs(1 - ratio)

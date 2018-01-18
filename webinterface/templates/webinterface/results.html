@@ -16,7 +16,7 @@ Putzdienste
                 <form method="POST" class="form form-inline">
                     {% csrf_token %}
                     <input type="submit" class="btn btn-success" name="generate_missing"
-                           value="Generate missing duties">
+                           value="Generate missing assignments">
                     <input type="submit" class="btn btn-danger" name="regenerate_all"
                            value="Delete all and regenerate">
                     <br>
@@ -81,11 +81,11 @@ Putzdienste
                             <table class="table table-striped table-bordered">
                                 <tr class="info">
                                     <th>Datum</th>
-                                    {% for schedule_name in table_header %}
+                                    {% for schedule_name in schedules %}
                                         <th>{{ schedule_name }}</th>
                                     {% endfor %}
                                 </tr>
-                                {% for date in time_frame.duties %}
+                                {% for date in time_frame.assignments %}
                                     <tr>
                                         <td>{{ date.0 }}</td>
                                         {% for duty in date.1 %}
