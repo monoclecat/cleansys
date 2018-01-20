@@ -16,8 +16,9 @@ def correct_dates_to_weekday(days, weekday):
                 day += datetime.timedelta(days=weekday - day.weekday())
             corrected_days.append(day)
         return corrected_days
-    if isinstance(days, datetime.date):
+    elif isinstance(days, datetime.date):
         return days + datetime.timedelta(days=weekday - days.weekday())
+    return None
 
 
 class Cleaner(models.Model):
@@ -296,7 +297,10 @@ class Assignment(models.Model):
         return self.cleaners_on_date_for_schedule().exclude(pk=self.cleaner.pk)
 
     def cleaning_day(self):
-        return self.schedule.cleaningday_set.get(date=self.date)
+        try:
+            return self.schedule.cleaningday_set.get(date=self.date)
+        except CleaningDay.DoesNotExist:
+            return None
 
 
 class DutySwitch(models.Model):
@@ -319,7 +323,7 @@ class DutySwitch(models.Model):
     # destination. The cycle begins from the start
 
     def __str__(self):
-        return "Source assignment: "+str(self.selected_assignment)
+        return "Source assignment: "+str(self.source_assignment)
 
     def set_selected(self, assignment):
         self.selected_assignment = assignment
@@ -360,7 +364,12 @@ class DutySwitch(models.Model):
 
             possible_cleaners = Cleaner.objects.filter(
                 schedulegroup__schedule=schedule).exclude(
-                pk=self.source_assignment.cleaner.pk, slug__in=self.source_assignment.cleaning_day().excluded.all())
+                pk=self.source_assignment.cleaner.pk)
+
+            cleaning_day = self.source_assignment.cleaning_day()
+
+            if cleaning_day:
+                possible_cleaners = possible_cleaners.exclude(slug__in=cleaning_day.excluded.all())
 
             ratios = schedule.deployment_ratios(self.source_assignment.date, list(possible_cleaners))
 
