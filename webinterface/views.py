@@ -431,18 +431,18 @@ class ResultsView(TemplateView):
         return context
 
 
-def update_groups_for_cleaner(cleaner, new_association):
-    """new_associations takes a list or Queryset of schedules cleaner should now be assigned to.
-    This function removes the cleaner from schedules he is not associated to anymore and adds him
-    to schedules he wasn't associated with before."""
-    try:
-        prev_association = ScheduleGroup.objects.get(cleaners=cleaner)
-
-        if prev_association != new_association:
-            prev_association.cleaners.remove(cleaner)
-            new_association.cleaners.add(cleaner)
-    except ScheduleGroup.DoesNotExist:
-        new_association.cleaners.add(cleaner)
+# def update_groups_for_cleaner(cleaner, new_association):
+#     """new_associations takes a list or Queryset of schedules cleaner should now be assigned to.
+#     This function removes the cleaner from schedules he is not associated to anymore and adds him
+#     to schedules he wasn't associated with before."""
+#     try:
+#         prev_association = ScheduleGroup.objects.get(cleaners=cleaner)
+#
+#         if prev_association != new_association:
+#             prev_association.cleaners.remove(cleaner)
+#             new_association.cleaners.add(cleaner)
+#     except ScheduleGroup.DoesNotExist:
+#         new_association.cleaners.add(cleaner)
 
 
 class CleanerNewView(CreateView):
@@ -471,8 +471,8 @@ class CleanerUpdateView(UpdateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        curr_groups = form.cleaned_data['schedule_group']
-        update_groups_for_cleaner(self.object, curr_groups)
+        # curr_group = form.cleaned_data['schedule_group']
+        # update_groups_for_cleaner(self.object, curr_group)
         return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):

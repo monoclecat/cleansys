@@ -21,89 +21,6 @@ def correct_dates_to_weekday(days, weekday):
     return None
 
 
-class Cleaner(models.Model):
-    class Meta:
-        ordering = ('name',)
-    name = models.CharField(max_length=10, unique=True)
-    slug = models.CharField(max_length=10, unique=True)
-    moved_in = models.DateField()
-    moved_out = models.DateField()
-    slack_id = models.CharField(max_length=10, null=True)
-
-    def __init__(self, *args, **kwargs):
-        super(Cleaner, self).__init__(*args, **kwargs)
-        self.__last_moved_in = self.moved_in
-        self.__last_moved_out = self.moved_out
-
-    def __str__(self):
-        return self.name
-
-    def rejected_dutyswitch_requests(self):
-        return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
-
-    def dutyswitch_requests_received(self):
-        return DutySwitch.objects.filter(selected_assignment__cleaner=self)
-
-    def pending_dutyswitch_requests(self):
-        return DutySwitch.objects.filter(source_assignment__cleaner=self, status=1)
-
-    def nr_assignments_on_day(self, date):
-        return self.assignment_set.filter(date=date).count()
-
-    def delete(self, using=None, keep_parents=False):
-        try:
-            associated_group = ScheduleGroup.objects.get(cleaners=self)
-            associated_schedules = associated_group.schedule_set.all()
-            for schedule in associated_schedules:
-                schedule.cleaners.remove(self)
-        except ScheduleGroup.DoesNotExist:
-            pass
-        super().delete(using, keep_parents)
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        self.slug = slugify(self.name)
-        super().save(force_insert, force_update, using, update_fields)
-
-        associated_group = ScheduleGroup.objects.filter(cleaners=self)
-        if associated_group.exists():
-            associated_group = associated_group.first()
-
-            if self.moved_out != self.__last_moved_out:
-                prev_last_duty, new_last_duty = correct_dates_to_weekday([self.__last_moved_out, self.moved_out], 6)
-                if prev_last_duty != new_last_duty:
-                    for schedule in Schedule.objects.filter(schedule_group=associated_group):
-                        schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
-
-            if self.moved_in != self.__last_moved_in:
-                prev_first_duty, new_first_duty = correct_dates_to_weekday([self.__last_moved_in, self.moved_in], 6)
-                if prev_first_duty != new_first_duty:
-                    for schedule in Schedule.objects.filter(schedule_group=associated_group):
-                        schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
-
-
-class Task(models.Model):
-    name = models.CharField(max_length=20)
-    help_text = models.CharField(max_length=200, null=True)
-    cleaned_by = models.ForeignKey(Cleaner, null=True, on_delete=models.SET_NULL)
-
-
-class Complaint(models.Model):
-    tasks_in_question = models.ManyToManyField(Task)
-    comment = models.CharField(max_length=200)
-    created = models.DateField(auto_now_add=datetime.date.today)
-
-
-class ScheduleGroup(models.Model):
-    class Meta:
-        ordering = ("name", )
-    name = models.CharField(max_length=30, unique=True)
-    cleaners = models.ManyToManyField(Cleaner)
-
-    def __str__(self):
-        return self.name
-
-
 class Schedule(models.Model):
     class Meta:
         ordering = ('cleaners_per_date',)
@@ -115,9 +32,6 @@ class Schedule(models.Model):
 
     FREQUENCY_CHOICES = ((1, 'Jede Woche'), (2, 'Gerade Wochen'), (3, 'Ungerade Wochen'))
     frequency = models.IntegerField(default=1, choices=FREQUENCY_CHOICES)
-
-    schedule_group = models.ManyToManyField(ScheduleGroup, blank=True)
-
     tasks = models.CharField(max_length=200, null=True)
 
     def __str__(self):
@@ -142,9 +56,6 @@ class Schedule(models.Model):
             for date in all_duty_dates:
                 self.assign_cleaning_duty(date)
 
-    def delete(self, using=None, keep_parents=False):
-        super().delete(using, keep_parents)
-
     def deployment_ratios(self, for_date, cleaners=None):
         """Returns <number of duties a cleaner cleans in>/<total number of duties> on date for_date.
         Ratios are calculated over a time window that stretches into the past and the future, ignoring
@@ -152,9 +63,10 @@ class Schedule(models.Model):
         of cleaners, pass them in a list in the cleaners argument. Otherwise all ratios will be returned."""
         ratios = []
 
-        active_cleaners_on_date = []
-        for group in self.schedule_group.all():
-            active_cleaners_on_date += list(group.cleaners.filter(moved_out__gte=for_date, moved_in__lte=for_date))
+        active_cleaners_on_date = Cleaner.objects.filter(schedule_group__schedules=self,
+                                                         moved_out__gte=for_date, moved_in__lte=for_date)
+        #for group in self.schedule_group.all():
+        #    active_cleaners_on_date += list(group.cleaners.filter(moved_out__gte=for_date, moved_in__lte=for_date))
 
         if active_cleaners_on_date:
             proportion__cleaners_assigned_per_week = self.cleaners_per_date / len(active_cleaners_on_date)
@@ -234,32 +146,117 @@ class Schedule(models.Model):
             logging.debug("")
 
 
-def group_cleaners_changed(instance, action, pk_set, **kwargs):
-    if action == 'post_add' or action == 'post_remove':
-        dates_to_delete = []
-        one_week = datetime.timedelta(days=7)
-        for cleaner_pk in pk_set:
-            cleaner = Cleaner.objects.get(pk=cleaner_pk)
-            first_duty, last_duty = correct_dates_to_weekday([min(cleaner.moved_in, datetime.date.today()),
-                                                              cleaner.moved_out], 6)
-            date_iterator = first_duty
-            while date_iterator <= last_duty:
-                if date_iterator not in dates_to_delete:
-                    dates_to_delete.append(date_iterator)
-                date_iterator += one_week
+class ScheduleGroup(models.Model):
+    class Meta:
+        ordering = ("name", )
+    name = models.CharField(max_length=30, unique=True)
+    schedules = models.ManyToManyField(Schedule)
 
-        for schedule in Schedule.objects.filter(schedule_group=instance):
-            dates_to_redistribute = []
-            for date in dates_to_delete:
-                duty = schedule.duties.filter(date=date)
-                if duty.exists():
-                    duty.delete()
-                    dates_to_redistribute.append(date)
-            for date in dates_to_redistribute:
-                schedule.assign_cleaning_duty(date)
+    def __str__(self):
+        return self.name
 
 
-m2m_changed.connect(group_cleaners_changed, sender=ScheduleGroup.cleaners.through)
+class Cleaner(models.Model):
+    class Meta:
+        ordering = ('name',)
+    name = models.CharField(max_length=10, unique=True)
+    slug = models.CharField(max_length=10, unique=True)
+    moved_in = models.DateField()
+    moved_out = models.DateField()
+    slack_id = models.CharField(max_length=10, null=True)
+    schedule_group = models.ForeignKey(ScheduleGroup, on_delete=models.SET_NULL, null=True)
+
+    def __init__(self, *args, **kwargs):
+        super(Cleaner, self).__init__(*args, **kwargs)
+        self.__last_moved_in = self.moved_in
+        self.__last_moved_out = self.moved_out
+        self.__last_group = self.schedule_group
+
+    def __str__(self):
+        return self.name
+
+    def rejected_dutyswitch_requests(self):
+        return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
+
+    def dutyswitch_requests_received(self):
+        return DutySwitch.objects.filter(selected_assignment__cleaner=self)
+
+    def pending_dutyswitch_requests(self):
+        return DutySwitch.objects.filter(source_assignment__cleaner=self, status=1)
+
+    def nr_assignments_on_day(self, date):
+        return self.assignment_set.filter(date=date).count()
+
+    def delete(self, using=None, keep_parents=False):
+        for schedule in self.schedule_group.schedules.all():
+            schedule.new_cleaning_duties(self.moved_in, self.moved_out)
+        super().delete(using, keep_parents)
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        self.slug = slugify(self.name)
+        super().save(force_insert, force_update, using, update_fields)
+
+        if self.moved_out != self.__last_moved_out:
+            prev_last_duty, new_last_duty = correct_dates_to_weekday([self.__last_moved_out, self.moved_out], 6)
+            if prev_last_duty != new_last_duty:
+                for schedule in self.schedule_group.schedules.all():
+                    schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
+
+        if self.moved_in != self.__last_moved_in:
+            prev_first_duty, new_first_duty = correct_dates_to_weekday([self.__last_moved_in, self.moved_in], 6)
+            if prev_first_duty != new_first_duty:
+                for schedule in self.schedule_group.schedules.all():
+                    schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
+
+        if self.schedule_group != self.__last_group:
+            if self.__last_group:
+                schedules_to_reassign = self.schedule_group.schedules.intersection(self.__last_group.schedules)
+            else:
+                schedules_to_reassign = self.schedule_group.schedules
+            print(schedules_to_reassign)
+            for schedule in schedules_to_reassign.all():
+                schedule.new_cleaning_duties(self.moved_in, self.moved_out)
+
+
+class Task(models.Model):
+    name = models.CharField(max_length=20)
+    help_text = models.CharField(max_length=200, null=True)
+    cleaned_by = models.ForeignKey(Cleaner, null=True, on_delete=models.SET_NULL)
+
+
+class Complaint(models.Model):
+    tasks_in_question = models.ManyToManyField(Task)
+    comment = models.CharField(max_length=200)
+    created = models.DateField(auto_now_add=datetime.date.today)
+
+
+# def group_cleaners_changed(instance, action, pk_set, **kwargs):
+#     if action == 'post_add' or action == 'post_remove':
+#         dates_to_delete = []
+#         one_week = datetime.timedelta(days=7)
+#         for cleaner_pk in pk_set:
+#             cleaner = Cleaner.objects.get(pk=cleaner_pk)
+#             first_duty, last_duty = correct_dates_to_weekday([min(cleaner.moved_in, datetime.date.today()),
+#                                                               cleaner.moved_out], 6)
+#             date_iterator = first_duty
+#             while date_iterator <= last_duty:
+#                 if date_iterator not in dates_to_delete:
+#                     dates_to_delete.append(date_iterator)
+#                 date_iterator += one_week
+#
+#         for schedule in Schedule.objects.filter(schedule_group=instance):
+#             dates_to_redistribute = []
+#             for date in dates_to_delete:
+#                 duty = schedule.duties.filter(date=date)
+#                 if duty.exists():
+#                     duty.delete()
+#                     dates_to_redistribute.append(date)
+#             for date in dates_to_redistribute:
+#                 schedule.assign_cleaning_duty(date)
+
+
+# m2m_changed.connect(group_cleaners_changed, sender=ScheduleGroup.cleaners.through)
 
 
 class CleaningDay(models.Model):

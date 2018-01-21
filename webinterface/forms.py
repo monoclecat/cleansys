@@ -91,12 +91,12 @@ class CleanerForm(forms.ModelForm):
                                  required=False)
 
     def __init__(self, *args, **kwargs):
-        initial = kwargs.get('initial', {})
-        if 'instance' in kwargs and kwargs['instance']:
-            initial['schedule_group'] = ScheduleGroup.objects.filter(cleaners=kwargs['instance'])
-            if initial['schedule_group'].exists():
-                initial['schedule_group'] = initial['schedule_group'].first().pk
-            kwargs['initial'] = initial
+        # initial = kwargs.get('initial', {})
+        # if 'instance' in kwargs and kwargs['instance']:
+        #     initial['schedule_group'] = ScheduleGroup.objects.filter(cleaners=kwargs['instance'])
+        #     if initial['schedule_group'].exists():
+        #         initial['schedule_group'] = initial['schedule_group'].first().pk
+        #     kwargs['initial'] = initial
 
         super(CleanerForm, self).__init__(*args, **kwargs)
 
@@ -157,6 +157,11 @@ class CleaningScheduleForm(forms.ModelForm):
                                       "Herd,Ofen,Oberflächen")
 
     def __init__(self, *args, **kwargs):
+        initial = kwargs.get('initial', {})
+        if 'instance' in kwargs and kwargs['instance']:
+            initial['schedule_group'] = ScheduleGroup.objects.filter(schedules=kwargs['instance'])
+            kwargs['initial'] = initial
+
         super(CleaningScheduleForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
 
@@ -182,7 +187,7 @@ class CleaningScheduleForm(forms.ModelForm):
 class CleaningScheduleGroupForm(forms.ModelForm):
     class Meta:
         model = ScheduleGroup
-        exclude = ('cleaners', )
+        fields = '__all__'
 
     name = forms.CharField(max_length=30, label="Name der Putzplan-Gruppe",
                            help_text="Dieser Name steht für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
@@ -191,12 +196,20 @@ class CleaningScheduleGroupForm(forms.ModelForm):
                                      "Putzplan-Änderungsformularen selbst. ",
                            required=True, widget=forms.TextInput)
 
+    schedules = forms. \
+        ModelMultipleChoiceField(queryset=Schedule.objects.all(),
+                                 required=True,
+                                 widget=forms.CheckboxSelectMultiple,
+                                 label="Putzpläne",
+                                 help_text="Wähle die Putzpläne, die dieser Gruppe angehören.")
+
     def __init__(self, *args, **kwargs):
         super(CleaningScheduleGroupForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
 
         self.helper.layout = Layout(
             'name',
+            'schedules',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
@@ -204,7 +217,7 @@ class CleaningScheduleGroupForm(forms.ModelForm):
         )
 
         if kwargs['instance']:
-            if not kwargs['instance'].cleaners.all():
+            if not kwargs['instance'].cleaner_set.all():
                 self.helper.layout.fields.append(HTML(
                     "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
                     "href=\"{% url 'webinterface:cleaning-schedule-group-delete' object.pk %}\""
