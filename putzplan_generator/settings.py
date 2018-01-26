@@ -24,6 +24,7 @@ os.environ['SLACK_BOT_TOKEN'] = SLACK_BOT_TOKEN
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+ABSOLUTE_TRUST_IN_USERS = True
 
 ALLOWED_HOSTS = []
 

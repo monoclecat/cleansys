@@ -5,6 +5,8 @@ from django.db.models.signals import m2m_changed
 from django.utils.text import slugify
 from django.core.paginator import Paginator
 import logging
+from django.contrib.auth.models import AbstractBaseUser
+from putzplan_generator.settings import ABSOLUTE_TRUST_IN_USERS
 
 
 def correct_dates_to_weekday(days, weekday):
@@ -156,7 +158,7 @@ class ScheduleGroup(models.Model):
         return self.name
 
 
-class Cleaner(models.Model):
+class Cleaner(AbstractBaseUser):
     class Meta:
         ordering = ('name',)
     name = models.CharField(max_length=10, unique=True)
@@ -165,6 +167,8 @@ class Cleaner(models.Model):
     moved_out = models.DateField()
     slack_id = models.CharField(max_length=10, null=True)
     schedule_group = models.ForeignKey(ScheduleGroup, on_delete=models.SET_NULL, null=True)
+
+    USERNAME_FIELD = 'name'
 
     def __init__(self, *args, **kwargs):
         super(Cleaner, self).__init__(*args, **kwargs)
@@ -195,6 +199,10 @@ class Cleaner(models.Model):
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         self.slug = slugify(self.name)
+
+        if ABSOLUTE_TRUST_IN_USERS:
+            pass
+
         super().save(force_insert, force_update, using, update_fields)
 
         if self.moved_out != self.__last_moved_out:

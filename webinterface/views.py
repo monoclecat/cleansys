@@ -453,8 +453,8 @@ class CleanerNewView(CreateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        curr_groups = form.cleaned_data['schedule_group']
-        update_groups_for_cleaner(self.object, curr_groups)
+        # curr_groups = form.cleaned_data['schedule_group']
+        # update_groups_for_cleaner(self.object, curr_groups)
         return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):

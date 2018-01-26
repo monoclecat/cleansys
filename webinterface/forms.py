@@ -146,9 +146,8 @@ class CleaningScheduleForm(forms.ModelForm):
 
     schedule_group = forms. \
         ModelMultipleChoiceField(queryset=ScheduleGroup.objects.all(),
-                                 required=True,
                                  widget=forms.CheckboxSelectMultiple,
-                                 label="Zugehörigkeit",
+                                 label="Zugehörigkeit", required=False,
                                  help_text="Wähle die Gruppe, zu der der Putzplan gehört.")
 
     tasks = forms.CharField(max_length=200, required=False, widget=forms.TextInput, label="Aufgaben des Putzdienstes",
@@ -198,9 +197,8 @@ class CleaningScheduleGroupForm(forms.ModelForm):
 
     schedules = forms. \
         ModelMultipleChoiceField(queryset=Schedule.objects.all(),
-                                 required=True,
                                  widget=forms.CheckboxSelectMultiple,
-                                 label="Putzpläne",
+                                 label="Putzpläne", required=False,
                                  help_text="Wähle die Putzpläne, die dieser Gruppe angehören.")
 
     def __init__(self, *args, **kwargs):
