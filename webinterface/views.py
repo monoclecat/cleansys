@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.http import HttpResponseRedirect
 from django.contrib.auth import authenticate, login, logout
 from django.views.generic import TemplateView
@@ -28,6 +28,34 @@ class WelcomeView(TemplateView):
         context['schedule_list'] = Schedule.objects.all()
 
         return context
+
+
+class LoginByClickView(TemplateView):
+    template_name = "webinterface/login_byclick.html"
+
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            if request.user.is_superuser:
+                return HttpResponseRedirect(reverse("webinterface:config"))
+            else:
+                return HttpResponseRedirect(reverse("webinterface:cleaner", kwargs={'page': 1}))
+        else:
+            context = dict()
+            context['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.date.today())
+
+            return self.render_to_response(context)
+
+    def post(self, request, *args, **kwargs):
+        print(request.POST)
+        cleaner = Cleaner.objects.get(slug=request.POST['slug'])
+        user = authenticate(request, username=request.POST['slug'], password=request.POST['slug'])
+        print(cleaner.check_password(request.POST['slug']))
+        print(user)
+        if user is not None:
+            pass
+        else:
+            pass
+        return HttpResponseRedirect(reverse_lazy('webinterface:login'))
 
 
 class AssignmentView(UpdateView):
@@ -128,7 +156,7 @@ class DutySwitchView(TemplateView):
             raise SuspiciousOperation("POST sent that didn't match a catchable case!")
 
         return HttpResponseRedirect(reverse_lazy(
-            'webinterface:cleaner-duties',
+            'webinterface:cleaner',
             kwargs={'slug': request.POST['redirect_cleaner_slug'], 'page': 1}))
 
 
@@ -171,7 +199,7 @@ class CleanerView(TemplateView):
             raise SuspiciousOperation("POST sent that didn't match a catchable case!")
 
         return HttpResponseRedirect(reverse_lazy(
-            'webinterface:cleaner-duties',
+            'webinterface:cleaner',
             kwargs={'slug': kwargs['slug'], 'page': kwargs['page']}))
 
     def get(self, request, *args, **kwargs):
@@ -183,7 +211,7 @@ class CleanerView(TemplateView):
 
         if 'page' not in kwargs or int(kwargs['page']) <= 0:
             return redirect(
-                reverse_lazy('webinterface:cleaner-duties', kwargs={'slug': cleaner.slug, 'page': 1}))
+                reverse_lazy('webinterface:cleaner', kwargs={'slug': cleaner.slug, 'page': 1}))
 
         context = {}
 
@@ -451,12 +479,6 @@ class CleanerNewView(CreateView):
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
 
-    def form_valid(self, form):
-        self.object = form.save()
-        # curr_groups = form.cleaned_data['schedule_group']
-        # update_groups_for_cleaner(self.object, curr_groups)
-        return HttpResponseRedirect(self.get_success_url())
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Füge neuen Putzer hinzu"
@@ -468,12 +490,6 @@ class CleanerUpdateView(UpdateView):
     model = Cleaner
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
-
-    def form_valid(self, form):
-        self.object = form.save()
-        # curr_group = form.cleaned_data['schedule_group']
-        # update_groups_for_cleaner(self.object, curr_group)
-        return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

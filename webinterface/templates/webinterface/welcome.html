@@ -30,7 +30,7 @@ Willkommen
                     {% for cleaner in cleaner_list %}
                         <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
                             <a class="btn btn-primary btn-block" role="button"
-                               href="{% url 'webinterface:cleaner-duties' cleaner.slug 1 %}">
+                               href="{% url 'webinterface:cleaner' cleaner.slug 1 %}">
                                 <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
                             </a>
                         </div>

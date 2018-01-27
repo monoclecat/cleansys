@@ -1,5 +1,6 @@
 from django.urls import path
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView, LogoutView
 from .views import *
 
 from django.views.generic.base import RedirectView
@@ -8,7 +9,7 @@ import datetime
 
 app_name = 'webinterface'
 urlpatterns = [
-    path('', WelcomeView.as_view(), name='welcome'),
+    path('', LoginByClickView.as_view(), name='welcome'),
     #url(r'^$', WelcomeView.as_view(), name='welcome'),
 
     #url(r'^switch/(?P<pk>[\d]+)/(?P<answer>[\S]+)/$', DutySwitchView.as_view(), name='switch-duty-answer'),
@@ -17,7 +18,8 @@ urlpatterns = [
 
     path('clean/<int:assignment_pk>/', AssignmentView.as_view(), name='clean-duty'),
 
-    path('putzer/<slug:slug>/seite<int:page>/', CleanerView.as_view(), name='cleaner-duties'),
+    # path('putzer/<slug:slug>/seite<int:page>/', CleanerView.as_view(), name='cleaner'),
+    path('du/seite<int:page>/', CleanerView.as_view(), name='cleaner'),
 
     path('putzplan/<slug:slug>/seite<int:page>/<slug:cleaner_slug>/', CleaningScheduleView.as_view(),
          name='schedule-view-highlight'),
@@ -59,5 +61,5 @@ urlpatterns = [
          name='cleaning-schedule-group-delete'),
 
     path('login/', login_view, name='login'),
-    path('logout/', login_required(login_view), name='logout'),
+    path('logout/', login_required(LogoutView.as_view()), name='logout'),
 ]

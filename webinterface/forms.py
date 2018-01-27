@@ -47,11 +47,6 @@ class ConfigForm(forms.Form):
         super(ConfigForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            HTML(
-                "<a class=\"btn btn-default\" href=\"{% url 'webinterface:welcome' %}\" "
-                "role=\"button\" style=\"margin:0.5em 1em 0.5em 0.5em\">"
-                "<span class=\"glyphicon glyphicon-chevron-left\"></span> Zurück</a>"
-            ),
             'start_date',
             'end_date',
             HTML(
@@ -66,9 +61,9 @@ class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
         if slack_running():
-            exclude = ('slug',)
+            exclude = ('slug', 'password')
         else:
-            exclude = ('slack_id', 'slug')
+            exclude = ('slack_id', 'slug', 'password')
 
     name = forms.CharField(max_length=10, label="Name des Putzers",
                            required=True, widget=forms.TextInput)
@@ -77,7 +72,7 @@ class CleanerForm(forms.ModelForm):
                                widget=forms.DateInput(format='%d.%m.%Y'))
     moved_out = forms.DateField(input_formats=['%d.%m.%Y'], label="Ausgezogen am TT.MM.YYYY",
                                 widget=forms.DateInput(format='%d.%m.%Y'),
-                                help_text="Falls du einen neuen Putzer erstellst, ist es eine gute Idee, diesen"
+                                help_text="Falls du einen neuen Putzer erstellst, ist es eine gute Idee, diesen "
                                           "Wert auf das Einzugsdatum plus 3 Jahre zu setzen.")
 
     schedule_group = forms.\

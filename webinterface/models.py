@@ -158,6 +158,11 @@ class ScheduleGroup(models.Model):
         return self.name
 
 
+class CleanerQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(moved_out__gte=datetime.date.today())
+
+
 class Cleaner(AbstractBaseUser):
     class Meta:
         ordering = ('name',)
@@ -168,7 +173,9 @@ class Cleaner(AbstractBaseUser):
     slack_id = models.CharField(max_length=10, null=True)
     schedule_group = models.ForeignKey(ScheduleGroup, on_delete=models.SET_NULL, null=True)
 
-    USERNAME_FIELD = 'name'
+    objects = CleanerQuerySet.as_manager()
+
+    USERNAME_FIELD = 'slug'
 
     def __init__(self, *args, **kwargs):
         super(Cleaner, self).__init__(*args, **kwargs)
@@ -178,6 +185,9 @@ class Cleaner(AbstractBaseUser):
 
     def __str__(self):
         return self.name
+
+    def is_superuser(self):
+        return False
 
     def rejected_dutyswitch_requests(self):
         return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
@@ -200,20 +210,21 @@ class Cleaner(AbstractBaseUser):
              update_fields=None):
         self.slug = slugify(self.name)
 
-        if ABSOLUTE_TRUST_IN_USERS:
-            pass
+        if ABSOLUTE_TRUST_IN_USERS and not self.has_usable_password():
+            print(self.slug)
+            self.set_password(self.slug)
 
         super().save(force_insert, force_update, using, update_fields)
 
         if self.moved_out != self.__last_moved_out:
             prev_last_duty, new_last_duty = correct_dates_to_weekday([self.__last_moved_out, self.moved_out], 6)
-            if prev_last_duty != new_last_duty:
+            if prev_last_duty and prev_last_duty != new_last_duty:
                 for schedule in self.schedule_group.schedules.all():
                     schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
 
         if self.moved_in != self.__last_moved_in:
             prev_first_duty, new_first_duty = correct_dates_to_weekday([self.__last_moved_in, self.moved_in], 6)
-            if prev_first_duty != new_first_duty:
+            if prev_first_duty and prev_first_duty != new_first_duty:
                 for schedule in self.schedule_group.schedules.all():
                     schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
@@ -222,7 +233,6 @@ class Cleaner(AbstractBaseUser):
                 schedules_to_reassign = self.schedule_group.schedules.intersection(self.__last_group.schedules)
             else:
                 schedules_to_reassign = self.schedule_group.schedules
-            print(schedules_to_reassign)
             for schedule in schedules_to_reassign.all():
                 schedule.new_cleaning_duties(self.moved_in, self.moved_out)
 

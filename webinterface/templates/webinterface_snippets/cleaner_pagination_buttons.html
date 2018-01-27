@@ -2,7 +2,7 @@
     <div class="col-xs-6" style="padding: 5px">
         {% if page.has_previous %}
             <a class="btn btn-default btn-block" role="button"
-                    href="{% url 'webinterface:cleaner-duties' cleaner.slug page.previous_page_number %}">
+                    href="{% url 'webinterface:cleaner' cleaner.slug page.previous_page_number %}">
                 <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
             </a>
         {% endif %}
@@ -10,7 +10,7 @@
     <div class="col-xs-6" style="padding: 5px">
         {% if page.has_next %}
             <a class="btn btn-default btn-block" role="button"
-                href="{% url 'webinterface:cleaner-duties' cleaner.slug page.next_page_number %}">
+                href="{% url 'webinterface:cleaner' cleaner.slug page.next_page_number %}">
                 <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
             </a>
         {% endif %}

@@ -28,6 +28,8 @@ ABSOLUTE_TRUST_IN_USERS = True
 
 ALLOWED_HOSTS = []
 
+LOGIN_URL = '/login'
+LOGOUT_REDIRECT_URL = '/'
 
 # Application definition
 
@@ -48,7 +50,6 @@ INSTALLED_APPS = [
 ]
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
-LOGIN_URL = '/login'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

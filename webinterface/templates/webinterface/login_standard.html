@@ -1,0 +1,15 @@
+{% extends "webinterface/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+Login
+{% endblock %}
+
+{% block body %}
+        <h1>Login</h1>
+
+        <form class="form-inline" action="{% url 'webinterface:login' %}" method="post">
+            {% csrf_token %}
+            {% crispy form %}
+        </form>
+{%  endblock %}
