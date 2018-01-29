@@ -1,115 +1,106 @@
-{% extends "webinterface/base.html" %}
+{% extends "webinterface/mobile_first_body.html" %}
 {% load crispy_forms_tags %}
 
 {% block title %}
 Putzdienst tauschen
 {% endblock %}
 
-{% block body %}
-    <div class="container-fluid">
-        <div class="row" style="margin: 1em;">
-            <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3">
-                <a class="btn btn-block btn-default" role="button"
-                   href="{% url 'webinterface:cleaner' duty_switch.source_assignment.cleaner.slug 1 %}">
-                    <span class="glyphicon glyphicon-chevron-left"></span> Zurück
-                </a>
-            </div>
-        </div>
+{% block main %}
+    {% include "webinterface_snippets/back_button_to_cleaner_page.html" %}
 
-        {% ifequal perspective 'source' %}
-        <div class="row">
-            <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="padding: 0.3em">
-                <div class="panel panel-primary">
-                    <div class="panel-heading">
-                        <h3>Hallo {{ duty_switch.source_assignment.cleaner.name }}, wie ich sehe möchtest du
-                            deinen Putzdienst für {{ duty_switch.source_assignment.schedule.name }}
-                            am {{ duty_switch.source_assignment.date }} tauschen.</h3>
-                    </div>
-                    <div class="panel-body">
-                        {% if duty_switch.selected %}
-                            <div class="row" style="margin: 1em;">
-                                <h4>Du hast für diesen Putzdienst eine Anrage an
-                                    {{ duty_switch.selected_assignment.cleaner.name }}
-                                    gestartet, um mit dem Putzdienst am {{ duty_switch.selected_assignment.date }}
-                                    zu tauschen.</h4>
-                            </div>
-                        {% endif %}
-                        <form class="form-inline" method="post">
-                            {% csrf_token %}
-                            <input type="hidden" name="redirect_cleaner_slug"
-                                   value="{{ duty_switch.source_assignment.cleaner.slug }}">
-                            <input type="submit" name="delete"
-                                class="btn btn-warning"
-                                value="Tauschanfrage löschen"/>
-                        </form>
-
-                        <div class="row" style="margin: 1em;">
-                            <p>Ich habe dir ein paar Putzdienste zur Auswahl herausgesucht, bitte wähle einen aus. </p>
-                        </div>
-
-
-                        <div class="row">
-                            {% for option in duty_switch.destinations.all %}
-                                <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px">
-                                    <form class="form-inline" method="post">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="redirect_cleaner_slug" value="{{ duty_switch.source_assignment.cleaner.slug }}">
-                                        <input type="hidden" name="selected" value="{{ option.pk }}">
-                                        <input type="submit" name="select"
-                                            style="white-space: normal;"
-                                            class="btn btn-info btn-lg btn-block"
-                                            value="Tausche mit {{ option.cleaner.name }} am {{ option.date }}"/>
-                                    </form>
-                                </div>
-                            {% empty %}
-                                <h3 style="margin: 1em">Keine Alternativen gefunden</h3>
-                            {% endfor %}
-                        </div>
-
-                    </div>
+    {% ifequal perspective 'source' %}
+    <div class="row">
+        <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="padding: 0.3em">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3>Hallo {{ duty_switch.source_assignment.cleaner.name }}, wie ich sehe möchtest du
+                        deinen Putzdienst für {{ duty_switch.source_assignment.schedule.name }}
+                        am {{ duty_switch.source_assignment.date }} tauschen.</h3>
                 </div>
-            </div>
-        </div>
-
-        {% else %}
-        <div class="row">
-            <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="padding: 0.3em">
-                <div class="panel panel-primary">
-                    <div class="panel-heading">
-                        <h1>{{ duty_switch.source_assignment.schedule.name }}</h1>
-                        <h4>{{ duty_switch.source_assignment.cleaner.name }} möchte folgende Dienste tauschen:</h4>
-                    </div>
                 <div class="panel-body">
-                    <div class="row">
-                        <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="text-align: center">
-                            <h3>
-                                {{ duty_switch.source_assignment.cleaner.name }} am {{ duty_switch.source_assignment.date }}
-                                <span class="glyphicon glyphicon-transfer"></span>
-                                Du am {{ duty_switch.selected_assignment.date }}
-                            </h3>
+                    {% if duty_switch.selected %}
+                        <div class="row" style="margin: 1em;">
+                            <h4>Du hast für diesen Putzdienst eine Anrage an
+                                {{ duty_switch.selected_assignment.cleaner.name }}
+                                gestartet, um mit dem Putzdienst am {{ duty_switch.selected_assignment.date }}
+                                zu tauschen.</h4>
                         </div>
-                    </div>
-                </div>
-                <div class="panel-footer">
-                    <h3>Möchtest du die Anfrage annehmen oder ablehnen?</h3>
+                    {% endif %}
                     <form class="form-inline" method="post">
                         {% csrf_token %}
-                        <div class="row">
-                            <input type="hidden" name="redirect_cleaner_slug"
-                                   value="{{ duty_switch.selected_assignment.cleaner.slug }}">
-                            <div class="col-sm-6" style="padding: 0.5em">
-                                <button class="btn btn-success btn-lg btn-block" type="submit" name="accept">
-                                    <span class="glyphicon glyphicon-ok-sign"></span> Annehmen</button>
-                            </div>
-                            <div class="col-sm-6" style="padding: 0.5em">
-                                <button class="btn btn-danger btn-lg btn-block" type="submit" name="reject">
-                                    <span class="glyphicon glyphicon-remove-sign"></span> Ablehnen</button>
-                            </div>
-                        </div>
+                        <input type="hidden" name="redirect_cleaner_slug"
+                               value="{{ duty_switch.source_assignment.cleaner.slug }}">
+                        <input type="submit" name="delete"
+                            class="btn btn-warning"
+                            value="Tauschanfrage löschen"/>
                     </form>
+
+                    <div class="row" style="margin: 1em;">
+                        <p>Ich habe dir ein paar Putzdienste zur Auswahl herausgesucht, bitte wähle einen aus. </p>
+                    </div>
+
+
+                    <div class="row">
+                        {% for option in duty_switch.destinations.all %}
+                            <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px">
+                                <form class="form-inline" method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="redirect_cleaner_slug" value="{{ duty_switch.source_assignment.cleaner.slug }}">
+                                    <input type="hidden" name="selected" value="{{ option.pk }}">
+                                    <input type="submit" name="select"
+                                        style="white-space: normal;"
+                                        class="btn btn-info btn-lg btn-block"
+                                        value="Tausche mit {{ option.cleaner.name }} am {{ option.date }}"/>
+                                </form>
+                            </div>
+                        {% empty %}
+                            <h3 style="margin: 1em">Keine Alternativen gefunden</h3>
+                        {% endfor %}
+                    </div>
+
                 </div>
             </div>
         </div>
-        {% endifequal %}
     </div>
+
+    {% else %}
+    <div class="row">
+        <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="padding: 0.3em">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h1>{{ duty_switch.source_assignment.schedule.name }}</h1>
+                    <h4>{{ duty_switch.source_assignment.cleaner.name }} möchte folgende Dienste tauschen:</h4>
+                </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="text-align: center">
+                        <h3>
+                            {{ duty_switch.source_assignment.cleaner.name }} am {{ duty_switch.source_assignment.date }}
+                            <span class="glyphicon glyphicon-transfer"></span>
+                            Du am {{ duty_switch.selected_assignment.date }}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <h3>Möchtest du die Anfrage annehmen oder ablehnen?</h3>
+                <form class="form-inline" method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <input type="hidden" name="redirect_cleaner_slug"
+                               value="{{ duty_switch.selected_assignment.cleaner.slug }}">
+                        <div class="col-sm-6" style="padding: 0.5em">
+                            <button class="btn btn-success btn-lg btn-block" type="submit" name="accept">
+                                <span class="glyphicon glyphicon-ok-sign"></span> Annehmen</button>
+                        </div>
+                        <div class="col-sm-6" style="padding: 0.5em">
+                            <button class="btn btn-danger btn-lg btn-block" type="submit" name="reject">
+                                <span class="glyphicon glyphicon-remove-sign"></span> Ablehnen</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endifequal %}
 {% endblock %}

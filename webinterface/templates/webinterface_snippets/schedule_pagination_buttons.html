@@ -1,7 +1,7 @@
-<div class="row" style="padding: 1em">
+<div class="row">
     <div class="col-xs-6" style="padding: 5px">
         {% if page.has_previous %}
-            <a class="btn btn-default btn-block" role="button"
+            <a class="btn btn-default btn-block btn-sm" role="button"
                 {% if highlighted_cleaner %}
                     href="{% url 'webinterface:schedule-view-highlight' schedule.slug page.previous_page_number highlighted_cleaner.slug %}"
                 {% else %}
@@ -13,7 +13,7 @@
     </div>
     <div class="col-xs-6" style="padding: 5px">
         {% if page.has_next %}
-            <a class="btn btn-default btn-block" role="button"
+            <a class="btn btn-default btn-block btn-sm" role="button"
                 {% if highlighted_cleaner %}
                     href="{% url 'webinterface:schedule-view-highlight' schedule.slug page.next_page_number highlighted_cleaner.slug %}"
                 {% else %}

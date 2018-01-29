@@ -4,6 +4,7 @@
 
 import os
 import logging
+from django.urls import reverse_lazy
 
 
 logging.getLogger('').setLevel(logging.DEBUG)
@@ -28,7 +29,8 @@ ABSOLUTE_TRUST_IN_USERS = True
 
 ALLOWED_HOSTS = []
 
-LOGIN_URL = '/login'
+LOGIN_URL = reverse_lazy('webinterface:login-by-click')
+LOGIN_REDIRECT_URL = reverse_lazy('webinterface:cleaner', kwargs={'page': 1})
 LOGOUT_REDIRECT_URL = '/'
 
 # Application definition

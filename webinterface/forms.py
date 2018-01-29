@@ -5,6 +5,76 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import *
 from crispy_forms.bootstrap import *
 from slackbot.slackbot import get_slack_users, slack_running
+from django.contrib.auth.forms import AuthenticationForm
+
+
+class ComplaintForm(forms.ModelForm):
+    class Meta:
+        model = Complaint
+        exclude = ('created',)
+
+    tasks_in_question = \
+        forms.ModelMultipleChoiceField(queryset=CleaningDay.objects.filter(
+                                           date__range=(datetime.date.today()-datetime.timedelta(days=4),
+                                                        datetime.date.today()+datetime.timedelta(days=2))).first().tasks.all(),
+                                       widget=forms.CheckboxSelectMultiple,
+                                       label="Welche Aufgaben wurden nicht korrekt gemacht?",
+                                       help_text="Mehrere Auswählbar")
+    comment = forms.CharField(widget=forms.TextInput, label="Was hast du zu sagen?")
+
+    def __init__(self, *args, **kwargs):
+        super(ComplaintForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'tasks_in_question',
+            'comment',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
+                 "<input action=\"action\" type=\"button\" value=\"Back\" class=\"btn btn-warning\""
+                 "onclick=\"window.history.go(-1); return false;\" />"),
+        )
+
+
+class ConfigForm(forms.ModelForm):
+    class Meta:
+        model = Config
+        fields = ('date_due', 'trust_in_users')
+
+    date_due = forms.ChoiceField(choices=Config.WEEKDAYS, initial=6,
+                                 label="Wochentag, für den Putzdienste definiert sind.",
+                                 help_text="Dies ist nicht der Wochetag, bis den die Putzdienste gemacht sein müssen!")
+    trust_in_users = forms.BooleanField(required=False, label="Putzer können sich ohne Passwort einloggen.",
+                                        help_text="Eine Änderung dieses Feldes hat weitreichende Konsequenzen.")
+
+    def __init__(self, *args, **kwargs):
+        super(ConfigForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'date_due',
+            Fieldset('Login-Verhalten', 'trust_in_users'),
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
+        )
+
+
+class AuthFormWithSubmit(AuthenticationForm):
+    def __init__(self, request=None, *args, **kwargs):
+        initial = kwargs.get('initial', {})
+        if 'username' in request.GET and request.GET['username']:
+            initial['username'] = request.GET['username']
+        kwargs['initial'] = initial
+        super().__init__(request, *args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'username',
+            'password',
+            Submit('login', 'Einloggen', css_class="btn btn-block"),
+        )
+
+        if 'username' in kwargs['initial']:
+            self.fields['username'].disabled = True
 
 
 class AssignmentForm(forms.ModelForm):
@@ -27,7 +97,7 @@ class AssignmentForm(forms.ModelForm):
         )
 
 
-class ConfigForm(forms.Form):
+class ResultsForm(forms.Form):
     start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Von TT.MM.YYYY")
     end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Bis TT.MM.YYYY")
 
@@ -44,7 +114,7 @@ class ConfigForm(forms.Form):
 
         kwargs['initial'] = initial
 
-        super(ConfigForm, self).__init__(*args, **kwargs)
+        super(ResultsForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout(
             'start_date',
@@ -61,9 +131,9 @@ class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
         if slack_running():
-            exclude = ('slug', 'password')
+            exclude = ('slug', 'user')
         else:
-            exclude = ('slack_id', 'slug', 'password')
+            exclude = ('slack_id', 'slug', 'user')
 
     name = forms.CharField(max_length=10, label="Name des Putzers",
                            required=True, widget=forms.TextInput)

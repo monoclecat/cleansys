@@ -1,18 +1,20 @@
-<div class="row" style="padding: 1em">
-    <div class="col-xs-6" style="padding: 5px">
-        {% if page.has_previous %}
-            <a class="btn btn-default btn-block" role="button"
-                    href="{% url 'webinterface:cleaner' cleaner.slug page.previous_page_number %}">
-                <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
-            </a>
-        {% endif %}
+{% if page.has_previous and page.has_next %}
+    <div class="row" style="padding: 1em">
+        <div class="col-xs-6" style="padding: 5px">
+            {% if page.has_previous %}
+                <a class="btn btn-default btn-block btn-sm" role="button"
+                        href="{% url 'webinterface:cleaner' page.previous_page_number %}">
+                    <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
+                </a>
+            {% endif %}
+        </div>
+        <div class="col-xs-6" style="padding: 5px">
+            {% if page.has_next %}
+                <a class="btn btn-default btn-block btn-sm" role="button"
+                    href="{% url 'webinterface:cleaner' page.next_page_number %}">
+                    <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
+                </a>
+            {% endif %}
+        </div>
     </div>
-    <div class="col-xs-6" style="padding: 5px">
-        {% if page.has_next %}
-            <a class="btn btn-default btn-block" role="button"
-                href="{% url 'webinterface:cleaner' cleaner.slug page.next_page_number %}">
-                <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
-            </a>
-        {% endif %}
-    </div>
-</div>
+{% endif %}

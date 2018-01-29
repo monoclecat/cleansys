@@ -1,0 +1,23 @@
+{% extends "webinterface/mobile_first_body.html" %}
+{% load bootstrap3 %}
+
+{% block title %}
+Putzpläne
+{% endblock %}
+
+{% block main %}
+    {% include "webinterface_snippets/back_button_to_cleaner_page.html" %}
+    <h3>Welchen Putzplan möchtest du dir anschauen?</h3>
+    <div class="row">
+        {% for schedule in object_list %}
+            <div class="col-xs-12 col-sm-4" style="padding: 5px">
+                <a class="btn btn-primary btn-block" role="button"
+                   href="{% url 'webinterface:schedule-view' schedule.slug 1 %}">
+                    <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
+                </a>
+            </div>
+        {% empty %}
+            <p>Keine Putzpläne...</p>
+        {% endfor %}
+    </div>
+{% endblock %}

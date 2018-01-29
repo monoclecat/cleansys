@@ -1,14 +1,13 @@
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy, reverse
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, QueryDict
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.views import LoginView
 from django.views.generic import TemplateView
-from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
 from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
-from django.core.paginator import *
-
+from django.views.generic.list import ListView
 
 from .forms import *
 from .models import *
@@ -19,46 +18,43 @@ from operator import itemgetter
 import logging
 
 
-class WelcomeView(TemplateView):
-    template_name = "webinterface/welcome.html"
-
-    def get_context_data(self, **kwargs):
-        context = super(WelcomeView, self).get_context_data(**kwargs)
-        context['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.date.today())
-        context['schedule_list'] = Schedule.objects.all()
-
-        return context
-
-
-class LoginByClickView(TemplateView):
-    template_name = "webinterface/login_byclick.html"
+class ScheduleList(ListView):
+    template_name = "webinterface/schedule_list.html"
+    model = Schedule
 
     def get(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
-            if request.user.is_superuser:
-                return HttpResponseRedirect(reverse("webinterface:config"))
-            else:
-                return HttpResponseRedirect(reverse("webinterface:cleaner", kwargs={'page': 1}))
-        else:
-            context = dict()
-            context['cleaner_list'] = Cleaner.objects.filter(moved_out__gte=datetime.date.today())
+        try:
+            self.queryset = Cleaner.objects.get(user=request.user).schedule_group.schedules.all()
+        except Cleaner.DoesNotExist:
+            logging.error("A logged in User, which is not an admin, is not associated to a Cleaner!")
+            return Http404("Putzer existiert nicht")
+        return super().get(request, *args, **kwargs)
 
-            return self.render_to_response(context)
+
+class LoginByClickView(LoginView):
+    template_name = "webinterface/login_byclick.html"
+    extra_context = {'cleaner_list': Cleaner.objects.active()}
 
     def post(self, request, *args, **kwargs):
-        print(request.POST)
-        cleaner = Cleaner.objects.get(slug=request.POST['slug'])
-        user = authenticate(request, username=request.POST['slug'], password=request.POST['slug'])
-        print(cleaner.check_password(request.POST['slug']))
-        print(user)
-        if user is not None:
-            pass
+        form = self.get_form()
+        if form.is_valid():
+            if not Config.objects.first().trust_in_users:
+                url = HttpResponseRedirect(reverse("webinterface:login"))
+                get_vars = QueryDict(mutable=True)
+                if 'next' in request.GET and request.GET['next']:
+                    get_vars['next'] = request.GET['next']
+                if 'username' in request.POST and request.POST['username']:
+                    get_vars['username'] = request.POST['username']
+                print(get_vars)
+                url['Location'] += "?"+get_vars.urlencode(safe="/")
+                return url
+            else:
+                return self.form_valid(form)
         else:
-            pass
-        return HttpResponseRedirect(reverse_lazy('webinterface:login'))
+            return self.form_invalid(form)
 
 
-class AssignmentView(UpdateView):
+class TaskView(UpdateView):
     template_name = "webinterface/clean_duty.html"
     model = Assignment
     form_class = AssignmentForm
@@ -66,7 +62,7 @@ class AssignmentView(UpdateView):
 
     def get_context_data(self, **kwargs):
         self.object = self.get_object()
-        context = super(AssignmentView, self).get_context_data(**kwargs)
+        context = super(TaskView, self).get_context_data(**kwargs)
 
         try:
             context['tasks'] = self.object.schedule.cleaningday_set.get(date=self.object.date).tasks.all()
@@ -157,7 +153,7 @@ class DutySwitchView(TemplateView):
 
         return HttpResponseRedirect(reverse_lazy(
             'webinterface:cleaner',
-            kwargs={'slug': request.POST['redirect_cleaner_slug'], 'page': 1}))
+            kwargs={'page': 1}))
 
 
 class CleanerView(TemplateView):
@@ -204,21 +200,24 @@ class CleanerView(TemplateView):
 
     def get(self, request, *args, **kwargs):
         try:
-            cleaner = Cleaner.objects.get(slug=kwargs['slug'])
+            cleaner = Cleaner.objects.get(user=request.user)
         except Cleaner.DoesNotExist:
-            cleaner = None
-            Http404("Putzer existiert nicht!")
+            if request.user.is_superuser:
+                return HttpResponseRedirect(reverse_lazy(
+                    'webinterface:config'))
+            logging.error("A logged in User, which is not an admin, is not associated to a Cleaner!")
+            return Http404("Putzer existiert nicht")
 
         if 'page' not in kwargs or int(kwargs['page']) <= 0:
             return redirect(
-                reverse_lazy('webinterface:cleaner', kwargs={'slug': cleaner.slug, 'page': 1}))
+                reverse_lazy('webinterface:cleaner', kwargs={'page': 1}))
 
         context = {}
 
         context['table_header'] = Schedule.objects.all().order_by('frequency')
         context['cleaner'] = cleaner
 
-        start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=2), 6)
+        start_date = correct_dates_to_due_day(datetime.date.today() - datetime.timedelta(days=2))
 
         assignments = Assignment.objects.filter(cleaner=context['cleaner'],
                                                 date__gte=start_date + datetime.timedelta(days=7)).order_by('date')
@@ -231,8 +230,8 @@ class CleanerView(TemplateView):
         return self.render_to_response(context)
 
 
-class CleaningScheduleView(TemplateView):
-    template_name = "webinterface/cleaning_schedule.html"
+class ScheduleView(TemplateView):
+    template_name = "webinterface/schedule.html"
 
     def get(self, request, *args, **kwargs):
         context = {}
@@ -250,11 +249,11 @@ class CleaningScheduleView(TemplateView):
 
         context['cleaners'] = Cleaner.objects.all()
 
-        start_date = correct_dates_to_weekday(datetime.date.today() - datetime.timedelta(days=2), 6)
+        start_date = correct_dates_to_due_day(datetime.date.today() - datetime.timedelta(days=2))
 
         assignments = context['schedule'].assignment_set.filter(date__gte=start_date).order_by('date')
 
-        pagination = Paginator(assignments, 10*context['schedule'].cleaners_per_date)
+        pagination = Paginator(assignments, 30*context['schedule'].cleaners_per_date)
         context['page'] = pagination.get_page(kwargs['page'])
 
         return self.render_to_response(context)
@@ -262,7 +261,7 @@ class CleaningScheduleView(TemplateView):
 
 class ConfigView(FormView):
     template_name = 'webinterface/config.html'
-    form_class = ConfigForm
+    form_class = ResultsForm
 
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
@@ -327,7 +326,7 @@ class ResultsView(TemplateView):
         from_date_raw = datetime.date(int(kwargs['from_year']), int(kwargs['from_month']), int(kwargs['from_day']))
         to_date_raw = datetime.date(int(kwargs['to_year']), int(kwargs['to_month']), int(kwargs['to_day']))
 
-        kwargs['from_date'], kwargs['to_date'] = correct_dates_to_weekday([from_date_raw, to_date_raw], 6)
+        kwargs['from_date'], kwargs['to_date'] = correct_dates_to_due_day([from_date_raw, to_date_raw])
 
         if from_date_raw.weekday() != 6 or to_date_raw.weekday() != 6:
             results_kwargs = {'from_day': kwargs['from_date'].day, 'from_month': kwargs['from_date'].month,
@@ -367,20 +366,20 @@ class ResultsView(TemplateView):
         move_ins_and_move_outs = []
         for move_in_event in moved_in_during_timeframe:
             if move_ins_and_move_outs:
-                if correct_dates_to_weekday(move_in_event['moved_in'], 6) == move_ins_and_move_outs[-1]['start_date']:
+                if correct_dates_to_due_day(move_in_event['moved_in']) == move_ins_and_move_outs[-1]['start_date']:
                     move_ins_and_move_outs[-1]['moved_in'].append(Cleaner.objects.get(pk=move_in_event['pk']))
                     continue
-            move_ins_and_move_outs.append({'start_date': correct_dates_to_weekday(move_in_event['moved_in'], 6),
+            move_ins_and_move_outs.append({'start_date': correct_dates_to_due_day(move_in_event['moved_in']),
                                            'moved_in': [Cleaner.objects.get(pk=move_in_event['pk'])], 'moved_out': []})
 
         for move_out_event in moved_out_during_timeframe:
             for move_in_event in move_ins_and_move_outs:
-                if correct_dates_to_weekday(move_out_event['moved_out'], 6) == \
+                if correct_dates_to_due_day(move_out_event['moved_out']) == \
                         move_in_event['start_date']:  # Here moved_out is a date
                     move_in_event['moved_out'].append(Cleaner.objects.get(pk=move_out_event['pk']))
                     break
             else:
-                move_ins_and_move_outs.append({'start_date': correct_dates_to_weekday(move_out_event['moved_out'], 6),
+                move_ins_and_move_outs.append({'start_date': correct_dates_to_due_day(move_out_event['moved_out']),
                                                'moved_in': [],
                                                'moved_out': [Cleaner.objects.get(pk=move_out_event['pk'])]})
 
@@ -471,6 +470,27 @@ class ResultsView(TemplateView):
 #             new_association.cleaners.add(cleaner)
 #     except ScheduleGroup.DoesNotExist:
 #         new_association.cleaners.add(cleaner)
+
+class ComplaintNewView(CreateView):
+    form_class = ComplaintForm
+    model = Complaint
+    template_name = "webinterface/generic_form.html"
+
+
+
+class ConfigUpdateView(UpdateView):
+    form_class = ConfigForm
+    model = Config
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_form.html'
+
+    def get_object(self, queryset=None):
+        return Config.objects.first()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Ändere die Systemweite Konfiguration"
+        return context
 
 
 class CleanerNewView(CreateView):

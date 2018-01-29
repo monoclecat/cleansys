@@ -1,12 +1,16 @@
 from django.db import models
+from django.db.utils import OperationalError
 from operator import itemgetter
 import datetime
 from django.db.models.signals import m2m_changed
 from django.utils.text import slugify
 from django.core.paginator import Paginator
 import logging
-from django.contrib.auth.models import AbstractBaseUser
-from putzplan_generator.settings import ABSOLUTE_TRUST_IN_USERS
+from django.contrib.auth.models import User
+
+
+def correct_dates_to_due_day(days):
+    return correct_dates_to_weekday(days, Config.objects.first().date_due)
 
 
 def correct_dates_to_weekday(days, weekday):
@@ -21,6 +25,38 @@ def correct_dates_to_weekday(days, weekday):
     elif isinstance(days, datetime.date):
         return days + datetime.timedelta(days=weekday - days.weekday())
     return None
+
+
+class Config(models.Model):
+    WEEKDAYS = ((0, 'Montag'), (1, 'Dienstag'), (2, 'Mittwoch'), (3, 'Donnerstag'), (4, 'Freitag'),
+                (5, 'Samstag'), (6, 'Sonntag'))
+    date_due = models.IntegerField(default=6, choices=WEEKDAYS)
+
+    trust_in_users = models.BooleanField(default=False)
+
+    def __init__(self, *args, **kwargs):
+        super(Config, self).__init__(*args, **kwargs)
+        self.__trust_in_users = self.trust_in_users
+        self.__date_due = self.date_due
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        if not self.pk and Config.objects.count() != 0:
+            return
+        super().save(force_insert, force_update, using, update_fields)
+
+        if self.__trust_in_users != self.trust_in_users:
+            Cleaner.objects.reset_passwords()
+
+        if self.__date_due != self.date_due:
+            pass
+            # TODO Change all Assignment dates and CleaningDate dates
+
+
+try:
+    if Config.objects.count() == 0:
+        Config.objects.create()
+except OperationalError:
+    pass
 
 
 class Schedule(models.Model):
@@ -45,7 +81,7 @@ class Schedule(models.Model):
         self.__last_frequency = self.frequency
 
     def get_tasks(self):
-        return self.tasks.split(",")
+        return self.tasks.split(",") if self.tasks else None
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
@@ -163,9 +199,23 @@ class CleanerQuerySet(models.QuerySet):
         return self.filter(moved_out__gte=datetime.date.today())
 
 
-class Cleaner(AbstractBaseUser):
+class CleanerManager(models.Manager):
+    def get_queryset(self):
+        return CleanerQuerySet(self.model, using=self._db)
+
+    def reset_passwords(self):
+        if Config.objects.first().trust_in_users:
+            for cleaner in self.all():
+                cleaner.user.set_password(cleaner.slug)
+        else:
+            pass
+            # TODO Send out email/Slack messages for password setting
+
+
+class Cleaner(models.Model):
     class Meta:
         ordering = ('name',)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=10, unique=True)
     slug = models.CharField(max_length=10, unique=True)
     moved_in = models.DateField()
@@ -173,9 +223,7 @@ class Cleaner(AbstractBaseUser):
     slack_id = models.CharField(max_length=10, null=True)
     schedule_group = models.ForeignKey(ScheduleGroup, on_delete=models.SET_NULL, null=True)
 
-    objects = CleanerQuerySet.as_manager()
-
-    USERNAME_FIELD = 'slug'
+    objects = CleanerManager.from_queryset(CleanerQuerySet)()
 
     def __init__(self, *args, **kwargs):
         super(Cleaner, self).__init__(*args, **kwargs)
@@ -186,9 +234,6 @@ class Cleaner(AbstractBaseUser):
     def __str__(self):
         return self.name
 
-    def is_superuser(self):
-        return False
-
     def rejected_dutyswitch_requests(self):
         return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
 
@@ -197,6 +242,10 @@ class Cleaner(AbstractBaseUser):
 
     def pending_dutyswitch_requests(self):
         return DutySwitch.objects.filter(source_assignment__cleaner=self, status=1)
+
+    def has_pending_requests(self):
+        return self.pending_dutyswitch_requests() or self.dutyswitch_requests_received() or \
+               self.rejected_dutyswitch_requests()
 
     def nr_assignments_on_day(self, date):
         return self.assignment_set.filter(date=date).count()
@@ -210,20 +259,25 @@ class Cleaner(AbstractBaseUser):
              update_fields=None):
         self.slug = slugify(self.name)
 
-        if ABSOLUTE_TRUST_IN_USERS and not self.has_usable_password():
-            print(self.slug)
-            self.set_password(self.slug)
+        if not self.user:
+            new_password = self.slug if Config.objects.first().trust_in_users else None
+            self.user = User.objects.create(username=self.slug, password=new_password)
+        elif self.user.username != self.slug:
+            self.user.username = self.slug
+            if Config.objects.first().trust_in_users:
+                self.user.set_password(self.slug)
+            self.user.save()
 
         super().save(force_insert, force_update, using, update_fields)
 
         if self.moved_out != self.__last_moved_out:
-            prev_last_duty, new_last_duty = correct_dates_to_weekday([self.__last_moved_out, self.moved_out], 6)
+            prev_last_duty, new_last_duty = correct_dates_to_due_day([self.__last_moved_out, self.moved_out])
             if prev_last_duty and prev_last_duty != new_last_duty:
                 for schedule in self.schedule_group.schedules.all():
                     schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
 
         if self.moved_in != self.__last_moved_in:
-            prev_first_duty, new_first_duty = correct_dates_to_weekday([self.__last_moved_in, self.moved_in], 6)
+            prev_first_duty, new_first_duty = correct_dates_to_due_day([self.__last_moved_in, self.moved_in])
             if prev_first_duty and prev_first_duty != new_first_duty:
                 for schedule in self.schedule_group.schedules.all():
                     schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
@@ -255,8 +309,8 @@ class Complaint(models.Model):
 #         one_week = datetime.timedelta(days=7)
 #         for cleaner_pk in pk_set:
 #             cleaner = Cleaner.objects.get(pk=cleaner_pk)
-#             first_duty, last_duty = correct_dates_to_weekday([min(cleaner.moved_in, datetime.date.today()),
-#                                                               cleaner.moved_out], 6)
+#             first_duty, last_duty = correct_dates_to_due_day([min(cleaner.moved_in, datetime.date.today()),
+#                                                               cleaner.moved_out])
 #             date_iterator = first_duty
 #             while date_iterator <= last_duty:
 #                 if date_iterator not in dates_to_delete:
@@ -286,8 +340,9 @@ class CleaningDay(models.Model):
     def initiate_tasks(self):
         schedule = self.schedule
         task_list = schedule.get_tasks()
-        for task in task_list:
-            self.tasks.create(name=task)
+        if task_list:
+            for task in task_list:
+                self.tasks.create(name=task)
 
     def delete(self, using=None, keep_parents=False):
         self.tasks.all().delete()
@@ -324,9 +379,7 @@ class DutySwitch(models.Model):
     created = models.DateField(auto_now_add=datetime.date.today)
 
     source_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="source")
-
     selected_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="selected")
-
     destinations = models.ManyToManyField(Assignment)
 
     STATES = ((0, 'Waiting on source choice'), (1, 'Waiting on approval for selected'), (2, 'Selected was rejected'))
@@ -378,7 +431,7 @@ class DutySwitch(models.Model):
             schedule = self.source_assignment.schedule
 
             possible_cleaners = Cleaner.objects.filter(
-                schedulegroup__schedule=schedule).exclude(
+                schedule_group__schedules=schedule).exclude(
                 pk=self.source_assignment.cleaner.pk)
 
             cleaning_day = self.source_assignment.cleaning_day()

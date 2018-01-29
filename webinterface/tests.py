@@ -3,7 +3,7 @@ from .models import *
 
 
 class HelperFunctionsTest(TestCase):
-    def test_correct_dates_to_weekday(self):
+    def test_correct_dates_to_due_day(self):
         date = datetime.date(2016, 1, 1)
         for add_day in range(6):
             for wanted_day in range(6):
