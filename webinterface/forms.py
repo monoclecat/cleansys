@@ -8,29 +8,115 @@ from slackbot.slackbot import get_slack_users, slack_running
 from django.contrib.auth.forms import AuthenticationForm
 
 
+class ComplaintReactForm(forms.ModelForm):
+    class Meta:
+        model = Complaint
+        fields = ('status', 'comment_of_target')
+
+    status = forms.ChoiceField(label="Welche Position nimmst du ein?",
+                               choices=((1, '#1: Ich gestehe meinen Fehler ein und habe die Aufgabe nochmal geputzt. '
+                                            'Es ist jetzt sauber!'),
+                                        (2, '#2: Was soll das?!? Ich habe das richtig geputzt! Es sollen alle Putzer '
+                                            'dieses Dienstes abstimmen, ob ich das richtig gemacht habe. Wenn mehr '
+                                            'als die Hälfte meinen, ich habe meine Arbeit nicht richtig gemacht, '
+                                            'werde ich eine Strafe akzeptieren. Das ist Demokratie.')),
+                               widget=forms.RadioSelect)
+
+    comment_of_target = forms.CharField(widget=forms.TextInput, max_length=50,
+                                        label="Bitte äußere dich zu der Anschuldigung",
+                                        help_text="Max. 50 Zeichen")
+
+    def __init__(self, *args, **kwargs):
+        print(kwargs)
+        super(ComplaintReactForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div(HTML('<h4>Deine Mitputzer meinen, du hättest <span class="badge">{{ complaint.schedule.name }} -> '
+                     '{{ complaint.task.name }} </span> nicht richtig gemacht!')),
+            Div(HTML('<h4>Kommentare zur Beschwerde: <br><i>{{ complaint.comment }}</i>')),
+            Div(HTML("<h4>Du musst spätestens <b>{{ complaint.react_until }}</b> geantwortet haben, "
+                     "sonst nehmen wir an, dass du Position #2 einnimmst!</h4>"), css_class="well"),
+            'status',
+            'comment_of_target',
+            HTML("<button class=\"btn btn-primary\" type=\"submit\" name=\"save\" style=\"margin: 0.5em\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Auf Beschwerde antworten.</button> "
+                 "<input action=\"action\" type=\"button\" value=\"Zurück\" class=\"btn btn-default\" "
+                 "style=\"margin: 0.5em\" onclick=\"window.history.go(-1); return false;\" />"),
+        )
+
+
+class ComplaintVoteForm(forms.Form):
+
+    answer = forms.ChoiceField(label="Stimmt das?", choices=((1, 'Ja'), (2, 'Nein')), widget=forms.RadioSelect)
+
+    def __init__(self, *args, **kwargs):
+        if 'instance' in kwargs:
+            self.object = kwargs['instance']
+            kwargs.pop('instance')
+        super(ComplaintVoteForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            HTML('<h4>Der Putzer von '
+                 '<span class="badge">{{ complaint.schedule.name }} -> {{ complaint.task.name }}</span> '
+                 'wird beschuldigt, seine Aufgabe nicht richtig gemacht zu haben. </h4>'
+                 '<p>Der beschuldigte Putzer hat sich zu der Anschuldigung wie folgt geäußert: <br> '
+                 '{{ complaint.comment_of_target }}</p>'),
+            HTML('<div class=well>'),
+            'answer',
+            HTML('</div>'),
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Absenden</button> "
+                 "<input action=\"action\" type=\"button\" value=\"Zurück\" class=\"btn btn-default\" "
+                 "style=\"margin: 0.5em\" onclick=\"window.history.go(-1); return false;\" />"),
+        )
+
+        if self.object:
+            if self.object.status == 1:
+                self.helper.layout.\
+                    fields.insert(2, HTML("<p><b>Ausgewählte Antwort: </b><br>Der Putzer gesteht den Fehler ein und "
+                                          "hat die Aufgabe nun richtig gemacht. </p>"))
+            else:
+                self.helper.layout.\
+                    fields.insert(2, HTML("<p><b>Ausgewählte Antwort: </b><br>Der Putzer bestreitet die "
+                                          "Anschuldigung und meint, er habe die Aufgabe "
+                                          "richtig gemacht. </p>"))
+
+
 class ComplaintForm(forms.ModelForm):
     class Meta:
         model = Complaint
-        exclude = ('created',)
+        fields = ('task', 'creator_comments')
 
-    tasks_in_question = \
-        forms.ModelMultipleChoiceField(queryset=CleaningDay.objects.filter(
-                                           date__range=(datetime.date.today()-datetime.timedelta(days=4),
-                                                        datetime.date.today()+datetime.timedelta(days=2))).first().tasks.all(),
-                                       widget=forms.CheckboxSelectMultiple,
-                                       label="Welche Aufgaben wurden nicht korrekt gemacht?",
-                                       help_text="Mehrere Auswählbar")
-    comment = forms.CharField(widget=forms.TextInput, label="Was hast du zu sagen?")
+    task = \
+        forms.ModelChoiceField(Task.objects.all(), label="Welche Aufgabe wurde nicht korrekt gemacht?", empty_label=None,
+                               help_text="Wenn mehrere Aufgaben nicht korrekt gemacht wurden, muss zu jeder "
+                                         "Aufgabe eine seperate Beschwerde eingereicht werden. Dadurch kann der "
+                                         "beschuldigte Putzer zielgerichteter reagieren. Für Aufgaben, die noch "
+                                         "nicht geputzt sind, können keine Beschwerden eingereicht werden.")
+    creator_comments = forms.CharField(widget=forms.TextInput, max_length=50, label="Was hast du zu sagen?",
+                                       help_text="Max. 50 Zeichen")
 
     def __init__(self, *args, **kwargs):
+        if 'schedule' in kwargs:
+            print(kwargs['schedule'].pk)
+            self.__tasks = kwargs['schedule'].cleaningday_set.filter(
+                    date__lte=timezone.now().date() + datetime.timedelta(days=7)).first().\
+                tasks.filter(cleaned_by__isnull=False)
+                    # date__lte=timezone.now().date()-app_config().timedelta_complaints_until_after_due()).first().tasks.all()
+            kwargs.pop('schedule')
+        else:
+            self.__tasks = None
         super(ComplaintForm, self).__init__(*args, **kwargs)
+        print("hi")
+        print(self.__tasks)
+        self.fields['task'].queryset = self.__tasks
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            'tasks_in_question',
-            'comment',
-            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
-                 "<input action=\"action\" type=\"button\" value=\"Back\" class=\"btn btn-warning\""
+            'task',
+            'creator_comments',
+            HTML("<button class=\"btn btn-danger\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Beschwerde abschicken</button> "
+                 "<input action=\"action\" type=\"button\" value=\"Zurück\" class=\"btn btn-default\""
                  "onclick=\"window.history.go(-1); return false;\" />"),
         )
 
@@ -107,7 +193,7 @@ class ResultsForm(forms.Form):
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
 
-        start_date = datetime.date.today()
+        start_date = timezone.now().date()
         end_date = start_date + datetime.timedelta(days=3*30)
         initial['start_date'] = str(start_date.day)+"."+str(start_date.month)+"."+str(start_date.year)
         initial['end_date'] = str(end_date.day)+"."+str(end_date.month)+"."+str(end_date.year)
@@ -131,9 +217,9 @@ class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
         if slack_running():
-            exclude = ('slug', 'user')
+            exclude = ('slug', 'user', 'time_zone')
         else:
-            exclude = ('slack_id', 'slug', 'user')
+            exclude = ('slack_id', 'slug', 'user', 'time_zone')
 
     name = forms.CharField(max_length=10, label="Name des Putzers",
                            required=True, widget=forms.TextInput)

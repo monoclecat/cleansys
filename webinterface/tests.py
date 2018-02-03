@@ -4,15 +4,15 @@ from .models import *
 
 class HelperFunctionsTest(TestCase):
     def test_correct_dates_to_due_day(self):
-        date = datetime.date(2016, 1, 1)
+        date = timezone.date(2016, 1, 1)
         for add_day in range(6):
             for wanted_day in range(6):
-                self.assertEqual(correct_dates_to_weekday(date + datetime.timedelta(days=add_day),
+                self.assertEqual(correct_dates_to_weekday(date + timezone.timedelta(days=add_day),
                                                           wanted_day).weekday(), wanted_day)
         for add_day in range(6):
             for wanted_day in range(6):
                 corrected_list = correct_dates_to_weekday(
-                    [date + datetime.timedelta(days=add_day), date + datetime.timedelta(days=add_day)],
+                    [date + timezone.timedelta(days=add_day), date + timezone.timedelta(days=add_day)],
                     wanted_day)
                 self.assertIsInstance(corrected_list, list)
                 self.assertEqual(corrected_list[0].weekday(), wanted_day)
@@ -29,8 +29,8 @@ def create_cleaner(name="Bob1"):
         delta_moved_in -= 100
         delta_moved_out -= 100
         iterator += 1
-    return Cleaner.objects.create(name=name, moved_in=datetime.date.today() + datetime.timedelta(days=delta_moved_in),
-                                  moved_out=datetime.date.today() + datetime.timedelta(days=delta_moved_out))
+    return Cleaner.objects.create(name=name, moved_in=timezone.now().date() + timezone.timedelta(days=delta_moved_in),
+                                  moved_out=timezone.now().date() + timezone.timedelta(days=delta_moved_out))
 
 
 def create_schedule(name="Lick floor1", cleaners_per_date=2, frequency=2):
@@ -41,7 +41,7 @@ def create_schedule(name="Lick floor1", cleaners_per_date=2, frequency=2):
     return Schedule.objects.create(name=name, cleaners_per_date=cleaners_per_date, frequency=frequency)
 
 
-def create_assignment(cleaner=create_cleaner(), date=datetime.date.today(), schedule=create_schedule()):
+def create_assignment(cleaner=create_cleaner(), date=timezone.now().date(), schedule=create_schedule()):
     return Assignment.objects.create(cleaner=cleaner, date=date, schedule=schedule)
 
 
@@ -49,7 +49,7 @@ def create_dutyswitch(source_assignment=create_assignment(), status=0):
     return DutySwitch.objects.create(source_assignment=source_assignment, status=status)
 
 
-def create_cleaningday(date=datetime.date.today(), schedule=create_schedule()):
+def create_cleaningday(date=timezone.now().date(), schedule=create_schedule()):
     return CleaningDay.objects.create(date=date, schedule=schedule)
 
 

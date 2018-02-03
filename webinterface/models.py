@@ -7,6 +7,7 @@ from django.utils.text import slugify
 from django.core.paginator import Paginator
 import logging
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 def correct_dates_to_due_day(days):
@@ -14,16 +15,16 @@ def correct_dates_to_due_day(days):
 
 
 def correct_dates_to_weekday(days, weekday):
-    """Days is a date or list of datetime.date objects you want converted. 0 = Monday, 6 = Sunday"""
+    """Days is a date or list of timezone.date objects you want converted. 0 = Monday, 6 = Sunday"""
     if isinstance(days, list):
         corrected_days = []
         for day in days:
             if day:
-                day += datetime.timedelta(days=weekday - day.weekday())
+                day += timezone.timedelta(days=weekday - day.weekday())
             corrected_days.append(day)
         return corrected_days
     elif isinstance(days, datetime.date):
-        return days + datetime.timedelta(days=weekday - days.weekday())
+        return days + timezone.timedelta(days=weekday - days.weekday())
     return None
 
 
@@ -31,6 +32,8 @@ class Config(models.Model):
     WEEKDAYS = ((0, 'Montag'), (1, 'Dienstag'), (2, 'Mittwoch'), (3, 'Donnerstag'), (4, 'Freitag'),
                 (5, 'Samstag'), (6, 'Sonntag'))
     date_due = models.IntegerField(default=6, choices=WEEKDAYS)
+    starts_days_before_due = models.IntegerField(default=1)
+    ends_days_after_due = models.IntegerField(default=2)
 
     trust_in_users = models.BooleanField(default=False)
 
@@ -38,6 +41,15 @@ class Config(models.Model):
         super(Config, self).__init__(*args, **kwargs)
         self.__trust_in_users = self.trust_in_users
         self.__date_due = self.date_due
+
+    def timedelta_before_due(self):
+        return timezone.timedelta(days=self.starts_days_before_due)
+
+    def timedelta_ends_after_due(self):
+        return timezone.timedelta(days=self.ends_days_after_due)
+
+    def timedelta_complaints_until_after_due(self):
+        return timezone.timedelta(days=self.ends_days_after_due+1)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         if not self.pk and Config.objects.count() != 0:
@@ -50,6 +62,10 @@ class Config(models.Model):
         if self.__date_due != self.date_due:
             pass
             # TODO Change all Assignment dates and CleaningDate dates
+
+
+def app_config():
+    return Config.objects.first()
 
 
 try:
@@ -82,6 +98,9 @@ class Schedule(models.Model):
 
     def get_tasks(self):
         return self.tasks.split(",") if self.tasks else None
+
+    def cleaners_assigned(self):
+        return Cleaner.objects.filter(schedule_group__schedules=self)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
@@ -133,7 +152,7 @@ class Schedule(models.Model):
         all duties in time frame are deleted."""
         start_date = min(date1, date2)
         end_date = max(date1, date2)
-        one_week = datetime.timedelta(days=7)
+        one_week = timezone.timedelta(days=7)
 
         if clear_existing:
             self.assignment_set.filter(date__range=(start_date, end_date)).delete()
@@ -196,7 +215,7 @@ class ScheduleGroup(models.Model):
 
 class CleanerQuerySet(models.QuerySet):
     def active(self):
-        return self.filter(moved_out__gte=datetime.date.today())
+        return self.filter(moved_out__gte=timezone.now().date())
 
 
 class CleanerManager(models.Manager):
@@ -220,6 +239,7 @@ class Cleaner(models.Model):
     slug = models.CharField(max_length=10, unique=True)
     moved_in = models.DateField()
     moved_out = models.DateField()
+    time_zone = models.CharField(max_length=30, default="Europe/Berlin")
     slack_id = models.CharField(max_length=10, null=True)
     schedule_group = models.ForeignKey(ScheduleGroup, on_delete=models.SET_NULL, null=True)
 
@@ -246,6 +266,17 @@ class Cleaner(models.Model):
     def has_pending_requests(self):
         return self.pending_dutyswitch_requests() or self.dutyswitch_requests_received() or \
                self.rejected_dutyswitch_requests()
+
+    def target_of_unanswered_complaints(self):
+        return Complaint.objects.filter(task__cleaned_by=self, status=0)
+
+    def target_of_answered_complaints(self):
+        return Complaint.objects.filter(task__cleaned_by=self, status__gt=0)
+
+    def needs_to_vote_on_complaints(self):
+        return Complaint.objects.\
+            filter(task__cleaningday__schedule__in=self.schedule_group.schedules.all()).exclude(status=0).\
+            exclude(task__cleaned_by=self).exclude(vote_against_punishment=self).exclude(vote_for_punishment=self)
 
     def nr_assignments_on_day(self, date):
         return self.assignment_set.filter(date=date).count()
@@ -296,20 +327,49 @@ class Task(models.Model):
     help_text = models.CharField(max_length=200, null=True)
     cleaned_by = models.ForeignKey(Cleaner, null=True, on_delete=models.SET_NULL)
 
+    def __str__(self):
+        return str(self.name)
+
 
 class Complaint(models.Model):
-    tasks_in_question = models.ManyToManyField(Task)
-    comment = models.CharField(max_length=200)
-    created = models.DateField(auto_now_add=datetime.date.today)
+    """After a Complaint is generated, the Cleaner has 24 hours to either deny it or clean it.
+    If denied, see *. If cleaned, the Complaint issuer shall confirm; if he declines, see *.
+    *: The other Cleaners assigned to the Schedule shall decide if the Cleaner gets a punishment"""
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    creator_comments = models.CharField(max_length=200)
+    comment_of_target = models.CharField(max_length=50)
+    created = models.DateTimeField(auto_now_add=timezone.now())
+
+    STATUS = ((0, 'No cleaner response yet'), (1, 'Task was cleaned again'), (2, 'Other Cleaners must vote'))
+    status = models.IntegerField(choices=STATUS, default=0)
+
+    vote_for_punishment = models.ManyToManyField(Cleaner, related_name="vote_for")
+    vote_against_punishment = models.ManyToManyField(Cleaner, related_name="vote_against")
+
+    class Meta:
+        ordering = ('status',)
+
+    def schedule(self):
+        return self.task.cleaningday_set.first().schedule
+
+    def cleaners_assigned_to_schedule(self):
+        return self.schedule().cleaners_assigned()
+
+    def react_until(self):
+        # TODO Have celery automatically set status to 2 when this time has passed
+        return self.created + timezone.timedelta(hours=24)
+
+    def user_is_target_cleaner(self, user):
+        return self.task.cleaned_by.user == user
 
 
 # def group_cleaners_changed(instance, action, pk_set, **kwargs):
 #     if action == 'post_add' or action == 'post_remove':
 #         dates_to_delete = []
-#         one_week = datetime.timedelta(days=7)
+#         one_week = timezone.timedelta(days=7)
 #         for cleaner_pk in pk_set:
 #             cleaner = Cleaner.objects.get(pk=cleaner_pk)
-#             first_duty, last_duty = correct_dates_to_due_day([min(cleaner.moved_in, datetime.date.today()),
+#             first_duty, last_duty = correct_dates_to_due_day([min(cleaner.moved_in, timezone.date.today()),
 #                                                               cleaner.moved_out])
 #             date_iterator = first_duty
 #             while date_iterator <= last_duty:
@@ -332,10 +392,16 @@ class Complaint(models.Model):
 
 
 class CleaningDay(models.Model):
+    class Meta:
+        ordering = ('-date',)
+        unique_together = ('date', 'schedule')
     tasks = models.ManyToManyField(Task)
     date = models.DateField()
     excluded = models.ManyToManyField(Cleaner)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return str(self.schedule)+"-"+str(self.date)
 
     def initiate_tasks(self):
         schedule = self.schedule
@@ -352,7 +418,7 @@ class CleaningDay(models.Model):
 class Assignment(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     cleaners_comment = models.CharField(max_length=200)
-    created = models.DateField(auto_now_add=datetime.date.today)
+    created = models.DateField(auto_now_add=timezone.now().date())
     date = models.DateField()
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
 
@@ -376,7 +442,7 @@ class Assignment(models.Model):
 class DutySwitch(models.Model):
     class Meta:
         ordering = ('created',)
-    created = models.DateField(auto_now_add=datetime.date.today)
+    created = models.DateField(auto_now_add=timezone.now().date())
 
     source_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="source")
     selected_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="selected")
@@ -454,7 +520,7 @@ class DutySwitch(models.Model):
 
                 nr_assignments_on_day = cleaner.nr_assignments_on_day(self.source_assignment.date)
                 assignments_in_future = schedule.assignment_set.filter(
-                    cleaner=cleaner, date__gt=datetime.date.today())
+                    cleaner=cleaner, date__gt=timezone.now().date())
 
                 if nr_assignments_on_day == 0:
                     for assignment in assignments_in_future:

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy, reverse
 from django.http import HttpResponseRedirect, QueryDict
-from django.contrib.auth import authenticate, login, logout
+from django.http.response import HttpResponseNotFound
 from django.contrib.auth.views import LoginView
 from django.views.generic import TemplateView
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
@@ -12,10 +12,46 @@ from django.views.generic.list import ListView
 from .forms import *
 from .models import *
 
-import datetime
 import timeit
 from operator import itemgetter
 import logging
+
+
+class ComplaintView(UpdateView):
+    template_name = "webinterface/generic_form.html"
+    model = Complaint
+
+    def dispatch(self, request, *args, **kwargs):
+        self.cleaner = Cleaner.objects.get(user=request.user)
+        timezone.activate(self.cleaner.time_zone)
+        self.object = self.get_object()
+        self.success_url = reverse("webinterface:cleaner", kwargs={'page': 1})
+        if self.object.user_is_target_cleaner(request.user) and self.object.status == 0:
+            self.form_class = ComplaintReactForm
+        elif self.object.cleaners_assigned_to_schedule().filter(user=request.user).\
+                exclude(user=self.object.task.cleaned_by.user).exists():
+            if self.cleaner not in self.object.vote_against_punishment.all() and \
+                    self.cleaner not in self.object.vote_for_punishment.all():
+                self.form_class = ComplaintVoteForm
+        else:
+            return HttpResponseRedirect(reverse("webinterface:cleaner", kwargs={'page': 1}))
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        form = self.get_form()
+        if form.is_valid():
+            if isinstance(form, ComplaintVoteForm):
+                if form.cleaned_data['answer'] == '1':  # 'Yes'
+                    self.object.vote_against_punishment.add(self.cleaner)
+                else:  # 'No'
+                    self.object.vote_for_punishment.add(self.cleaner)
+                self.object.save()
+                return HttpResponseRedirect(self.get_success_url())
+            else:
+                return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
 
 
 class ScheduleList(ListView):
@@ -63,9 +99,9 @@ class TaskView(UpdateView):
     def get_context_data(self, **kwargs):
         self.object = self.get_object()
         context = super(TaskView, self).get_context_data(**kwargs)
-
         try:
             context['tasks'] = self.object.schedule.cleaningday_set.get(date=self.object.date).tasks.all()
+            print(self.object.schedule.cleaningday_set.get(date=self.object.date).pk)
         except CleaningDay.DoesNotExist:
             logging.error("CleaningDay does not exist on date!")
             raise Exception("CleaningDay does not exist on date!")
@@ -212,15 +248,16 @@ class CleanerView(TemplateView):
             return redirect(
                 reverse_lazy('webinterface:cleaner', kwargs={'page': 1}))
 
-        context = {}
+        timezone.activate(cleaner.time_zone)
 
+        context = dict()
         context['table_header'] = Schedule.objects.all().order_by('frequency')
         context['cleaner'] = cleaner
 
-        start_date = correct_dates_to_due_day(datetime.date.today() - datetime.timedelta(days=2))
+        start_date = correct_dates_to_due_day(timezone.now().date() - timezone.timedelta(days=2))
 
         assignments = Assignment.objects.filter(cleaner=context['cleaner'],
-                                                date__gte=start_date + datetime.timedelta(days=7)).order_by('date')
+                                                date__gte=start_date + timezone.timedelta(days=7)).order_by('date')
 
         pagination = Paginator(assignments, 25)
         context['page'] = pagination.get_page(kwargs['page'])
@@ -249,7 +286,7 @@ class ScheduleView(TemplateView):
 
         context['cleaners'] = Cleaner.objects.all()
 
-        start_date = correct_dates_to_due_day(datetime.date.today() - datetime.timedelta(days=2))
+        start_date = correct_dates_to_due_day(timezone.now().date() - timezone.timedelta(days=2))
 
         assignments = context['schedule'].assignment_set.filter(date__gte=start_date).order_by('date')
 
@@ -266,10 +303,10 @@ class ConfigView(FormView):
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
         context['schedule_list'] = Schedule.objects.all()
-        all_active_cleaners = Cleaner.objects.filter(moved_out__gte=datetime.date.today())
+        all_active_cleaners = Cleaner.objects.filter(moved_out__gte=timezone.now().date())
         context['cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=False)
         context['no_slack_cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=True)
-        context['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=datetime.date.today())
+        context['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=timezone.now().date())
         context['schedule_group_list'] = ScheduleGroup.objects.all()
         return context
 
@@ -351,7 +388,7 @@ class ResultsView(TemplateView):
 
         context['dates'] = []
         date_iterator = kwargs['from_date']
-        one_week = datetime.timedelta(days=7)
+        one_week = timezone.timedelta(days=7)
         while date_iterator <= kwargs['to_date']:
             context['dates'].append(date_iterator)
             date_iterator += one_week
@@ -476,6 +513,40 @@ class ComplaintNewView(CreateView):
     model = Complaint
     template_name = "webinterface/generic_form.html"
 
+    def get_success_url(self):
+        return reverse("webinterface:schedule-view",
+                       kwargs={'slug': Schedule.objects.get(cleaningday__tasks=self.object.task).slug, 'page': 1})
+
+    def dispatch(self, request, *args, **kwargs):
+        if 'slug' in kwargs and kwargs['slug']:
+            try:
+                self.__schedule = Schedule.objects.get(slug=kwargs['slug'])
+            except Schedule.DoesNotExist:
+                return HttpResponseNotFound("Putzplan existiert nicht")
+        else:
+            return HttpResponseNotFound("Putzplan existiert nicht")
+        if not self.__schedule.cleaningday_set.filter(
+                    date__lte=timezone.now().date() + datetime.timedelta(days=7)).first().tasks.all():
+            return HttpResponseNotFound("Putzplan hat keine Aufgaben")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        try:
+            kwargs['schedule'] = self.__schedule
+        except AttributeError:
+            pass
+        return kwargs
+
+    def form_valid(self, form):
+        try:
+            complaint = Complaint.objects.get(task=form.cleaned_data['task'])
+            complaint.creator_comments += "\n"+form.cleaned_data['comment']
+            complaint.save()
+            self.object = complaint
+        except Complaint.DoesNotExist:
+            self.object = form.save()
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class ConfigUpdateView(UpdateView):
@@ -597,18 +668,3 @@ class CleaningScheduleGroupDeleteView(DeleteView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Putzplan-Gruppierung"
         return context
-
-
-def login_view(request):
-    if request.method == 'POST' and 'login' in request.POST:
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-        return HttpResponseRedirect(request.POST['next'])
-    elif request.method == 'POST' and 'logout' in request.POST:
-        logout(request)
-        return HttpResponseRedirect(request.POST['next'])
-    else:
-        return render(request, 'webinterface/login.html', {'next': request.GET.get('next', '/login/')})

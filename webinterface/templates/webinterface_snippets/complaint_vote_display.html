@@ -1,0 +1,16 @@
+{% if complaint.vote_against_punishment.all %}
+    <b>
+        <span class="glyphicon glyphicon-thumbs-up"></span>
+        {{ complaint.vote_against_punishment.count }}
+        Putzer akzeptier{{ complaint.vote_against_punishment.count|pluralize:"t,en" }}
+        das.
+    </b><br>
+{% endif %}
+{% if complaint.vote_for_punishment.all %}
+    <b>
+        <span class="glyphicon glyphicon-thumbs-down"></span>
+        {{ complaint.vote_for_punishment.count }}
+        Putzer akzeptier{{ complaint.vote_for_punishment.count|pluralize:"t,en" }}
+        das nicht.
+    </b><br>
+{% endif %}

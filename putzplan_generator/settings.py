@@ -33,6 +33,7 @@ LOGIN_URL = reverse_lazy('webinterface:login-by-click')
 LOGIN_REDIRECT_URL = reverse_lazy('webinterface:cleaner', kwargs={'page': 1})
 LOGOUT_REDIRECT_URL = '/'
 
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -117,7 +118,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'de-de'
 
 TIME_ZONE = 'UTC'
 

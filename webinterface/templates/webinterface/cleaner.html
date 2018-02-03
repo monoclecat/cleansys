@@ -1,5 +1,6 @@
 {% extends "webinterface/mobile_first_body.html" %}
 {% load crispy_forms_tags %}
+{% load tz %}
 
 {% block title %}
 Deine Putzdienste
@@ -84,9 +85,90 @@ Deine Putzdienste
             <div class="col-xs-12">
                 <a class="btn btn-warning btn-block" style="white-space: normal"
                    href="{% url "webinterface:schedule-list" %}" role="button">
-                    <span class="glyphicon glyphicon-list-alt"></span> Putzpläne</a>
+                    <span class="glyphicon glyphicon-list-alt"></span> Putzpläne ansehen</a>
             </div>
         </div>
+
+        {% if cleaner.target_of_unanswered_complaints %}
+            <h3>Du hast neue Beschwerden erhalten!</h3>
+
+            <div class="row" style="margin-bottom: 1em">
+                {% for complaint in cleaner.target_of_unanswered_complaints %}
+                    <div class="col-xs-12" style="margin: 0.2em 0">
+                        <a class="btn btn-danger btn-block" style="white-space: normal"
+                           href="{% url 'webinterface:complaint' complaint.schedule.slug complaint.pk %}" role="button">
+                            <span class="badge" style="white-space: normal">Du musst bis {{ complaint.react_until }} antworten</span><br>
+                            <span class="glyphicon glyphicon-play"></span>
+                            <b>{{ complaint.schedule.name }} -> {{ complaint.task.name }}:</b>
+                            <i>{{ complaint.creator_comments }}</i></a>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if cleaner.target_of_answered_complaints %}
+            <h3>Du hast auf folgende Beschwerden geantwortet.</h3>
+
+            <div class="row" style="margin-bottom: 1em">
+                {% for complaint in cleaner.target_of_answered_complaints %}
+                    <div class="col-xs-12" style="margin: 0.2em 0">
+                        {% if complaint.status == 1 %}
+                            <div class="well">
+                                <p>
+                                    <span class="glyphicon glyphicon-play"></span>
+                                    <b>{{ complaint.schedule.name }} -> {{ complaint.task.name }}</b><br>
+                                    <i>Du hast geantwortet, dass es dein Fehler war und dass du die Aufgabe
+                                        nochmal gemacht hast.</i><br>
+                                    Dein Kommentar: {{ complaint.comment_of_target }}<br>
+                                    {% include "webinterface_snippets/complaint_vote_display.html" %}
+                                </p>
+                            </div>
+                        {% endif %}
+                        {% if complaint.status == 2 %}
+                            <div class="well">
+                                <p>
+                                    <span class="glyphicon glyphicon-play"></span>
+                                    <b>{{ complaint.schedule.name }} -> {{ complaint.task.name }}</b><br>
+                                    <i>Du hast geantwortet, dass du alles korrekt gemacht hast und die
+                                        Beschwerde nichtig sei.</i><br>
+                                    Dein Kommentar: {{ complaint.comment_of_target }}<br>
+                                    {% include "webinterface_snippets/complaint_vote_display.html" %}
+                                </p>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if cleaner.needs_to_vote_on_complaints %}
+            <h3>Bitte Stimme für folgende Fälle ab. Deine Meinung schafft Gerechtigkeit!</h3>
+
+            <div class="row" style="margin-bottom: 1em">
+                {% for complaint in cleaner.needs_to_vote_on_complaints %}
+                    <div class="col-xs-12" style="margin: 0.2em 0">
+                        {% if complaint.status == 2 %}
+                            <a class="btn btn-primary btn-block" style="white-space: normal"
+                               href="{% url 'webinterface:complaint' complaint.schedule.slug complaint.pk %}" role="button">
+                                Es wurde eine Beschwerde für
+                                <span class="badge">{{ complaint.schedule.name }} -> {{ complaint.task.name }}</span>
+                                eingereicht. <br>
+                                <b>Der Putzer bestreitet dies. </b><br>
+                                Wer hat Recht?</a>
+                        {% endif %}
+                        {% if complaint.status == 1 %}
+                            <a class="btn btn-primary btn-block" style="white-space: normal"
+                               href="{% url 'webinterface:complaint' complaint.schedule.slug complaint.pk %}" role="button">
+                                Es wurde eine Beschwerde für
+                                <span class="badge">{{ complaint.schedule.name }} -> {{ complaint.task.name }}</span>
+                                eingereicht. <br>
+                                <b>Der Putzer hat die Aufgabe nochmal geputzt.</b><br>
+                                Wurde es nun richtig gemacht?</a>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
 
         {% if assignments_due_now %}
             <div class="well well-sm">
