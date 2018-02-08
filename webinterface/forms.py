@@ -93,22 +93,23 @@ class ComplaintForm(forms.ModelForm):
                                          "Aufgabe eine seperate Beschwerde eingereicht werden. Dadurch kann der "
                                          "beschuldigte Putzer zielgerichteter reagieren. Für Aufgaben, die noch "
                                          "nicht geputzt sind, können keine Beschwerden eingereicht werden.")
-    creator_comments = forms.CharField(widget=forms.TextInput, max_length=50, label="Was hast du zu sagen?",
+    creator_comments = forms.CharField(widget=forms.TextInput, max_length=50,
+                                       label="Gebe bitte eine Begründung für deine Beschwerde ab.",
                                        help_text="Max. 50 Zeichen")
 
     def __init__(self, *args, **kwargs):
+        date = correct_dates_to_due_day(timezone.now().date() - datetime.timedelta(days=7))
+        # date = timezone.now().date()-app_config().timedelta_complaints_until_after_due()).first().tasks.all()
         if 'schedule' in kwargs:
-            print(kwargs['schedule'].pk)
+            self.__schedule = kwargs['schedule']
             self.__tasks = kwargs['schedule'].cleaningday_set.filter(
-                    date__lte=timezone.now().date() + datetime.timedelta(days=7)).first().\
+                    date__lte=date).first().\
                 tasks.filter(cleaned_by__isnull=False)
-                    # date__lte=timezone.now().date()-app_config().timedelta_complaints_until_after_due()).first().tasks.all()
+
             kwargs.pop('schedule')
         else:
             self.__tasks = None
         super(ComplaintForm, self).__init__(*args, **kwargs)
-        print("hi")
-        print(self.__tasks)
         self.fields['task'].queryset = self.__tasks
         self.helper = FormHelper()
         self.helper.layout = Layout(
@@ -119,6 +120,15 @@ class ComplaintForm(forms.ModelForm):
                  "<input action=\"action\" type=\"button\" value=\"Zurück\" class=\"btn btn-default\""
                  "onclick=\"window.history.go(-1); return false;\" />"),
         )
+
+        cleaner_comments = self.__schedule.assignment_set.filter(date=date).values_list('cleaners_comment', flat=True)
+        if cleaner_comments:
+            self.helper.layout.\
+                fields.insert(1, HTML('<h4>Die Putzer des Dienstes haben folgende Kommentare abgegeben: </h4>'))
+            for comment in cleaner_comments:
+                self.helper.layout. \
+                    fields.insert(2, HTML('<p><i>'+comment+'</p></i>'))
+                # TODO Escape properly
 
 
 class ConfigForm(forms.ModelForm):

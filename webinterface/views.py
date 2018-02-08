@@ -29,7 +29,7 @@ class ComplaintView(UpdateView):
         if self.object.user_is_target_cleaner(request.user) and self.object.status == 0:
             self.form_class = ComplaintReactForm
         elif self.object.cleaners_assigned_to_schedule().filter(user=request.user).\
-                exclude(user=self.object.task.cleaned_by.user).exists():
+                exclude(user=self.object.task.cleaned_by.cleaner.user).exists():
             if self.cleaner not in self.object.vote_against_punishment.all() and \
                     self.cleaner not in self.object.vote_for_punishment.all():
                 self.form_class = ComplaintVoteForm
@@ -101,7 +101,6 @@ class TaskView(UpdateView):
         context = super(TaskView, self).get_context_data(**kwargs)
         try:
             context['tasks'] = self.object.schedule.cleaningday_set.get(date=self.object.date).tasks.all()
-            print(self.object.schedule.cleaningday_set.get(date=self.object.date).pk)
         except CleaningDay.DoesNotExist:
             logging.error("CleaningDay does not exist on date!")
             raise Exception("CleaningDay does not exist on date!")
@@ -125,15 +124,15 @@ class TaskView(UpdateView):
                 task = Task.objects.get(pk=request.POST['task_pk'])
 
                 if task.cleaned_by:
-                    if task.cleaned_by == assignment.cleaner:
+                    if task.cleaned_by == assignment:
                         task.cleaned_by = None
                     else:
                         context = self.get_context_data(**kwargs)
                         context['already_cleaned_error'] = "{} wurde in der Zwischenzeit schon von {} gemacht!".format(
-                            task.name, task.cleaned_by)
+                            task.name, task.cleaned_by.cleaner)
                         return self.render_to_response(context)
                 else:
-                    task.cleaned_by = assignment.cleaner
+                    task.cleaned_by = assignment
                 task.save()
                 return HttpResponseRedirect(self.get_success_url())
 

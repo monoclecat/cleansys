@@ -268,15 +268,16 @@ class Cleaner(models.Model):
                self.rejected_dutyswitch_requests()
 
     def target_of_unanswered_complaints(self):
-        return Complaint.objects.filter(task__cleaned_by=self, status=0)
+        return Complaint.objects.filter(task__cleaned_by__cleaner=self, status=0)
 
     def target_of_answered_complaints(self):
-        return Complaint.objects.filter(task__cleaned_by=self, status__gt=0)
+        return Complaint.objects.filter(task__cleaned_by__cleaner=self, status__gt=0)
 
     def needs_to_vote_on_complaints(self):
         return Complaint.objects.\
             filter(task__cleaningday__schedule__in=self.schedule_group.schedules.all()).exclude(status=0).\
-            exclude(task__cleaned_by=self).exclude(vote_against_punishment=self).exclude(vote_for_punishment=self)
+            exclude(task__cleaned_by__cleaner=self).exclude(vote_against_punishment=self).\
+            exclude(vote_for_punishment=self)
 
     def nr_assignments_on_day(self, date):
         return self.assignment_set.filter(date=date).count()
@@ -322,10 +323,61 @@ class Cleaner(models.Model):
                 schedule.new_cleaning_duties(self.moved_in, self.moved_out)
 
 
+# def group_cleaners_changed(instance, action, pk_set, **kwargs):
+#     if action == 'post_add' or action == 'post_remove':
+#         dates_to_delete = []
+#         one_week = timezone.timedelta(days=7)
+#         for cleaner_pk in pk_set:
+#             cleaner = Cleaner.objects.get(pk=cleaner_pk)
+#             first_duty, last_duty = correct_dates_to_due_day([min(cleaner.moved_in, timezone.date.today()),
+#                                                               cleaner.moved_out])
+#             date_iterator = first_duty
+#             while date_iterator <= last_duty:
+#                 if date_iterator not in dates_to_delete:
+#                     dates_to_delete.append(date_iterator)
+#                 date_iterator += one_week
+#
+#         for schedule in Schedule.objects.filter(schedule_group=instance):
+#             dates_to_redistribute = []
+#             for date in dates_to_delete:
+#                 duty = schedule.duties.filter(date=date)
+#                 if duty.exists():
+#                     duty.delete()
+#                     dates_to_redistribute.append(date)
+#             for date in dates_to_redistribute:
+#                 schedule.assign_cleaning_duty(date)
+
+
+# m2m_changed.connect(group_cleaners_changed, sender=ScheduleGroup.cleaners.through)
+
+class Assignment(models.Model):
+    cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
+    cleaners_comment = models.CharField(max_length=200)
+    created = models.DateField(auto_now_add=timezone.now().date())
+    date = models.DateField()
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.schedule.name + ": " + self.cleaner.name + " on the " + str(self.date)
+
+    def cleaners_on_date_for_schedule(self):
+        return Cleaner.objects.filter(assignment__schedule=self.schedule,
+                                      assignment__date=self.date)
+
+    def cleaning_buddies(self):
+        return self.cleaners_on_date_for_schedule().exclude(pk=self.cleaner.pk)
+
+    def cleaning_day(self):
+        try:
+            return self.schedule.cleaningday_set.get(date=self.date)
+        except CleaningDay.DoesNotExist:
+            return None
+
+
 class Task(models.Model):
     name = models.CharField(max_length=20)
     help_text = models.CharField(max_length=200, null=True)
-    cleaned_by = models.ForeignKey(Cleaner, null=True, on_delete=models.SET_NULL)
+    cleaned_by = models.ForeignKey(Assignment, null=True, on_delete=models.CASCADE)
 
     def __str__(self):
         return str(self.name)
@@ -360,35 +412,7 @@ class Complaint(models.Model):
         return self.created + timezone.timedelta(hours=24)
 
     def user_is_target_cleaner(self, user):
-        return self.task.cleaned_by.user == user
-
-
-# def group_cleaners_changed(instance, action, pk_set, **kwargs):
-#     if action == 'post_add' or action == 'post_remove':
-#         dates_to_delete = []
-#         one_week = timezone.timedelta(days=7)
-#         for cleaner_pk in pk_set:
-#             cleaner = Cleaner.objects.get(pk=cleaner_pk)
-#             first_duty, last_duty = correct_dates_to_due_day([min(cleaner.moved_in, timezone.date.today()),
-#                                                               cleaner.moved_out])
-#             date_iterator = first_duty
-#             while date_iterator <= last_duty:
-#                 if date_iterator not in dates_to_delete:
-#                     dates_to_delete.append(date_iterator)
-#                 date_iterator += one_week
-#
-#         for schedule in Schedule.objects.filter(schedule_group=instance):
-#             dates_to_redistribute = []
-#             for date in dates_to_delete:
-#                 duty = schedule.duties.filter(date=date)
-#                 if duty.exists():
-#                     duty.delete()
-#                     dates_to_redistribute.append(date)
-#             for date in dates_to_redistribute:
-#                 schedule.assign_cleaning_duty(date)
-
-
-# m2m_changed.connect(group_cleaners_changed, sender=ScheduleGroup.cleaners.through)
+        return self.task.cleaned_by.cleaner.user == user
 
 
 class CleaningDay(models.Model):
@@ -413,30 +437,6 @@ class CleaningDay(models.Model):
     def delete(self, using=None, keep_parents=False):
         self.tasks.all().delete()
         super().delete(using, keep_parents)
-
-
-class Assignment(models.Model):
-    cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
-    cleaners_comment = models.CharField(max_length=200)
-    created = models.DateField(auto_now_add=timezone.now().date())
-    date = models.DateField()
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.schedule.name + ": " + self.cleaner.name + " on the " + str(self.date)
-
-    def cleaners_on_date_for_schedule(self):
-        return Cleaner.objects.filter(assignment__schedule=self.schedule,
-                                      assignment__date=self.date)
-
-    def cleaning_buddies(self):
-        return self.cleaners_on_date_for_schedule().exclude(pk=self.cleaner.pk)
-
-    def cleaning_day(self):
-        try:
-            return self.schedule.cleaningday_set.get(date=self.date)
-        except CleaningDay.DoesNotExist:
-            return None
 
 
 class DutySwitch(models.Model):

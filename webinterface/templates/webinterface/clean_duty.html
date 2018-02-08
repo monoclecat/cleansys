@@ -37,12 +37,12 @@ Putzdienst erledigen
                                 <input type="submit" name="cleaned"
                                     style="white-space: normal;"
                                     {% if task.cleaned_by %}
-                                        {% if task.cleaned_by == assignment.cleaner %}
+                                        {% if task.cleaned_by.cleaner == assignment.cleaner %}
                                             class="btn btn-lg btn-block btn-success"
                                             value="Du hast '{{ task.name }}' gemacht"
                                         {% else %}
                                             class="btn btn-lg btn-block btn-default active" disabled="disabled"
-                                            value="{{ task.cleaned_by.name }} hat '{{ task.name }}' gemacht"
+                                            value="{{ task.cleaned_by.cleaner.name }} hat '{{ task.name }}' gemacht"
                                         {% endif %}
                                     {% else %}
                                         class="btn btn-lg btn-block btn-info"
