@@ -9,76 +9,94 @@ Putzdienst tauschen
     {% include "webinterface_snippets/back_button_to_cleaner_page.html" %}
 
     {% ifequal perspective 'source' %}
-    <div class="row">
-        <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="padding: 0.3em">
+        {% if not object.selected_assignment %}
             <div class="panel panel-primary">
                 <div class="panel-heading">
-                    <h3>Hallo {{ duty_switch.source_assignment.cleaner.name }}, wie ich sehe möchtest du
-                        deinen Putzdienst für {{ duty_switch.source_assignment.schedule.name }}
-                        am {{ duty_switch.source_assignment.date }} tauschen.</h3>
-                </div>
-                <div class="panel-body">
-                    {% if duty_switch.selected %}
-                        <div class="row" style="margin: 1em;">
-                            <h4>Du hast für diesen Putzdienst eine Anrage an
-                                {{ duty_switch.selected_assignment.cleaner.name }}
-                                gestartet, um mit dem Putzdienst am {{ duty_switch.selected_assignment.date }}
-                                zu tauschen.</h4>
-                        </div>
-                    {% endif %}
-                    <form class="form-inline" method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="redirect_cleaner_slug"
-                               value="{{ duty_switch.source_assignment.cleaner.slug }}">
-                        <input type="submit" name="delete"
-                            class="btn btn-warning"
-                            value="Tauschanfrage löschen"/>
-                    </form>
-
-                    <div class="row" style="margin: 1em;">
-                        <p>Ich habe dir ein paar Putzdienste zur Auswahl herausgesucht, bitte wähle einen aus. </p>
-                    </div>
-
-
-                    <div class="row">
-                        {% for option in duty_switch.destinations.all %}
-                            <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px">
-                                <form class="form-inline" method="post">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="redirect_cleaner_slug" value="{{ duty_switch.source_assignment.cleaner.slug }}">
-                                    <input type="hidden" name="selected" value="{{ option.pk }}">
-                                    <input type="submit" name="select"
-                                        style="white-space: normal;"
-                                        class="btn btn-info btn-lg btn-block"
-                                        value="Tausche mit {{ option.cleaner.name }} am {{ option.date }}"/>
-                                </form>
-                            </div>
-                        {% empty %}
-                            <h3 style="margin: 1em">Keine Alternativen gefunden</h3>
-                        {% endfor %}
-                    </div>
-
+                    <h3>Hallo {{ object.source_assignment.cleaner.name }}, wie ich sehe möchtest du
+                        deinen Putzdienst für {{ object.source_assignment.schedule.name }}
+                        am {{ object.source_assignment.date }} tauschen.</h3>
                 </div>
             </div>
-        </div>
-    </div>
+        {% else %}
+            <div class="panel panel-warning">
+                <div class="panel-heading">
+                    <h3>Du hast für diesen Putzdienst schon eine Anfrage an {{ object.selected_assignment.cleaner.name }}
+                        gesendet.</h3>
+                </div>
+            </div>
+            <div class="well well-sm" style="text-align: center">
+                <h3>
+                    {{ object.source_assignment.schedule.name }}</h3>
+                <h4>
+                    Du, {{ object.source_assignment.date }}<br>
+                    <span class="glyphicon glyphicon-sort"></span><br>
+                    <span class="glyphicon glyphicon-calendar"></span> {{ object.selected_assignment.date }}
+                    <span class="glyphicon glyphicon-user"></span> {{ object.selected_assignment.cleaner.name }}
+                </h4>
+            </div>
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3>Wenn du deine Wahl ändern möchtest, dann wähle eines der folgenden Möglichkeiten aus.</h3>
+                </div>
+            </div>
+        {% endif %}
 
+        <p>
+            <form class="form-inline" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="redirect_cleaner_slug"
+                       value="{{ object.source_assignment.cleaner.slug }}">
+                <input type="submit" name="delete"
+                    class="btn btn-default btn-sm"
+                    value="Tauschanfrage löschen"/>
+            </form>
+        </p>
+
+        <div class="row">
+            {% if object.filtered_destinations.all %}
+                <div class="col-xs-12">
+                    <p>Ich habe dir ein paar Putzdienste zur Auswahl herausgesucht, bitte wähle einen aus. </p>
+                </div>
+                {% for option in object.filtered_destinations.all %}
+                    <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px">
+                        <form class="form-inline" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="redirect_cleaner_slug" value="{{ object.source_assignment.cleaner.slug }}">
+                            <input type="hidden" name="selected" value="{{ option.pk }}">
+                            <button class="btn btn-info btn-lg btn-block" type="submit" name="select"
+                                    style="white-space: normal;">
+                                <span class="glyphicon glyphicon-sort"></span><br>
+                                <span class="glyphicon glyphicon-calendar"></span> {{ option.date }}
+                                <span class="glyphicon glyphicon-user"></span> {{ option.cleaner.name }}
+
+                            </button>
+                        </form>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-xs-12 bg-info">
+                    <h3 style="margin-bottom: 4em">Keine Alternativen gefunden</h3>
+                </div>
+            {% endif %}
+        </div>
     {% else %}
     <div class="row">
         <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="padding: 0.3em">
             <div class="panel panel-primary">
                 <div class="panel-heading">
-                    <h1>{{ duty_switch.source_assignment.schedule.name }}</h1>
-                    <h4>{{ duty_switch.source_assignment.cleaner.name }} möchte folgende Dienste tauschen:</h4>
+                    <h2>{{ object.source_assignment.schedule.name }}</h2>
+                    <h4>{{ object.source_assignment.cleaner.name }} möchte folgende Dienste tauschen:</h4>
                 </div>
             <div class="panel-body">
                 <div class="row">
                     <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="text-align: center">
-                        <h3>
-                            {{ duty_switch.source_assignment.cleaner.name }} am {{ duty_switch.source_assignment.date }}
-                            <span class="glyphicon glyphicon-transfer"></span>
-                            Du am {{ duty_switch.selected_assignment.date }}
-                        </h3>
+                        <h4>
+                            <span class="glyphicon glyphicon-user"></span> {{ object.source_assignment.cleaner.name }}
+                            <span class="glyphicon glyphicon-calendar"></span> {{ object.source_assignment.date }}<br>
+                            <span class="glyphicon glyphicon-sort"></span><br>
+                            <span class="glyphicon glyphicon-user"></span> Du
+                            <span class="glyphicon glyphicon-calendar"></span> {{ object.selected_assignment.date }}
+                        </h4>
                     </div>
                 </div>
             </div>
@@ -88,7 +106,7 @@ Putzdienst tauschen
                     {% csrf_token %}
                     <div class="row">
                         <input type="hidden" name="redirect_cleaner_slug"
-                               value="{{ duty_switch.selected_assignment.cleaner.slug }}">
+                               value="{{ object.selected_assignment.cleaner.slug }}">
                         <div class="col-sm-6" style="padding: 0.5em">
                             <button class="btn btn-success btn-lg btn-block" type="submit" name="accept">
                                 <span class="glyphicon glyphicon-ok-sign"></span> Annehmen</button>

@@ -15,19 +15,27 @@
         </div>
     </div>
 
-    <div class="well">
-        <h4>Wurde etwas nicht richtig geputzt?</h4>
-        <a class="btn btn-warning btn-lg btn-block" style="white-space: normal"
-           href="{% url "webinterface:complaint-new" schedule.slug %}" role="button">
-            <span class="glyphicon glyphicon-comment"></span> Anonyme Beschwerde einreichen</a>
+    <div class="panel panel-info">
+        <div class="panel-heading">
+            <h3 class="panel-title">Putzdienst vom {{ schedule.get_active_assignments.first.date }}</h3>
+        </div>
+        <div class="panel-body">
+            <h5>Wer was gemacht hat</h5>
+            {% for assignment in schedule.get_active_assignments %}
+                <h4><span class="glyphicon glyphicon-user"></span> {{ assignment.cleaner.name }}:
+                    {% for task in assignment.tasks_cleaned %}
+                        <span class="label label-default">{{ task.name }}</span>
+                    {% endfor %}
+                </h4>
+            {% endfor %}
+            <p><i>Kontaktiere den XXX im Beschwerdefall direkt.</i></p>
+        </div>
     </div>
 
     <div class="row">
         <div class="panel panel-primary" style="margin-bottom: 0">
             <div class="panel-heading">
-                <h3>{{ schedule.name }} - Putzdienste {% if highlighted_cleaner %} für
-                    {{ highlighted_cleaner.name }}{% endif %}
-                </h3>
+                <h3>{{ schedule.name }} - Putzdienste</h3>
             </div>
         </div>
     </div>

@@ -1,10 +1,11 @@
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy, reverse
 from django.http import HttpResponseRedirect, QueryDict
-from django.http.response import HttpResponseNotFound
+from django.http.response import HttpResponseNotFound, HttpResponseForbidden
 from django.contrib.auth.views import LoginView
 from django.views.generic import TemplateView
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
+from django.views.generic.detail import DetailView
 from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
 from django.views.generic.list import ListView
@@ -15,43 +16,7 @@ from .models import *
 import timeit
 from operator import itemgetter
 import logging
-
-
-class ComplaintView(UpdateView):
-    template_name = "webinterface/generic_form.html"
-    model = Complaint
-
-    def dispatch(self, request, *args, **kwargs):
-        self.cleaner = Cleaner.objects.get(user=request.user)
-        timezone.activate(self.cleaner.time_zone)
-        self.object = self.get_object()
-        self.success_url = reverse("webinterface:cleaner", kwargs={'page': 1})
-        if self.object.user_is_target_cleaner(request.user) and self.object.status == 0:
-            self.form_class = ComplaintReactForm
-        elif self.object.cleaners_assigned_to_schedule().filter(user=request.user).\
-                exclude(user=self.object.task.cleaned_by.cleaner.user).exists():
-            if self.cleaner not in self.object.vote_against_punishment.all() and \
-                    self.cleaner not in self.object.vote_for_punishment.all():
-                self.form_class = ComplaintVoteForm
-        else:
-            return HttpResponseRedirect(reverse("webinterface:cleaner", kwargs={'page': 1}))
-
-        return super().dispatch(request, *args, **kwargs)
-
-    def post(self, request, *args, **kwargs):
-        form = self.get_form()
-        if form.is_valid():
-            if isinstance(form, ComplaintVoteForm):
-                if form.cleaned_data['answer'] == '1':  # 'Yes'
-                    self.object.vote_against_punishment.add(self.cleaner)
-                else:  # 'No'
-                    self.object.vote_for_punishment.add(self.cleaner)
-                self.object.save()
-                return HttpResponseRedirect(self.get_success_url())
-            else:
-                return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
+import datetime
 
 
 class ScheduleList(ListView):
@@ -142,21 +107,20 @@ class TaskView(UpdateView):
             return super().post(args, kwargs)
 
 
-class DutySwitchView(TemplateView):
+class DutySwitchView(DetailView):
     template_name = "webinterface/switch_duty.html"
+    model = DutySwitch
 
-    def get_context_data(self, **kwargs):
-        context = super(DutySwitchView, self).get_context_data(**kwargs)
-        try:
-            duty_switch = DutySwitch.objects.get(pk=kwargs['pk'])
-
-            context['duty_switch'] = duty_switch
-            context['perspective'] = 'selected' if 'answer' in kwargs else 'source'
-
-        except DutySwitch.DoesNotExist:
-            Http404("Diese Putzdienst-Tausch-Seite existiert nicht.")
-
-        return context
+    def dispatch(self, request, *args, **kwargs):
+        self.extra_context = dict()
+        duty_switch = self.get_object()
+        if request.user == duty_switch.source_assignment.cleaner.user:
+            self.extra_context['perspective'] = 'source'
+        elif request.user == duty_switch.selected_assignment.cleaner.user:
+            self.extra_context['perspective'] = 'selected'
+        else:
+            return HttpResponseForbidden("Du hast keinen Zugriff auf diese Seite.")
+        return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         try:
@@ -186,9 +150,7 @@ class DutySwitchView(TemplateView):
         else:
             raise SuspiciousOperation("POST sent that didn't match a catchable case!")
 
-        return HttpResponseRedirect(reverse_lazy(
-            'webinterface:cleaner',
-            kwargs={'page': 1}))
+        return HttpResponseRedirect(reverse_lazy('webinterface:cleaner', kwargs={'page': 1}))
 
 
 class CleanerView(TemplateView):
@@ -262,6 +224,9 @@ class CleanerView(TemplateView):
         context['page'] = pagination.get_page(kwargs['page'])
 
         context['assignments_due_now'] = Assignment.objects.filter(cleaner=context['cleaner'], date=start_date)
+        if context['assignments_due_now']:
+            context['can_start_assignments_due_now'] = \
+                datetime.date.today() >= context['assignments_due_now'].first().possible_start_date()
 
         return self.render_to_response(context)
 
@@ -271,23 +236,15 @@ class ScheduleView(TemplateView):
 
     def get(self, request, *args, **kwargs):
         context = {}
-
-        if 'cleaner_slug' in kwargs and kwargs['cleaner_slug']:
-            try:
-                context['highlighted_cleaner'] = Cleaner.objects.get(slug=kwargs['cleaner_slug'])
-            except Cleaner.DoesNotExist:
-                Http404("Putzer existert nicht")
-
         try:
             context['schedule'] = Schedule.objects.get(slug=kwargs['slug'])
         except Schedule.DoesNotExist:
             Http404("Putzplan existiert nicht.")
 
-        context['cleaners'] = Cleaner.objects.all()
+        last_date = context['schedule'].assignment_set.filter(date__lte=timezone.now().date())
+        next_dates = context['schedule'].assignment_set.filter(date__gte=timezone.now().date()).order_by('date')
 
-        start_date = correct_dates_to_due_day(timezone.now().date() - timezone.timedelta(days=2))
-
-        assignments = context['schedule'].assignment_set.filter(date__gte=start_date).order_by('date')
+        assignments = list(last_date)[:1] + list(next_dates)
 
         pagination = Paginator(assignments, 30*context['schedule'].cleaners_per_date)
         context['page'] = pagination.get_page(kwargs['page'])
@@ -317,12 +274,11 @@ class ConfigView(FormView):
         form = self.get_form()
 
         if form.is_valid():
-            start_date_raw = request.POST['start_date'].split(".")
-            end_date_raw = request.POST['end_date'].split(".")
+            start_date = datetime.datetime.strptime(request.POST['start_date'], '%d.%m.%Y').date()
+            end_date = datetime.datetime.strptime(request.POST['end_date'], '%d.%m.%Y').date()
 
-            results_kwargs = {'from_day': start_date_raw[0], 'from_month': start_date_raw[1],
-                              'from_year': start_date_raw[2], 'to_day': end_date_raw[0],
-                              'to_month': end_date_raw[1], 'to_year': end_date_raw[2]}
+            results_kwargs = {'from_date': start_date.strftime('%d-%m-%Y'),
+                              'to_date': end_date.strftime('%d-%m-%Y')}
 
             if 'show_deviations' in request.POST:
                 results_kwargs['options'] = 'stats'
@@ -342,15 +298,13 @@ class ResultsView(TemplateView):
         time_start = timeit.default_timer()
         for schedule in Schedule.objects.all():
             schedule.new_cleaning_duties(
-                datetime.date(int(kwargs['from_year']), int(kwargs['from_month']), int(kwargs['from_day'])),
-                datetime.date(int(kwargs['to_year']), int(kwargs['to_month']), int(kwargs['to_day'])),
+                datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date(),
+                datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date(),
                 clear_existing)
         time_end = timeit.default_timer()
-        logging.getLogger(__name__).info("Assigning cleaning schedules took {}s".format(round(time_end-time_start, 2)))
+        logging.info("Assigning cleaning schedules took {}s".format(round(time_end-time_start, 2)))
 
-        results_kwargs = {'from_day': kwargs['from_day'], 'from_month': kwargs['from_month'],
-                                     'from_year': kwargs['from_year'], 'to_day': kwargs['to_day'],
-                                     'to_month': kwargs['to_month'], 'to_year': kwargs['to_year']}
+        results_kwargs = {'from_date': kwargs['from_date'], 'to_date': kwargs['to_date']}
 
         if 'options' in kwargs:
             results_kwargs['options'] = kwargs['options']
@@ -359,30 +313,18 @@ class ResultsView(TemplateView):
             reverse_lazy('webinterface:results', kwargs=results_kwargs))
 
     def get(self, request, *args, **kwargs):
-        from_date_raw = datetime.date(int(kwargs['from_year']), int(kwargs['from_month']), int(kwargs['from_day']))
-        to_date_raw = datetime.date(int(kwargs['to_year']), int(kwargs['to_month']), int(kwargs['to_day']))
+
+        from_date_raw = datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date()
+        to_date_raw = datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date()
 
         kwargs['from_date'], kwargs['to_date'] = correct_dates_to_due_day([from_date_raw, to_date_raw])
-
-        if from_date_raw.weekday() != 6 or to_date_raw.weekday() != 6:
-            results_kwargs = {'from_day': kwargs['from_date'].day, 'from_month': kwargs['from_date'].month,
-                              'from_year': kwargs['from_date'].year, 'to_day': kwargs['to_date'].day,
-                              'to_month': kwargs['to_date'].month, 'to_year': kwargs['to_date'].year}
-            if 'options' in kwargs:
-                results_kwargs['options'] = kwargs['options']
-            return redirect(
-                reverse_lazy('webinterface:results', kwargs=results_kwargs))
 
         if kwargs['to_date'] < kwargs['from_date']:
             temp_date = kwargs['from_date']
             kwargs['from_date'] = kwargs['to_date']
             kwargs['to_date'] = temp_date
-        context = self.get_context_data(**kwargs)
+        context = dict()
 
-        return self.render_to_response(context)
-
-    def get_context_data(self, **kwargs):
-        context = super(ResultsView, self).get_context_data(**kwargs)
         context['schedules'] = Schedule.objects.all().order_by('frequency')
 
         context['dates'] = []
@@ -425,19 +367,19 @@ class ResultsView(TemplateView):
         if move_ins_and_move_outs:
             if kwargs['from_date'] != move_ins_and_move_outs[0]['start_date']:
                 context['results'].append({'start_date': kwargs['from_date'],
-                                            'end_date': move_ins_and_move_outs[0]['start_date']-one_week,
-                                            'moved_in': [], 'moved_out': []})
+                                           'end_date': move_ins_and_move_outs[0]['start_date'] - one_week,
+                                           'moved_in': [], 'moved_out': []})
 
             miamo_iterator = 1
             while miamo_iterator < len(move_ins_and_move_outs):
-                move_ins_and_move_outs[miamo_iterator-1]['end_date'] = \
-                    move_ins_and_move_outs[miamo_iterator]['start_date']-one_week
+                move_ins_and_move_outs[miamo_iterator - 1]['end_date'] = \
+                    move_ins_and_move_outs[miamo_iterator]['start_date'] - one_week
                 miamo_iterator += 1
             move_ins_and_move_outs[-1]['end_date'] = kwargs['to_date']
         else:
             context['results'].append({'start_date': kwargs['from_date'],
-                                        'end_date': kwargs['to_date'],
-                                        'moved_in': [], 'moved_out': []})
+                                       'end_date': kwargs['to_date'],
+                                       'moved_in': [], 'moved_out': []})
 
         context['results'] += move_ins_and_move_outs
 
@@ -488,64 +430,11 @@ class ResultsView(TemplateView):
                         element[2] = element[3][-1][1]
                         time_frame['duty_counter'].append(element)
 
-                        schedule_data = [[schedule.name, round(sum_deviation_values/len(deviation_of), 3)]]
+                        schedule_data = [[schedule.name, round(sum_deviation_values / len(deviation_of), 3)]]
                         schedule_data.append(sorted(deviation_of, key=itemgetter(1), reverse=True))
                         time_frame['deviations_by_schedule'].append(schedule_data)
-        return context
 
-
-# def update_groups_for_cleaner(cleaner, new_association):
-#     """new_associations takes a list or Queryset of schedules cleaner should now be assigned to.
-#     This function removes the cleaner from schedules he is not associated to anymore and adds him
-#     to schedules he wasn't associated with before."""
-#     try:
-#         prev_association = ScheduleGroup.objects.get(cleaners=cleaner)
-#
-#         if prev_association != new_association:
-#             prev_association.cleaners.remove(cleaner)
-#             new_association.cleaners.add(cleaner)
-#     except ScheduleGroup.DoesNotExist:
-#         new_association.cleaners.add(cleaner)
-
-class ComplaintNewView(CreateView):
-    form_class = ComplaintForm
-    model = Complaint
-    template_name = "webinterface/generic_form.html"
-
-    def get_success_url(self):
-        return reverse("webinterface:schedule-view",
-                       kwargs={'slug': Schedule.objects.get(cleaningday__tasks=self.object.task).slug, 'page': 1})
-
-    def dispatch(self, request, *args, **kwargs):
-        if 'slug' in kwargs and kwargs['slug']:
-            try:
-                self.__schedule = Schedule.objects.get(slug=kwargs['slug'])
-            except Schedule.DoesNotExist:
-                return HttpResponseNotFound("Putzplan existiert nicht")
-        else:
-            return HttpResponseNotFound("Putzplan existiert nicht")
-        if not self.__schedule.cleaningday_set.filter(
-                    date__lte=timezone.now().date() + datetime.timedelta(days=7)).first().tasks.all():
-            return HttpResponseNotFound("Putzplan hat keine Aufgaben")
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        try:
-            kwargs['schedule'] = self.__schedule
-        except AttributeError:
-            pass
-        return kwargs
-
-    def form_valid(self, form):
-        try:
-            complaint = Complaint.objects.get(task=form.cleaned_data['task'])
-            complaint.creator_comments += "\n"+form.cleaned_data['comment']
-            complaint.save()
-            self.object = complaint
-        except Complaint.DoesNotExist:
-            self.object = form.save()
-        return HttpResponseRedirect(self.get_success_url())
+        return self.render_to_response(context)
 
 
 class ConfigUpdateView(UpdateView):

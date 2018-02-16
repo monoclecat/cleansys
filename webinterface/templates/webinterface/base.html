@@ -3,10 +3,8 @@
 <!DOCTYPE html>
 <html lang="de_DE">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta content='width=device-width, initial-scale=1, maximum-scale=1' name='viewport' />
-    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    {% block bootstrap_meta_tags %}
+    {% endblock %}
 
     <title>{% block title %}{% endblock %}</title>
 
@@ -14,7 +12,6 @@
     <link rel="shortcut icon" type="image/ico" href="{% static "favicon.ico" %}"/>
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-    <!--link href="{% static "own-styles.css" %}" rel="stylesheet" -->
     {# Load CSS and JavaScript #}
     {% bootstrap_css %}
     {% bootstrap_javascript %}

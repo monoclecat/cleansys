@@ -12,8 +12,7 @@ urlpatterns = [
     path('', RedirectView.as_view(url=reverse_lazy("webinterface:cleaner", kwargs={'page': 1})), name='welcome'),
 
     #url(r'^switch/(?P<pk>[\d]+)/(?P<answer>[\S]+)/$', DutySwitchView.as_view(), name='switch-duty-answer'),
-    path('switch/<int:pk>/<answer>/', login_required(DutySwitchView.as_view()), name='switch-duty-answer'),
-    path('switch/<int:pk>/', login_required(DutySwitchView.as_view()), name='switch-duty'),
+    path('tauschen/<int:pk>/', login_required(DutySwitchView.as_view()), name='switch-duty'),
 
     path('clean/<int:assignment_pk>/', login_required(TaskView.as_view()), name='clean-duty'),
 
@@ -30,22 +29,12 @@ urlpatterns = [
     path('config/', staff_member_required(ConfigView.as_view(), login_url=reverse_lazy("webinterface:login")), name='config'),
     path('results/', staff_member_required(RedirectView.as_view(
          url=reverse_lazy('webinterface:results',
-                    kwargs={'from_day': timezone.now().date().day, 'from_month': timezone.now().date().month,
-                            'from_year': timezone.now().date().year,
-                            'to_day': (timezone.now().date() + timezone.timedelta(days=30)).day,
-                            'to_month': (timezone.now().date() + timezone.timedelta(days=30)).month,
-                            'to_year': (timezone.now().date() + timezone.timedelta(days=30)).year}))),
+                    kwargs={'from_date': (timezone.now().date() - timezone.timedelta(days=30)).strftime('%d-%m-%Y'),
+                            'to_date': (timezone.now().date() + timezone.timedelta(days=3*30)).strftime('%d-%m-%Y')}))),
          name='results-now'),
 
-    path('results/<int:from_day>-<int:from_month>-<int:from_year>/'
-         '<int:to_day>-<int:to_month>-<int:to_year>/<options>/',
-         staff_member_required(ResultsView.as_view()), name='results'),
-    path('results/<int:from_day>-<int:from_month>-<int:from_year>/'
-         '<int:to_day>-<int:to_month>-<int:to_year>',
-         staff_member_required(ResultsView.as_view()), name='results'),
-
-    path('beschwerde/<slug:slug>/', login_required(ComplaintNewView.as_view()), name='complaint-new'),
-    path('beschwerde/<slug:slug>/<int:pk>/', login_required(ComplaintView.as_view()), name='complaint'),
+    path('results/<from_date>/<to_date>/<options>/', staff_member_required(ResultsView.as_view()), name='results'),
+    path('results/<from_date>/<to_date>/', staff_member_required(ResultsView.as_view()), name='results'),
 
     path('config-edit/', staff_member_required(ConfigUpdateView.as_view()), name='config-edit'),
 

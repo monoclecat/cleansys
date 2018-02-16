@@ -2,7 +2,7 @@ from django.db import models
 from django.db.utils import OperationalError
 from operator import itemgetter
 import datetime
-from django.db.models.signals import m2m_changed
+from django.contrib.auth.hashers import make_password
 from django.utils.text import slugify
 from django.core.paginator import Paginator
 import logging
@@ -47,9 +47,6 @@ class Config(models.Model):
 
     def timedelta_ends_after_due(self):
         return timezone.timedelta(days=self.ends_days_after_due)
-
-    def timedelta_complaints_until_after_due(self):
-        return timezone.timedelta(days=self.ends_days_after_due+1)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         if not self.pk and Config.objects.count() != 0:
@@ -102,6 +99,13 @@ class Schedule(models.Model):
     def cleaners_assigned(self):
         return Cleaner.objects.filter(schedule_group__schedules=self)
 
+    def get_active_assignments(self):
+        """Returns Assignments for this Schedule that are active today or were have
+        recently passed (if no Assignment is currently active) """
+        return self.assignment_set.\
+            filter(date__lte=timezone.datetime.today() + timezone.timedelta(
+                days=app_config().starts_days_before_due))[:self.cleaners_per_date]
+
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
         super(Schedule, self).save(force_insert, force_update, using, update_fields)
@@ -120,15 +124,14 @@ class Schedule(models.Model):
         of cleaners, pass them in a list in the cleaners argument. Otherwise all ratios will be returned."""
         ratios = []
 
-        active_cleaners_on_date = Cleaner.objects.filter(schedule_group__schedules=self,
-                                                         moved_out__gte=for_date, moved_in__lte=for_date)
-        #for group in self.schedule_group.all():
-        #    active_cleaners_on_date += list(group.cleaners.filter(moved_out__gte=for_date, moved_in__lte=for_date))
+        if cleaners:
+            iterate_over = cleaners
+        else:
+            iterate_over = Cleaner.objects.filter(schedule_group__schedules=self,
+                                                  moved_out__gte=for_date, moved_in__lte=for_date)
 
-        if active_cleaners_on_date:
-            proportion__cleaners_assigned_per_week = self.cleaners_per_date / len(active_cleaners_on_date)
-
-            iterate_over = cleaners if cleaners else active_cleaners_on_date
+        if iterate_over:
+            proportion__cleaners_assigned_per_week = self.cleaners_per_date / len(iterate_over)
 
             for cleaner in iterate_over:
                 all_assignments = self.assignment_set.filter(date__range=(cleaner.moved_in, cleaner.moved_out))
@@ -140,8 +143,9 @@ class Schedule(models.Model):
                                    proportion__self_assigned / proportion__cleaners_assigned_per_week])
                 else:
                     ratios.append([cleaner, 0])
-
-        return sorted(ratios, key=itemgetter(1), reverse=False)
+            return sorted(ratios, key=itemgetter(1), reverse=False)
+        else:
+            return []
 
     def defined_on_date(self, date):
         return self.frequency == 1 or self.frequency == 2 and date.isocalendar()[1] % 2 == 0 or \
@@ -199,8 +203,12 @@ class Schedule(models.Model):
                         else:
                             logging.debug("NOBODY HAS 1 DUTY ON DATE! We choose {}".format(ratios[0][0]))
                             self.assignment_set.create(date=date, cleaner=ratios[0][0])
+            else:
+                return None
 
             logging.debug("")
+        else:
+            return None
 
 
 class ScheduleGroup(models.Model):
@@ -264,27 +272,20 @@ class Cleaner(models.Model):
         return DutySwitch.objects.filter(source_assignment__cleaner=self, status=1)
 
     def has_pending_requests(self):
-        return self.pending_dutyswitch_requests() or self.dutyswitch_requests_received() or \
-               self.rejected_dutyswitch_requests()
-
-    def target_of_unanswered_complaints(self):
-        return Complaint.objects.filter(task__cleaned_by__cleaner=self, status=0)
-
-    def target_of_answered_complaints(self):
-        return Complaint.objects.filter(task__cleaned_by__cleaner=self, status__gt=0)
-
-    def needs_to_vote_on_complaints(self):
-        return Complaint.objects.\
-            filter(task__cleaningday__schedule__in=self.schedule_group.schedules.all()).exclude(status=0).\
-            exclude(task__cleaned_by__cleaner=self).exclude(vote_against_punishment=self).\
-            exclude(vote_for_punishment=self)
+        return self.pending_dutyswitch_requests().exists() or self.dutyswitch_requests_received().exists() or \
+               self.rejected_dutyswitch_requests().exists()
 
     def nr_assignments_on_day(self, date):
         return self.assignment_set.filter(date=date).count()
 
     def delete(self, using=None, keep_parents=False):
-        for schedule in self.schedule_group.schedules.all():
-            schedule.new_cleaning_duties(self.moved_in, self.moved_out)
+        if self.schedule_group:
+            group = self.schedule_group
+            self.schedule_group = None
+            self.save()
+            for schedule in group.schedules.all():
+                schedule.new_cleaning_duties(self.moved_in, self.moved_out)
+        self.user.delete()
         super().delete(using, keep_parents)
 
     def save(self, force_insert=False, force_update=False, using=None,
@@ -292,7 +293,7 @@ class Cleaner(models.Model):
         self.slug = slugify(self.name)
 
         if not self.user:
-            new_password = self.slug if Config.objects.first().trust_in_users else None
+            new_password = self.slug if Config.objects.first().trust_in_users else make_password(None)
             self.user = User.objects.create(username=self.slug, password=new_password)
         elif self.user.username != self.slug:
             self.user.username = self.slug
@@ -357,6 +358,9 @@ class Assignment(models.Model):
     date = models.DateField()
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
 
+    class Meta:
+        ordering = ('-date',)
+
     def __str__(self):
         return self.schedule.name + ": " + self.cleaner.name + " on the " + str(self.date)
 
@@ -364,8 +368,14 @@ class Assignment(models.Model):
         return Cleaner.objects.filter(assignment__schedule=self.schedule,
                                       assignment__date=self.date)
 
+    def possible_start_date(self):
+        return self.date - timezone.timedelta(days=app_config().starts_days_before_due)
+
     def cleaning_buddies(self):
         return self.cleaners_on_date_for_schedule().exclude(pk=self.cleaner.pk)
+
+    def tasks_cleaned(self):
+        return Task.objects.filter(cleaned_by=self)
 
     def cleaning_day(self):
         try:
@@ -376,43 +386,11 @@ class Assignment(models.Model):
 
 class Task(models.Model):
     name = models.CharField(max_length=20)
-    help_text = models.CharField(max_length=200, null=True)
     cleaned_by = models.ForeignKey(Assignment, null=True, on_delete=models.CASCADE)
+
 
     def __str__(self):
         return str(self.name)
-
-
-class Complaint(models.Model):
-    """After a Complaint is generated, the Cleaner has 24 hours to either deny it or clean it.
-    If denied, see *. If cleaned, the Complaint issuer shall confirm; if he declines, see *.
-    *: The other Cleaners assigned to the Schedule shall decide if the Cleaner gets a punishment"""
-    task = models.ForeignKey(Task, on_delete=models.CASCADE)
-    creator_comments = models.CharField(max_length=200)
-    comment_of_target = models.CharField(max_length=50)
-    created = models.DateTimeField(auto_now_add=timezone.now())
-
-    STATUS = ((0, 'No cleaner response yet'), (1, 'Task was cleaned again'), (2, 'Other Cleaners must vote'))
-    status = models.IntegerField(choices=STATUS, default=0)
-
-    vote_for_punishment = models.ManyToManyField(Cleaner, related_name="vote_for")
-    vote_against_punishment = models.ManyToManyField(Cleaner, related_name="vote_against")
-
-    class Meta:
-        ordering = ('status',)
-
-    def schedule(self):
-        return self.task.cleaningday_set.first().schedule
-
-    def cleaners_assigned_to_schedule(self):
-        return self.schedule().cleaners_assigned()
-
-    def react_until(self):
-        # TODO Have celery automatically set status to 2 when this time has passed
-        return self.created + timezone.timedelta(hours=24)
-
-    def user_is_target_cleaner(self, user):
-        return self.task.cleaned_by.cleaner.user == user
 
 
 class CleaningDay(models.Model):
@@ -459,6 +437,12 @@ class DutySwitch(models.Model):
     def __str__(self):
         return "Source assignment: "+str(self.source_assignment)
 
+    def filtered_destinations(self):
+        destinations = self.destinations.exclude(pk=self.source_assignment.pk)
+        if self.selected_assignment:
+            destinations = destinations.exclude(pk=self.selected_assignment.pk)
+        return destinations
+
     def set_selected(self, assignment):
         self.selected_assignment = assignment
         self.status = 1
@@ -476,6 +460,14 @@ class DutySwitch(models.Model):
         self.source_assignment.save()
         self.selected_assignment.date = temp_date
         self.selected_assignment.save()
+
+        for destination in list(DutySwitch.objects.filter(selected_assignment=self.source_assignment)) + \
+                list(DutySwitch.objects.filter(selected_assignment=self.selected_assignment)):
+            destination.selected_was_rejected()
+
+        for destination in list(DutySwitch.objects.filter(source_assignment=self.source_assignment)) + \
+                list(DutySwitch.objects.filter(source_assignment=self.selected_assignment)):
+            destination.delete()
 
         self.delete()
 
@@ -534,7 +526,7 @@ class DutySwitch(models.Model):
                     for assignment in assignments_in_future:
                         one_duty_cleaners.append(assignment)
 
-            if not self.destinations:
+            if not self.destinations.all():
                 if source_is_already_assigned:
                     for assignment in source_is_already_assigned:
                         self.destinations.add(assignment)
