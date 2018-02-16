@@ -315,7 +315,7 @@ class Cleaner(models.Model):
                 for schedule in self.schedule_group.schedules.all():
                     schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
-        if self.schedule_group != self.__last_group:
+        if self.schedule_group and self.schedule_group != self.__last_group:
             if self.__last_group:
                 schedules_to_reassign = self.schedule_group.schedules.intersection(self.__last_group.schedules)
             else:

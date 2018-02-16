@@ -4,6 +4,7 @@ import random
 import logging
 logging.disable(logging.WARNING)
 
+
 class HelperFunctionsTest(TestCase):
     def test_correct_dates_to_due_day(self):
         date = datetime.date(2010, 1, 1)  # Has weekday #4
@@ -139,7 +140,7 @@ class ScheduleTest(TestCase):
         for cleaner in schedule.cleaners_assigned()[2:]:
             self.assertNotIn(cleaner, cleaners)
 
-    def test_assign_cleaning_duty(self):
+    def htest_assign_cleaning_duty(self):
         schedule = ScheduleTest.create_schedule(frequency=2, cleaners_per_date=2)  # Even weeks
 
         odd_date = datetime.date(2010, 2, 1)  # Is an odd week
@@ -185,11 +186,11 @@ class CleanerTest(TestCase):
         ConfigTest.create_config()
         iterator = 2
         delta_moved_in = 0
-        delta_moved_out = 900
+        delta_moved_out = 14
         while Cleaner.objects.filter(name=name).exists():
             name = name[:-1] + str(iterator)
-            delta_moved_in -= 100
-            delta_moved_out -= 100
+            # delta_moved_in -= 100
+            # delta_moved_out -= 100
             iterator += 1
         return Cleaner.objects.create(name=name,
                                       moved_in=date + timezone.timedelta(days=delta_moved_in),
@@ -223,6 +224,8 @@ class CleanerTest(TestCase):
         cleaner = schedule1.cleaners_assigned().first()
         cleaner.delete()
         self.assertNotIn(cleaner, Assignment.objects.filter(cleaner=cleaner))
+
+
 
 
 class AssignmentTest(TestCase):
