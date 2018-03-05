@@ -38,7 +38,7 @@ class Config(models.Model):
     trust_in_users = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
-        super(Config, self).__init__(*args, **kwargs)
+        models.Model.__init__(self, *args, **kwargs)
         self.__trust_in_users = self.trust_in_users
         self.__date_due = self.date_due
 
