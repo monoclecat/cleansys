@@ -137,8 +137,7 @@ class Schedule(models.Model):
                 all_assignments = self.assignment_set.filter(date__range=(cleaner.moved_in, cleaner.moved_out))
 
                 if all_assignments.exists():
-                    proportion__self_assigned = all_assignments.filter(
-                        cleaner=cleaner).count() / all_assignments.count()
+                    proportion__self_assigned = all_assignments.filter(cleaner=cleaner).count() / all_assignments.count()
                     ratios.append([cleaner,
                                    proportion__self_assigned / proportion__cleaners_assigned_per_week])
                 else:
