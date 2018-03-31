@@ -1,7 +1,7 @@
 from django.test import TestCase
 from webinterface.models import *
 import random
-import logging
+import logging, traceback, sys
 from unittest.mock import *
 
 logging.disable(logging.WARNING)
@@ -136,9 +136,9 @@ class ScheduleTest(TestCase):
 
     def test_deployment_ratios_given_cleaners(self):
         schedule = Schedule(cleaners_per_date=2)
-        assignment_queryset = Mock()
-        assignment_queryset.exists.return_value = False
-        schedule.assignment_set.filter = assignment_queryset
+        #assignment_queryset = Mock()
+        #assignment_queryset.exists.return_value = False
+        #schedule.assignment_set.filter = assignment_queryset
         cleaner1 = Cleaner(name="1")
         cleaner2 = Cleaner(name="2")
         with patch("webinterface.models.Cleaner") as mock_cleaner_model:
@@ -152,11 +152,30 @@ class ScheduleTest(TestCase):
         assignment_queryset.filter.count.return_value = 2
         assignment_queryset.count.return_value = 4
 
-        return
-        # TODO Mocking assignment_set like this doesn't actually mock the set
-        schedule.assignment_set = MagicMock()
-        # schedule.assignment_set.filter.return_value = assignment_queryset
-        print(type(schedule.assignment_set))
+        # schedule.assignment_set = MagicMock(return_value="Hi")
+
+        mock_queryset = MagicMock(name="assignment_queryset")
+        mock_queryset.exists.return_value = True
+        mock_queryset.filter.count.return_value = 2
+        mock_queryset.filter.count = MagicMock(return_value=2)
+        mock_queryset.count.return_value = 4
+
+        mock_related_manager = MagicMock(name="related_manager_cls")
+        mock_related_manager.filter.return_value = mock_queryset
+
+        mocky = MagicMock(name="create_reverse_many_to_one_manager", return_value=mock_related_manager)
+
+        with patch("django.db.models.fields.related_descriptors.create_reverse_many_to_one_manager", mocky):
+
+
+            print(schedule.assignment_set)
+            print(schedule.assignment_set.filter().exists())
+            print(schedule.assignment_set.filter().filter().count())
+            print(schedule.assignment_set.filter().count())
+            print(mocky.mock_calls)
+
+
+
 
         cleaner1 = Cleaner(name="1")
         cleaner2 = Cleaner(name="2")
