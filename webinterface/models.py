@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 import logging
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.db.models import Q
 
 
 def correct_dates_to_due_day(days):
@@ -102,9 +103,10 @@ class Schedule(models.Model):
     def get_active_assignments(self):
         """Returns Assignments for this Schedule that are active today or were have
         recently passed (if no Assignment is currently active) """
-        return self.assignment_set.\
-            filter(date__lte=timezone.datetime.today() + timezone.timedelta(
-                days=app_config().starts_days_before_due))[:self.cleaners_per_date]
+        starts_before = datetime.timedelta(days=app_config().starts_days_before_due)
+        ends_after = datetime.timedelta(days=app_config().ends_days_after_due)
+        today = timezone.datetime.today()
+        return self.assignment_set.filter(date__range=(today - ends_after, today + starts_before))
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
@@ -124,14 +126,16 @@ class Schedule(models.Model):
         of cleaners, pass them in a list in the cleaners argument. Otherwise all ratios will be returned."""
         ratios = []
 
+        members_on_date = Cleaner.objects.filter(schedule_group__schedules=self,
+                                                 moved_out__gte=for_date, moved_in__lte=for_date)
+
         if cleaners:
             iterate_over = cleaners
         else:
-            iterate_over = Cleaner.objects.filter(schedule_group__schedules=self,
-                                                  moved_out__gte=for_date, moved_in__lte=for_date)
+            iterate_over = members_on_date
 
         if iterate_over:
-            proportion__cleaners_assigned_per_week = self.cleaners_per_date / len(iterate_over)
+            proportion__cleaners_assigned_per_week = self.cleaners_per_date / len(members_on_date)
 
             for cleaner in iterate_over:
                 all_assignments = self.assignment_set.filter(date__range=(cleaner.moved_in, cleaner.moved_out))
@@ -151,8 +155,7 @@ class Schedule(models.Model):
                self.frequency == 3 and date.isocalendar()[1] % 2 == 1
 
     def new_cleaning_duties(self, date1, date2, clear_existing=True):
-        """Generates new cleaning duties between date1 and date2. To ensure better distribution of cleaners,
-        all duties in time frame are deleted."""
+        """Generates new cleaning duties between date1 and date2."""
         start_date = min(date1, date2)
         end_date = max(date1, date2)
         one_week = timezone.timedelta(days=7)
@@ -162,14 +165,14 @@ class Schedule(models.Model):
 
         date_iterator = start_date
         while date_iterator <= end_date:
-            if clear_existing or not clear_existing and not self.assignment_set.filter(date=date_iterator).exists():
+            if clear_existing or not clear_existing and \
+                    self.assignment_set.filter(date=date_iterator).count() < self.cleaners_per_date:
                 self.assign_cleaning_duty(date_iterator)
             date_iterator += one_week
 
     def assign_cleaning_duty(self, date):
         """Generates a new Duty and assigns Cleaners to it.
-        If self.frequency is set to 'Even weeks' and it is not an even week, this function fails silently.
-        The same is true if self.frequency is set to 'Odd weeks'."""
+        If the Schedule is not defined on date (see defined_on_date()), then this function fails silently."""
 
         if self.defined_on_date(date):
             cleaning_day, was_created = self.cleaningday_set.get_or_create(date=date)
@@ -184,7 +187,7 @@ class Schedule(models.Model):
 
             last_resort_cleaner = None
             if ratios:
-                for i in range(min(self.cleaners_per_date, len(ratios))):
+                for i in range(min(self.cleaners_per_date-self.assignment_set.filter(date=date).count(), len(ratios))):
                     for cleaner, ratio in ratios:
                         if not self.assignment_set.filter(date=date, cleaner=cleaner).exists() and \
                                 cleaner not in cleaning_day.excluded.all():
