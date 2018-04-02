@@ -95,7 +95,15 @@ class Schedule(models.Model):
         self.__last_frequency = self.frequency
 
     def get_tasks(self):
-        return self.tasks.split(",") if self.tasks else None
+        possibly_with_leading_or_trailing_spaces = self.tasks.split(",") if self.tasks else None
+        spaceless = []
+        for task in possibly_with_leading_or_trailing_spaces:
+            if len(task) > 1 and task[0] == " ":
+                task = task[1:]
+            if len(task) > 1 and task[-1] == " ":
+                task = task[:-1]
+            spaceless.append(task)
+        return spaceless
 
     def cleaners_assigned(self):
         return Cleaner.objects.filter(schedule_group__schedules=self)
@@ -339,7 +347,7 @@ class Assignment(models.Model):
         ordering = ('-date',)
 
     def __str__(self):
-        return self.schedule.name + ": " + self.cleaner.name + " on the " + str(self.date)
+        return "{}: {}, {} ".format(self.schedule.name, self.cleaner.name, self.date.strftime('%d-%b-%Y'))
 
     def cleaners_on_date_for_schedule(self):
         return Cleaner.objects.filter(assignment__schedule=self.schedule,
@@ -366,7 +374,7 @@ class Task(models.Model):
     cleaned_by = models.ForeignKey(Assignment, null=True, on_delete=models.CASCADE)
 
     def __str__(self):
-        return str(self.name)
+        return self.name
 
 
 class CleaningDay(models.Model):
@@ -379,7 +387,7 @@ class CleaningDay(models.Model):
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
 
     def __str__(self):
-        return str(self.schedule)+"-"+str(self.date)
+        return "{}: {}".format(self.schedule.name, self.date.strftime('%d-%b-%Y'))
 
     def initiate_tasks(self):
         schedule = self.schedule
@@ -412,12 +420,12 @@ class DutySwitch(models.Model):
 
     def __str__(self):
         if self.selected_assignment:
-            return "Source: {} on {} - Selected: {} on {} Status: {} ".\
+            return "Source: {} on {}  -  Selected: {} on {}  -  Status: {} ".\
                 format(self.source_assignment.cleaner, self.source_assignment.date.strftime('%d-%b-%Y'),
                        self.selected_assignment.cleaner, self.selected_assignment.date.strftime('%d-%b-%Y'),
                        self.status)
         else:
-            return "Source: {} on {} - Selected: none Status: {} ". \
+            return "Source: {} on {}  -  Selected:            -  Status: {} ". \
                 format(self.source_assignment.cleaner, self.source_assignment.date.strftime('%d-%b-%Y'), self.status)
 
     def filtered_destinations(self):

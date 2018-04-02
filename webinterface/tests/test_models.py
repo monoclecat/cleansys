@@ -1,7 +1,7 @@
 from django.test import TestCase
 from webinterface.models import *
-import random
-import logging, traceback, sys
+
+import logging
 from unittest.mock import *
 
 logging.disable(logging.FATAL)
@@ -365,6 +365,117 @@ class CleanerTest(TestCase):
                                        correct_dates_to_due_day(cleaner.moved_out))])
 
 
+class AssignmentTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.config = Config.objects.create(date_due=6, starts_days_before_due=1, ends_days_after_due=2,
+                                           trust_in_users=True)
+
+        cls.reference_date = correct_dates_to_due_day(datetime.date(2010, 1, 8))
+
+        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=2)
+
+        cls.cleaner1 = Cleaner.objects.create(name="cleaner1", moved_in=datetime.date(2010, 1, 1),
+                                              moved_out=datetime.date(2010, 3, 1))
+        cls.cleaner2 = Cleaner.objects.create(name="cleaner2", moved_in=datetime.date(2010, 1, 1),
+                                              moved_out=datetime.date(2010, 3, 1))
+        cls.cleaner3 = Cleaner.objects.create(name="cleaner3", moved_in=datetime.date(2010, 1, 1),
+                                              moved_out=datetime.date(2010, 3, 1))
+
+        cls.assignment1 = Assignment.objects.create(
+            cleaner=cls.cleaner1, date=cls.reference_date, schedule=cls.schedule)
+        cls.assignment2 = Assignment.objects.create(
+            cleaner=cls.cleaner2, date=cls.reference_date, schedule=cls.schedule)
+        cls.assignment3 = Assignment.objects.create(
+            cleaner=cls.cleaner3, date=cls.reference_date + datetime.timedelta(days=7), schedule=cls.schedule)
+
+        cls.cleaning_day = CleaningDay.objects.create(date=cls.reference_date, schedule=cls.schedule)
+
+        cls.task1 = Task.objects.create(name="task1", cleaned_by=cls.assignment1)
+        cls.task2 = Task.objects.create(name="task1", cleaned_by=cls.assignment2)
+
+    def test__creation(self):
+        assignment = Assignment.objects.create(cleaner=self.cleaner1, date=self.reference_date, schedule=self.schedule)
+        self.assertIsInstance(assignment, Assignment)
+
+    def test__str(self):
+        self.assertIn(self.schedule.name, self.assignment1.__str__())
+        self.assertIn(self.cleaner1.name, self.assignment1.__str__())
+        self.assertIn(self.assignment1.date.strftime('%d-%b-%Y'), self.assignment1.__str__())
+
+    def test__cleaners_on_day_for_schedule(self):
+        self.assertListEqual(list(self.assignment1.cleaners_on_date_for_schedule()), [self.cleaner1, self.cleaner2])
+
+    def test__possible_start_date(self):
+        self.assertEqual(self.assignment1.possible_start_date(),
+                         self.reference_date - datetime.timedelta(days=self.config.starts_days_before_due))
+
+    def test__cleaning_buddies(self):
+        self.assertListEqual(list(self.assignment1.cleaning_buddies()), [self.cleaner2])
+
+    def test__tasks_cleaned(self):
+        self.assertListEqual(list(self.assignment1.tasks_cleaned()), [self.task1])
+
+    def test__cleaning_day__exists(self):
+        self.assertEqual(self.assignment1.cleaning_day(), self.cleaning_day)
+
+    def test__cleaning_day__does_not_exist(self):
+        self.assertIsNone(self.assignment3.cleaning_day())
+
+
+class TaskTest(TestCase):
+    def test__creation(self):
+        task = Task.objects.create(name="task1")
+        self.assertIsInstance(task, Task)
+
+    def test__str(self):
+        task = Task(name="task1")
+        self.assertEqual(task.name, task.__str__())
+
+
+class CleaningDayTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.reference_date = datetime.date(2010, 1, 8)
+
+        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=2, tasks="task1, task2")
+
+        # cls.cleaner1 = Cleaner.objects.create(name="cleaner1", moved_in=datetime.date(2010, 1, 1),
+        #                                       moved_out=datetime.date(2010, 3, 1))
+        # cls.cleaner2 = Cleaner.objects.create(name="cleaner2", moved_in=datetime.date(2010, 1, 1),
+        #                                       moved_out=datetime.date(2010, 3, 1))
+        # cls.cleaner3 = Cleaner.objects.create(name="cleaner3", moved_in=datetime.date(2010, 1, 1),
+        #                                       moved_out=datetime.date(2010, 3, 1))
+        #
+        # cls.assignment1 = Assignment.objects.create(
+        #     cleaner=cls.cleaner1, date=cls.reference_date, schedule=cls.schedule)
+        # cls.assignment2 = Assignment.objects.create(
+        #     cleaner=cls.cleaner2, date=cls.reference_date, schedule=cls.schedule)
+        # cls.assignment3 = Assignment.objects.create(
+        #     cleaner=cls.cleaner3, date=cls.reference_date + datetime.timedelta(days=7), schedule=cls.schedule)
+
+        cls.cleaning_day = CleaningDay.objects.create(date=cls.reference_date, schedule=cls.schedule)
+
+    def test__creation(self):
+        cleaning_day = CleaningDay.objects.create(date=datetime.date(2010, 2, 8), schedule=self.schedule)
+        self.assertIsInstance(cleaning_day, CleaningDay)
+
+    def test__str(self):
+        self.assertIn(self.schedule.name, self.cleaning_day.__str__())
+        self.assertIn(self.cleaning_day.date.strftime('%d-%b-%Y'), self.cleaning_day.__str__())
+
+    def test__initiate_tasks(self):
+        self.cleaning_day.initiate_tasks()
+        self.assertListEqual(list(Task.objects.all()), list(self.cleaning_day.tasks.all()))
+        self.assertTrue(self.cleaning_day.tasks.filter(name="task1").exists())
+        self.assertTrue(self.cleaning_day.tasks.filter(name="task2").exists())
+
+    def test__delete(self):
+        cleaning_day = CleaningDay.objects.create(date=datetime.date(2010, 3, 8), schedule=self.schedule)
+        cleaning_day.initiate_tasks()
+        cleaning_day.delete()
+        self.assertFalse(Task.objects.filter(name="task1").exists())
+        self.assertFalse(Task.objects.filter(name="task2").exists())
 
 
 
