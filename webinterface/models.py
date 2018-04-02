@@ -282,10 +282,7 @@ class Cleaner(models.Model):
 
     def delete(self, using=None, keep_parents=False):
         if self.schedule_group:
-            group = self.schedule_group
-            self.schedule_group = None
-            self.save()
-            for schedule in group.schedules.all():
+            for schedule in self.schedule_group.schedules.all():
                 schedule.new_cleaning_duties(self.moved_in, self.moved_out)
         self.user.delete()
         super().delete(using, keep_parents)
@@ -295,7 +292,11 @@ class Cleaner(models.Model):
         self.slug = slugify(self.name)
 
         if not self.user:
-            new_password = self.slug if Config.objects.first().trust_in_users else make_password(None)
+            try:
+                new_password = self.slug if Config.objects.first().trust_in_users else make_password(None)
+            except AttributeError:
+                logging.error("No Config object exists! Set password of user {} to unusable password.".format(self.name))
+                new_password = make_password(None)
             self.user = User.objects.create(username=self.slug, password=new_password)
         elif self.user.username != self.slug:
             self.user.username = self.slug
@@ -319,39 +320,13 @@ class Cleaner(models.Model):
 
         if self.schedule_group and self.schedule_group != self.__last_group:
             if self.__last_group:
-                schedules_to_reassign = self.schedule_group.schedules.intersection(self.__last_group.schedules)
+                schedules_to_reassign = self.schedule_group.schedules.all() | self.__last_group.schedules.all()
             else:
-                schedules_to_reassign = self.schedule_group.schedules
-            for schedule in schedules_to_reassign.all():
-                schedule.new_cleaning_duties(self.moved_in, self.moved_out)
+                schedules_to_reassign = self.schedule_group.schedules.all()
+            for schedule in schedules_to_reassign:
+                schedule.new_cleaning_duties(correct_dates_to_due_day(self.moved_in),
+                                             correct_dates_to_due_day(self.moved_out))
 
-
-# def group_cleaners_changed(instance, action, pk_set, **kwargs):
-#     if action == 'post_add' or action == 'post_remove':
-#         dates_to_delete = []
-#         one_week = timezone.timedelta(days=7)
-#         for cleaner_pk in pk_set:
-#             cleaner = Cleaner.objects.get(pk=cleaner_pk)
-#             first_duty, last_duty = correct_dates_to_due_day([min(cleaner.moved_in, timezone.date.today()),
-#                                                               cleaner.moved_out])
-#             date_iterator = first_duty
-#             while date_iterator <= last_duty:
-#                 if date_iterator not in dates_to_delete:
-#                     dates_to_delete.append(date_iterator)
-#                 date_iterator += one_week
-#
-#         for schedule in Schedule.objects.filter(schedule_group=instance):
-#             dates_to_redistribute = []
-#             for date in dates_to_delete:
-#                 duty = schedule.duties.filter(date=date)
-#                 if duty.exists():
-#                     duty.delete()
-#                     dates_to_redistribute.append(date)
-#             for date in dates_to_redistribute:
-#                 schedule.assign_cleaning_duty(date)
-
-
-# m2m_changed.connect(group_cleaners_changed, sender=ScheduleGroup.cleaners.through)
 
 class Assignment(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
@@ -389,7 +364,6 @@ class Assignment(models.Model):
 class Task(models.Model):
     name = models.CharField(max_length=20)
     cleaned_by = models.ForeignKey(Assignment, null=True, on_delete=models.CASCADE)
-
 
     def __str__(self):
         return str(self.name)
@@ -437,7 +411,14 @@ class DutySwitch(models.Model):
     # destination. The cycle begins from the start
 
     def __str__(self):
-        return "Source assignment: "+str(self.source_assignment)
+        if self.selected_assignment:
+            return "Source: {} on {} - Selected: {} on {} Status: {} ".\
+                format(self.source_assignment.cleaner, self.source_assignment.date.strftime('%d-%b-%Y'),
+                       self.selected_assignment.cleaner, self.selected_assignment.date.strftime('%d-%b-%Y'),
+                       self.status)
+        else:
+            return "Source: {} on {} - Selected: none Status: {} ". \
+                format(self.source_assignment.cleaner, self.source_assignment.date.strftime('%d-%b-%Y'), self.status)
 
     def filtered_destinations(self):
         destinations = self.destinations.exclude(pk=self.source_assignment.pk)
@@ -484,55 +465,52 @@ class DutySwitch(models.Model):
         self.status = 2
         self.save()
 
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        super().save(force_insert, force_update, using, update_fields)
+    def look_for_destinations(self):
+        schedule = self.source_assignment.schedule
+
+        possible_cleaners = Cleaner.objects.filter(
+            schedule_group__schedules=schedule).exclude(
+            pk=self.source_assignment.cleaner.pk)
+
+        cleaning_day = self.source_assignment.cleaning_day()
+
+        if cleaning_day:
+            possible_cleaners = possible_cleaners.exclude(slug__in=cleaning_day.excluded.all())
+
+        ratios = schedule.deployment_ratios(self.source_assignment.date, list(possible_cleaners))
+
+        logging.debug("------------ Looking for replacement cleaners -----------")
+
+        one_duty_cleaners = []
+        source_is_already_assigned = []
+
+        for cleaner, ratio in ratios:
+            logging.debug(
+                "{}:  Duties today:{}".
+                    format(cleaner.name,
+                           cleaner.nr_assignments_on_day(self.source_assignment.date)))
+
+            nr_assignments_on_day = cleaner.nr_assignments_on_day(self.source_assignment.date)
+            assignments_in_future = schedule.assignment_set.filter(
+                cleaner=cleaner, date__gt=timezone.now().date())
+
+            if nr_assignments_on_day == 0:
+                for assignment in assignments_in_future:
+                    source_assignments_on_day = self.source_assignment.cleaner.nr_assignments_on_day(assignment.date)
+                    if source_assignments_on_day == 0:
+                        self.destinations.add(assignment)
+                    else:
+                        source_is_already_assigned.append(assignment)
+
+            elif nr_assignments_on_day == 1:
+                for assignment in assignments_in_future:
+                    one_duty_cleaners.append(assignment)
+
         if not self.destinations.all():
-            schedule = self.source_assignment.schedule
-
-            possible_cleaners = Cleaner.objects.filter(
-                schedule_group__schedules=schedule).exclude(
-                pk=self.source_assignment.cleaner.pk)
-
-            cleaning_day = self.source_assignment.cleaning_day()
-
-            if cleaning_day:
-                possible_cleaners = possible_cleaners.exclude(slug__in=cleaning_day.excluded.all())
-
-            ratios = schedule.deployment_ratios(self.source_assignment.date, list(possible_cleaners))
-
-            logging.debug("------------ Looking for replacement cleaners -----------")
-
-            one_duty_cleaners = []
-            source_is_already_assigned = []
-
-            for cleaner, ratio in ratios:
-                logging.debug(
-                    "{}:  Duties today:{}".
-                        format(cleaner.name,
-                               cleaner.nr_assignments_on_day(self.source_assignment.date)))
-
-                nr_assignments_on_day = cleaner.nr_assignments_on_day(self.source_assignment.date)
-                assignments_in_future = schedule.assignment_set.filter(
-                    cleaner=cleaner, date__gt=timezone.now().date())
-
-                if nr_assignments_on_day == 0:
-                    for assignment in assignments_in_future:
-                        source_assignments_on_day = self.source_assignment.cleaner.nr_assignments_on_day(assignment.date)
-                        if source_assignments_on_day == 0:
-                            self.destinations.add(assignment)
-                        else:
-                            source_is_already_assigned.append(assignment)
-
-                elif nr_assignments_on_day == 1:
-                    for assignment in assignments_in_future:
-                        one_duty_cleaners.append(assignment)
-
-            if not self.destinations.all():
-                if source_is_already_assigned:
-                    for assignment in source_is_already_assigned:
-                        self.destinations.add(assignment)
-                else:
-                    for assignment in one_duty_cleaners:
-                        self.destinations.add(assignment)
+            if source_is_already_assigned:
+                for assignment in source_is_already_assigned:
+                    self.destinations.add(assignment)
+            else:
+                for assignment in one_duty_cleaners:
+                    self.destinations.add(assignment)
 
