@@ -126,6 +126,9 @@ class CleanerForm(forms.ModelForm):
                          label="Zugehörigkeit",
                          help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
 
+    preference = forms.ChoiceField(choices=Cleaner.PREFERENCE, initial=2,
+                                   label="Was ist die Vorliebe des Putzers?")
+
     slack_id = forms.ChoiceField(choices=get_slack_users(), label="Wähle des Putzers Slackprofil aus.",
                                  required=False)
 

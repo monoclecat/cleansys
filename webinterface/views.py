@@ -172,16 +172,9 @@ class CleanerView(TemplateView):
             if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
                 try:
                     assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
-                    schedule = assignment.schedule
-                    try:
-                        cleaning_day = schedule.cleaningday_set.get(date=assignment.date)
-                    except CleaningDay.DoesNotExist:
-                        cleaning_day = None
-                        raise SuspiciousOperation("Invalid CleaningDay PK")
-
-                    if not cleaning_day.tasks.all():
-                        cleaning_day.initiate_tasks()
-                        cleaning_day.save()
+                    if not assignment.cleaning_day.task_set.all():
+                        assignment.cleaning_day.initiate_tasks()
+                        assignment.cleaning_day.save()
 
                     return HttpResponseRedirect(reverse_lazy(
                         'webinterface:clean-duty', kwargs={'assignment_pk': assignment.pk}))
@@ -217,13 +210,14 @@ class CleanerView(TemplateView):
 
         start_date = correct_dates_to_due_day(timezone.now().date() - timezone.timedelta(days=2))
 
-        assignments = Assignment.objects.filter(cleaner=context['cleaner'],
-                                                date__gte=start_date + timezone.timedelta(days=7)).order_by('date')
+        assignments = Assignment.objects.filter(
+            cleaner=context['cleaner'], cleaning_day__date__gte=start_date + timezone.timedelta(days=7)).order_by('date')
 
         pagination = Paginator(assignments, 25)
         context['page'] = pagination.get_page(kwargs['page'])
 
-        context['assignments_due_now'] = Assignment.objects.filter(cleaner=context['cleaner'], date=start_date)
+        context['assignments_due_now'] = Assignment.objects.filter(
+            cleaner=context['cleaner'], cleaning_day__date=start_date)
         if context['assignments_due_now']:
             context['can_start_assignments_due_now'] = \
                 datetime.date.today() >= context['assignments_due_now'].first().possible_start_date()
@@ -241,8 +235,9 @@ class ScheduleView(TemplateView):
         except Schedule.DoesNotExist:
             Http404("Putzplan existiert nicht.")
 
-        last_date = context['schedule'].assignment_set.filter(date__lte=timezone.now().date())
-        next_dates = context['schedule'].assignment_set.filter(date__gte=timezone.now().date()).order_by('date')
+        last_date = context['schedule'].assignment_set.filter(cleaning_day__date__lte=timezone.now().date())
+        next_dates = context['schedule'].assignment_set.filter(
+            cleaning_day__date__gte=timezone.now().date()).order_by('date')
 
         assignments = list(last_date)[:1] + list(next_dates)
 
@@ -391,7 +386,7 @@ class ResultsView(TemplateView):
                 schedules = []
                 for schedule in context['schedules']:
                     if schedule.defined_on_date(date_iterator):
-                        assignments = schedule.assignment_set.filter(date=date_iterator)
+                        assignments = schedule.assignment_set.filter(cleaning_day__date=date_iterator)
                         if assignments.exists():
                             cleaners_for_assignment = []
                             for assignment in assignments:
@@ -411,7 +406,7 @@ class ResultsView(TemplateView):
                 time_frame['deviations_by_schedule'] = []
                 for schedule in context['schedules']:
                     assignments_in_timeframe = schedule.assignment_set.filter(
-                        date__range=(time_frame['start_date'], time_frame['end_date']))
+                        cleaning_day__date__range=(time_frame['start_date'], time_frame['end_date']))
 
                     element = [schedule.name, 0, 0, []]
 
