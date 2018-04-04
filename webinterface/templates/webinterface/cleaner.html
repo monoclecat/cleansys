@@ -22,12 +22,12 @@ Deine Putzdienste
                     <b>{{ dutyswitch.source_assignment.schedule.name }}</b><br>
                     <span class="badge">
                         <span class="glyphicon glyphicon-user"></span> {{ dutyswitch.source_assignment.cleaner.name }}
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.date }}
+                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.cleaning_day.date }}
                     </span><br>
                     <span class="glyphicon glyphicon-sort"></span><br>
                     <span class="badge">
                         <span class="glyphicon glyphicon-user"></span> Du
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.selected_assignment.date }}
+                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.selected_assignment.cleaning_day.date }}
                     </span>
                 </a>
             {% endfor %}
@@ -47,7 +47,7 @@ Deine Putzdienste
                     {{ dutyswitch.source_assignment.schedule.name }}
                     <span class="badge">
                         <span class="glyphicon glyphicon-user"></span> {{ dutyswitch.source_assignment.cleaner.name }}
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.date }}
+                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.cleaning_day.date }}
                     </span>
                 </a>
             {% endfor %}
@@ -66,12 +66,12 @@ Deine Putzdienste
                     {{ dutyswitch.source_assignment.schedule.name }}<br>
                     <span class="badge">
                         <span class="glyphicon glyphicon-user"></span> Du
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.date }}
+                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.cleaning_day.date }}
                     </span><br>
                     <span class="glyphicon glyphicon-sort"></span><br>
                     <span class="badge">
                         <span class="glyphicon glyphicon-user"></span> {{ dutyswitch.selected_assignment.cleaner.name }}
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.selected_assignment.date }}
+                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.selected_assignment.cleaning_day.date }}
                     </span>
                 </a>
             {% endfor %}

@@ -14,7 +14,7 @@ Putzdienst tauschen
                 <div class="panel-heading">
                     <h3>Hallo {{ object.source_assignment.cleaner.name }}, wie ich sehe möchtest du
                         deinen Putzdienst für {{ object.source_assignment.schedule.name }}
-                        am {{ object.source_assignment.date }} tauschen.</h3>
+                        am {{ object.source_assignment.cleaning_day.date }} tauschen.</h3>
                 </div>
             </div>
         {% else %}
@@ -28,9 +28,9 @@ Putzdienst tauschen
                 <h3>
                     {{ object.source_assignment.schedule.name }}</h3>
                 <h4>
-                    Du, {{ object.source_assignment.date }}<br>
+                    Du, {{ object.source_assignment.cleaning_day.date }}<br>
                     <span class="glyphicon glyphicon-sort"></span><br>
-                    <span class="glyphicon glyphicon-calendar"></span> {{ object.selected_assignment.date }}
+                    <span class="glyphicon glyphicon-calendar"></span> {{ object.selected_assignment.cleaning_day.date }}
                     <span class="glyphicon glyphicon-user"></span> {{ object.selected_assignment.cleaner.name }}
                 </h4>
             </div>
@@ -66,7 +66,7 @@ Putzdienst tauschen
                             <button class="btn btn-info btn-lg btn-block" type="submit" name="select"
                                     style="white-space: normal;">
                                 <span class="glyphicon glyphicon-sort"></span><br>
-                                <span class="glyphicon glyphicon-calendar"></span> {{ option.date }}
+                                <span class="glyphicon glyphicon-calendar"></span> {{ option.cleaning_day.date }}
                                 <span class="glyphicon glyphicon-user"></span> {{ option.cleaner.name }}
 
                             </button>
@@ -92,10 +92,10 @@ Putzdienst tauschen
                     <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="text-align: center">
                         <h4>
                             <span class="glyphicon glyphicon-user"></span> {{ object.source_assignment.cleaner.name }}
-                            <span class="glyphicon glyphicon-calendar"></span> {{ object.source_assignment.date }}<br>
+                            <span class="glyphicon glyphicon-calendar"></span> {{ object.source_assignment.cleaning_day.date }}<br>
                             <span class="glyphicon glyphicon-sort"></span><br>
                             <span class="glyphicon glyphicon-user"></span> Du
-                            <span class="glyphicon glyphicon-calendar"></span> {{ object.selected_assignment.date }}
+                            <span class="glyphicon glyphicon-calendar"></span> {{ object.selected_assignment.cleaning_day.date }}
                         </h4>
                     </div>
                 </div>

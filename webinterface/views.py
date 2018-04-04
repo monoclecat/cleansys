@@ -65,7 +65,7 @@ class TaskView(UpdateView):
         self.object = self.get_object()
         context = super(TaskView, self).get_context_data(**kwargs)
         try:
-            context['tasks'] = self.object.schedule.cleaningday_set.get(date=self.object.date).tasks.all()
+            context['tasks'] = self.object.schedule.cleaningday_set.get(date=self.object.date).task_set.all()
         except CleaningDay.DoesNotExist:
             logging.error("CleaningDay does not exist on date!")
             raise Exception("CleaningDay does not exist on date!")
@@ -162,6 +162,7 @@ class CleanerView(TemplateView):
                 try:
                     source_assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
                     duty_to_switch = DutySwitch.objects.create(source_assignment=source_assignment)
+                    duty_to_switch.look_for_destinations()
                     return HttpResponseRedirect(reverse_lazy(
                         'webinterface:switch-duty', kwargs={'pk': duty_to_switch.pk}))
                 except (Cleaner.DoesNotExist, Assignment.DoesNotExist):
@@ -211,7 +212,7 @@ class CleanerView(TemplateView):
         start_date = correct_dates_to_due_day(timezone.now().date() - timezone.timedelta(days=2))
 
         assignments = Assignment.objects.filter(
-            cleaner=context['cleaner'], cleaning_day__date__gte=start_date + timezone.timedelta(days=7)).order_by('date')
+            cleaner=context['cleaner'], cleaning_day__date__gte=start_date + timezone.timedelta(days=7)).order_by('cleaning_day__date')
 
         pagination = Paginator(assignments, 25)
         context['page'] = pagination.get_page(kwargs['page'])
@@ -237,7 +238,7 @@ class ScheduleView(TemplateView):
 
         last_date = context['schedule'].assignment_set.filter(cleaning_day__date__lte=timezone.now().date())
         next_dates = context['schedule'].assignment_set.filter(
-            cleaning_day__date__gte=timezone.now().date()).order_by('date')
+            cleaning_day__date__gte=timezone.now().date()).order_by('cleaning_day__date')
 
         assignments = list(last_date)[:1] + list(next_dates)
 

@@ -108,6 +108,9 @@ class Schedule(models.Model):
     def cleaners_assigned(self):
         return Cleaner.objects.filter(schedule_group__schedules=self)
 
+    def cleaners_active_on_date(self, date):
+        return self.cleaners_assigned().filter(moved_out__gte=date, moved_in__lte=date)
+
     def get_active_assignments(self):
         """Returns Assignments for this Schedule that are active today or were have
         recently passed (if no Assignment is currently active) """
@@ -127,15 +130,14 @@ class Schedule(models.Model):
             for date in all_duty_dates:
                 self.create_assignment(date)
 
-    def deployment_ratios(self, for_date, cleaners=None):
+    def deployment_ratios(self, date, cleaners=None):
         """Returns <number of duties a cleaner cleans in>/<total number of duties> on date for_date.
         Ratios are calculated over a time window that stretches into the past and the future, ignoring
         duties that have no cleaners assigned. If you wish to know only the ratio of a select number
         of cleaners, pass them in a list in the cleaners argument. Otherwise all ratios will be returned."""
         ratios = []
 
-        members_on_date = Cleaner.objects.filter(schedule_group__schedules=self,
-                                                 moved_out__gte=for_date, moved_in__lte=for_date)
+        members_on_date = self.cleaners_active_on_date(date)
 
         if cleaners:
             iterate_over = cleaners
@@ -173,9 +175,8 @@ class Schedule(models.Model):
 
         date_iterator = start_date
         while date_iterator <= end_date:
-            if clear_existing or not clear_existing and \
-                    self.assignment_set.filter(cleaning_day__date=date_iterator).count() < self.cleaners_per_date:
-                self.create_assignment(date_iterator)
+            while self.create_assignment(date_iterator):
+                pass
             date_iterator += one_week
 
     def create_assignment(self, date):
@@ -194,22 +195,19 @@ class Schedule(models.Model):
                     logging_text += "{}:{}".format(cleaner.name, round(ratio, 3)) + "  "
                 logging.debug(logging_text)
 
-            if ratios:
-                for i in range(min(self.cleaners_per_date-self.assignment_set.filter(date=date).count(), len(ratios))):
-                    for cleaner, ratio in ratios:
-                        if cleaner.is_eligible_for_date(date) and cleaner not in cleaning_day.excluded.all():
-                            self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
-                            logging.debug("          {} inserted!".format(cleaner.name))
-                            break
-                    else:
-                        logging.debug("Cleaner's preferences result in no cleaner, we must choose {}".format(ratios[0][0]))
-                        self.assignment_set.create(cleaner=ratios[0][0], cleaning_day=cleaning_day)
+            if ratios and (cleaning_day.assignment_set.count() < self.cleaners_per_date
+                           or cleaning_day.assignment_set.count() < len(ratios)):
+                for cleaner, ratio in ratios:
+                    if cleaner.is_eligible_for_date(date) and cleaner not in cleaning_day.excluded.all():
+                        logging.debug("          {} inserted!".format(cleaner.name))
+                        return self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
+                else:
+                    logging.debug("Cleaner's preferences result in no cleaner, we must choose {}".format(ratios[0][0]))
+                    return self.assignment_set.create(cleaner=ratios[0][0], cleaning_day=cleaning_day)
             else:
-                return None
-
-            logging.debug("")
+                return False
         else:
-            return None
+            return False
 
 
 class ScheduleGroup(models.Model):
@@ -487,8 +485,8 @@ class DutySwitch(models.Model):
                 "{}:  Duties today:{}".format(cleaner.name,
                                               cleaner.nr_assignments_on_day(self.source_assignment.cleaning_day.date)))
 
-            assignments_in_future = schedule.assignment_set.filter(cleaner=cleaner, date__gt=timezone.now().date())
+            assignments_in_future = schedule.assignment_set.filter(cleaner=cleaner, cleaning_day__date__gt=timezone.now().date())
 
             for assignment in assignments_in_future:
-                if self.source_assignment.cleaner.is_eligible_for_date(assignment.date):
+                if self.source_assignment.cleaner.is_eligible_for_date(assignment.cleaning_day.date):
                     self.destinations.add(assignment)

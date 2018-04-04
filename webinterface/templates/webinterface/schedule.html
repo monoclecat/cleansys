@@ -17,7 +17,7 @@
 
     <div class="panel panel-info">
         <div class="panel-heading">
-            <h3 class="panel-title">Putzdienst vom {{ schedule.get_active_assignments.first.date }}</h3>
+            <h3 class="panel-title">Putzdienst vom {{ schedule.get_active_assignments.first.cleaning_day.date }}</h3>
         </div>
         <div class="panel-body">
             <h5>Wer was gemacht hat</h5>
@@ -50,7 +50,7 @@
             {% regroup page by date as grouped_by_date %}
             {% for assignment in grouped_by_date %}
                 <tr>
-                    <td>{{ assignment.list.0.date }}</td>
+                    <td>{{ assignment.list.0.cleaning_day.date }}</td>
                     <td {% if highlighted_cleaner in assignment.list.0.cleaners_on_date_for_schedule.all %}
                         class="success" {% endif %}>
                         {% for cleaner in assignment.list.0.cleaners_on_date_for_schedule.all %}
