@@ -1,6 +1,5 @@
 from django.test import TestCase
 from webinterface.models import *
-import pdb
 
 import logging
 from unittest.mock import *

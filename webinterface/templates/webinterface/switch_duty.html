@@ -58,7 +58,7 @@ Putzdienst tauschen
                     <p>Ich habe dir ein paar Putzdienste zur Auswahl herausgesucht, bitte wähle einen aus. </p>
                 </div>
                 {% for option in object.filtered_destinations.all %}
-                    <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px">
+                    <div class="col-xs-12 col-sm-6" style="padding: 5px">
                         <form class="form-inline" method="post">
                             {% csrf_token %}
                             <input type="hidden" name="redirect_cleaner_slug" value="{{ object.source_assignment.cleaner.slug }}">
