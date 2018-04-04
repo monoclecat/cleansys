@@ -145,15 +145,12 @@ class Schedule(models.Model):
             iterate_over = members_on_date
 
         if iterate_over:
-            proportion__cleaners_assigned_per_week = self.cleaners_per_date / len(members_on_date)
-
             for cleaner in iterate_over:
                 all_assignments = self.assignment_set.filter(cleaning_day__date__range=(cleaner.moved_in, cleaner.moved_out))
 
                 if all_assignments.exists():
                     proportion__self_assigned = all_assignments.filter(cleaner=cleaner).count() / all_assignments.count()
-                    ratios.append([cleaner,
-                                   proportion__self_assigned / proportion__cleaners_assigned_per_week])
+                    ratios.append([cleaner, proportion__self_assigned * len(members_on_date)])
                 else:
                     ratios.append([cleaner, 0])
             return sorted(ratios, key=itemgetter(1), reverse=False)
@@ -192,17 +189,19 @@ class Schedule(models.Model):
                 logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'.format(self.name, date))
                 logging_text = "All cleaners' ratios: "
                 for cleaner, ratio in ratios:
-                    logging_text += "{}:{}".format(cleaner.name, round(ratio, 3)) + "  "
+                    logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
                 logging.debug(logging_text)
 
-            if ratios and (cleaning_day.assignment_set.count() < self.cleaners_per_date
-                           or cleaning_day.assignment_set.count() < len(ratios)):
+            if ratios and cleaning_day.assignment_set.count() < self.cleaners_per_date:
                 for cleaner, ratio in ratios:
                     if cleaner.is_eligible_for_date(date) and cleaner not in cleaning_day.excluded.all():
-                        logging.debug("          {} inserted!".format(cleaner.name))
+                        logging.debug("   {} inserted!".format(cleaner.name))
                         return self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
+                    else:
+                        logging.debug("   {} already has {} duties today.".format(
+                            cleaner.name, cleaner.nr_assignments_on_day(date)))
                 else:
-                    logging.debug("Cleaner's preferences result in no cleaner, we must choose {}".format(ratios[0][0]))
+                    logging.debug("   Cleaner's preferences result in no cleaner, we must choose {}".format(ratios[0][0]))
                     return self.assignment_set.create(cleaner=ratios[0][0], cleaning_day=cleaning_day)
             else:
                 return False

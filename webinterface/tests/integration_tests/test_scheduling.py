@@ -6,7 +6,7 @@ import timeit
 from unittest.mock import *
 
 
-#logging.disable(logging.DEBUG)
+logging.disable(logging.DEBUG)
 
 
 class SchedulingTest(TestCase):
@@ -15,7 +15,7 @@ class SchedulingTest(TestCase):
         cls.config = Config.objects.create(date_due=6)
 
         cls.start_date = correct_dates_to_due_day(datetime.date(2011, 1, 1))
-        cls.end_date = correct_dates_to_due_day(datetime.date(2011, 7, 1))
+        cls.end_date = correct_dates_to_due_day(datetime.date(2013, 1, 1))
 
         # The names indicate which cleaners are assigned
         cls.all = Schedule.objects.create(name="all", cleaners_per_date=2, frequency=1)  # Bar
@@ -44,66 +44,73 @@ class SchedulingTest(TestCase):
         cls.group_c11_to_c15.schedules.add(
             cls.c11_to_c15, cls.c10_to_c15, cls.all, cls.all_even_weeks, cls.all_odd_weeks)
 
-
         cls.cleaner1 = Cleaner.objects.create(
-            name="C1_pref=1", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
+            name="C1", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
             preference=1)
 
         cls.cleaner2 = Cleaner.objects.create(
-            name="C2_pref=2", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
+            name="C2", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
             preference=2)
 
         cls.cleaner3 = Cleaner.objects.create(
-            name="C3_pref=3", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
+            name="C3", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
             preference=3)
 
         cls.cleaner4 = Cleaner.objects.create(
-            name="C4_pref=1", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
+            name="C4", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
             preference=1)
 
         cls.cleaner5 = Cleaner.objects.create(
-            name="C5_pref=2", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
+            name="C5", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
             preference=2)
 
         cls.cleaner6 = Cleaner.objects.create(
-            name="C6_pref=3", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
+            name="C6", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
             preference=3)
 
         cls.cleaner7 = Cleaner.objects.create(
-            name="C7_pref=1", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
+            name="C7", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
             preference=1)
 
         cls.cleaner8 = Cleaner.objects.create(
-            name="C8_pref=2", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
+            name="C8", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
             preference=2)
 
         cls.cleaner9 = Cleaner.objects.create(
-            name="C9_pref=3", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
+            name="C9", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
             preference=3)
 
         cls.cleaner10 = Cleaner.objects.create(
-            name="C10_pref=1", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c10,
+            name="C10", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c10,
             preference=1)
 
         cls.cleaner11 = Cleaner.objects.create(
-            name="C11_pref=2", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
+            name="C11", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
             preference=2)
 
         cls.cleaner12 = Cleaner.objects.create(
-            name="C12_pref=3", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
+            name="C12", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
             preference=3)
 
         cls.cleaner13 = Cleaner.objects.create(
-            name="C13_pref=1", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
+            name="C13", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
             preference=1)
 
         cls.cleaner14 = Cleaner.objects.create(
-            name="C14_pref=2", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
+            name="C14", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
             preference=2)
 
         cls.cleaner15 = Cleaner.objects.create(
-            name="C15_pref=3", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
+            name="C15", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
             preference=3)
+
+        # MODE
+        # 0(nothing changes) = 5 Cleaners have a preference == 1, 5 Cleaners preference == 2, 5 Cleaners preference == 3
+        # 1 = All Cleaners have a preference == 1
+        cls.MODE = 0
+        if cls.MODE == 1:
+            for cleaner in Cleaner.objects.all():
+                cleaner.preference = 1
 
         cls.timing_results = [['All Schedules', 0]]
         start_global = timeit.default_timer()
