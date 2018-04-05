@@ -46,7 +46,6 @@ class LoginByClickView(LoginView):
                     get_vars['next'] = request.GET['next']
                 if 'username' in request.POST and request.POST['username']:
                     get_vars['username'] = request.POST['username']
-                print(get_vars)
                 url['Location'] += "?"+get_vars.urlencode(safe="/")
                 return url
             else:
@@ -65,7 +64,7 @@ class TaskView(UpdateView):
         self.object = self.get_object()
         context = super(TaskView, self).get_context_data(**kwargs)
         try:
-            context['tasks'] = self.object.schedule.cleaningday_set.get(date=self.object.date).task_set.all()
+            context['tasks'] = self.object.cleaning_day.task_set.all()
         except CleaningDay.DoesNotExist:
             logging.error("CleaningDay does not exist on date!")
             raise Exception("CleaningDay does not exist on date!")
@@ -238,9 +237,9 @@ class ScheduleView(TemplateView):
 
         last_date = context['schedule'].assignment_set.filter(cleaning_day__date__lte=timezone.now().date())
         next_dates = context['schedule'].assignment_set.filter(
-            cleaning_day__date__gte=timezone.now().date()).order_by('cleaning_day__date')
+            cleaning_day__date__gte=timezone.now().date())
 
-        assignments = list(last_date)[:1] + list(next_dates)
+        assignments = list(last_date)[-1:] + list(next_dates)
 
         pagination = Paginator(assignments, 30*context['schedule'].cleaners_per_date)
         context['page'] = pagination.get_page(kwargs['page'])
@@ -283,6 +282,45 @@ class ConfigView(FormView):
 
 
 class ResultsView(TemplateView):
+    template_name = 'webinterface/results.html'
+
+    def post(self, request, *args, **kwargs):
+        if 'regenerate_all' in request.POST:
+            clear_existing = True
+        else:
+            clear_existing = False
+
+        time_start = timeit.default_timer()
+        for schedule in Schedule.objects.all():
+            schedule.new_cleaning_duties(
+                datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date(),
+                datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date(),
+                clear_existing)
+        time_end = timeit.default_timer()
+        logging.info("Assigning cleaning schedules took {}s".format(round(time_end-time_start, 2)))
+
+        results_kwargs = {'from_date': kwargs['from_date'], 'to_date': kwargs['to_date']}
+
+        if 'options' in kwargs:
+            results_kwargs['options'] = kwargs['options']
+
+        return HttpResponseRedirect(
+            reverse_lazy('webinterface:results', kwargs=results_kwargs))
+
+    def get(self, request, *args, **kwargs):
+        from_date = datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date()
+        to_date = datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date()
+
+        context = dict()
+        context['assignments_by_schedule'] = list()
+        for schedule in Schedule.objects.all():
+            context['assignments_by_schedule'].append(
+                schedule.assignment_set.filter(cleaning_day__date__range=(from_date, to_date)))
+        return self.render_to_response(context)
+
+
+
+class ResultsViewOld(TemplateView):
     template_name = 'webinterface/results.html'
 
     def post(self, request, *args, **kwargs):

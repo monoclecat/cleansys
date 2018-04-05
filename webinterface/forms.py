@@ -11,19 +11,25 @@ from django.contrib.auth.forms import AuthenticationForm
 class ConfigForm(forms.ModelForm):
     class Meta:
         model = Config
-        fields = ('date_due', 'trust_in_users')
+        fields = ('date_due', 'trust_in_users', 'starts_days_before_due', 'ends_days_after_due')
 
     date_due = forms.ChoiceField(choices=Config.WEEKDAYS, initial=6,
-                                 label="Wochentag, für den Putzdienste definiert sind.",
+                                 label="Putztag: Wochentag, für den Putzdienste definiert sind.",
                                  help_text="Dies ist nicht der Wochetag, bis den die Putzdienste gemacht sein müssen!")
     trust_in_users = forms.BooleanField(required=False, label="Putzer können sich ohne Passwort einloggen.",
                                         help_text="Eine Änderung dieses Feldes hat weitreichende Konsequenzen.")
+
+    starts_days_before_due = forms.IntegerField(
+        label="Putzdienste können so viele Tag vor dem Putztag gemacht werden.")
+
+    ends_days_after_due = forms.IntegerField(
+        label="Putzdienste können so viele Tag nach dem Putztag gemacht werden.")
 
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            'date_due',
+            'date_due', 'starts_days_before_due', 'ends_days_after_due',
             Fieldset('Login-Verhalten', 'trust_in_users'),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "

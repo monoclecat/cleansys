@@ -14,7 +14,7 @@ urlpatterns = [
     #url(r'^switch/(?P<pk>[\d]+)/(?P<answer>[\S]+)/$', DutySwitchView.as_view(), name='switch-duty-answer'),
     path('tauschen/<int:pk>/', login_required(DutySwitchView.as_view()), name='switch-duty'),
 
-    path('clean/<int:assignment_pk>/', login_required(TaskView.as_view()), name='clean-duty'),
+    path('putzen/<int:assignment_pk>/', login_required(TaskView.as_view()), name='clean-duty'),
 
     # path('putzer/<slug:slug>/seite<int:page>/', CleanerView.as_view(), name='cleaner'),
     path('du/seite<int:page>/', login_required(CleanerView.as_view()), name='cleaner'),

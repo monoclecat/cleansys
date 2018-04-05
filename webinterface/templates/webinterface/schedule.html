@@ -6,12 +6,10 @@
 {% endblock %}
 
 {% block main %}
-    <div class="row" style="margin: 1em">
-        <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3">
-            <a class="btn btn-block btn-default" role="button"
-                href="{% url 'webinterface:schedule-list' %}">
-                <span class="glyphicon glyphicon-chevron-left"></span> Zurück
-            </a>
+    <div class="row">
+        <div class="btn btn-group btn-group-md" role="group">
+            {% include "webinterface_snippets/button_to_cleaner_page.html" %}
+            {% include "webinterface_snippets/button_to_schedule_list_page.html" %}
         </div>
     </div>
 
@@ -20,14 +18,23 @@
             <h3 class="panel-title">Putzdienst vom {{ schedule.get_active_assignments.first.cleaning_day.date }}</h3>
         </div>
         <div class="panel-body">
-            <h5>Wer was gemacht hat</h5>
-            {% for assignment in schedule.get_active_assignments %}
-                <h4><span class="glyphicon glyphicon-user"></span> {{ assignment.cleaner.name }}:
-                    {% for task in assignment.tasks_cleaned %}
-                        <span class="label label-default">{{ task.name }}</span>
-                    {% endfor %}
-                </h4>
+            Schon geputzt:
+            <ul style="list-style: none;">
+            {% for task in schedule.get_current_cleaning_day.done_tasks %}
+               <li><span class="glyphicon glyphicon-check"></span> {{ task.name }}
+                   <span class="glyphicon glyphicon-resize-horizontal"></span>
+                   <span class="glyphicon glyphicon-user"></span>
+                   {{ task.cleaned_by.cleaner.name }}</li>
             {% endfor %}
+            </ul>
+            Noch nicht geputzt:
+            <ul>
+            {% for task in schedule.get_current_cleaning_day.open_tasks %}
+                <li>{{ task.name }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        <div class="panel-footer">
             <p><i>Kontaktiere den XXX im Beschwerdefall direkt.</i></p>
         </div>
     </div>
@@ -40,30 +47,7 @@
         </div>
     </div>
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
-        <table class="table table-striped" style="margin-bottom: 0">
-            <tr>
-                <td><span class="glyphicon glyphicon-calendar"></span></td>
-                <td><span class="glyphicon glyphicon-user"></span></td>
-            </tr>
-            {% comment %}We only need regrouping because we can't use
-               distinct('date') in sqlite databases. {% endcomment %}
-            {% regroup page by date as grouped_by_date %}
-            {% for assignment in grouped_by_date %}
-                <tr>
-                    <td>{{ assignment.list.0.cleaning_day.date }}</td>
-                    <td {% if highlighted_cleaner in assignment.list.0.cleaners_on_date_for_schedule.all %}
-                        class="success" {% endif %}>
-                        {% for cleaner in assignment.list.0.cleaners_on_date_for_schedule.all %}
-                            {{ cleaner.name }}
-                            {% ifnotequal cleaner assignment.list.0.cleaners_on_date_for_schedule.last %},
-                            {% endifnotequal %}
-                        {% empty %}
-                            Keine Putzer
-                        {% endfor %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </table>
+    {% include "webinterface_snippets/schedule_assignment_table.html" %}
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
     {% comment %}<div class="row" style="padding: 1em">
         <h4>Hebe Putzer hervor</h4>

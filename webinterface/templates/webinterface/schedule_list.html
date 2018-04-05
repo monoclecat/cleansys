@@ -6,7 +6,12 @@ Putzpläne
 {% endblock %}
 
 {% block main %}
-    {% include "webinterface_snippets/back_button_to_cleaner_page.html" %}
+    <div class="row">
+        <div class="btn btn-group btn-group-md" role="group">
+            {% include "webinterface_snippets/button_to_cleaner_page.html" %}
+        </div>
+    </div>
+
     <h3>Welchen Putzplan möchtest du dir anschauen?</h3>
     <div class="row">
         {% for schedule in object_list %}

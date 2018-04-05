@@ -1,12 +1,11 @@
-{% extends "webinterface/base.html" %}
+{% extends "webinterface/mobile_first_body.html" %}
 {% load crispy_forms_tags %}
 
 {% block title %}
 Putzdienste
 {% endblock %}
 
-{% block body %}
-    <div style="margin: 0.5em">
+{% block main %}
         <h1>Die Tabelle um alle Tabellen zu knechten</h1>
 
         <a class="btn btn-default" href="{% url 'webinterface:config' %}" role="button">
@@ -23,94 +22,57 @@ Putzdienste
         </form>
         <br>
 
-        {% for time_frame in results %}
-            <div class="panel panel-primary">
-                <div class="panel-heading">
-                    <h3>Putzdienste vom <b>{{ time_frame.start_date }}</b>
-                        {% if time_frame.moved_in %}
-                            <span class="label label-default">
-                                {% for cleaner in time_frame.moved_in %}
-                                    {{ cleaner.name }}
-                                {% endfor %}
-                                 eingezogen</span>
-                        {% endif %}
-                        {% if time_frame.moved_out %}
-                            <span class="label label-default">
-                                {% for cleaner in time_frame.moved_out %}
-                                    {{ cleaner.name }}
-                                {% endfor %}
-                                 ausgezogen</span>
-                        {% endif %}
-                        bis <b>{{ time_frame.end_date }}</b>
-                    </h3>
+        <ul class="nav nav-pills" role="tablist">
+            {% for page in assignments_by_schedule %}
+                {% if page %}
+                        <a href="#{{ page.0.schedule.name|slugify }}" aria-controls="home"
+                           role="button" class="btn btn-default" data-toggle="tab" style="margin: 2px">
+                            {{ page.0.schedule.name }}</a>
+                {% endif %}
+            {% endfor %}
+        </ul>
+        <br>
+
+
+        <div class="tab-content">
+            {% for page in assignments_by_schedule %}
+                {% if page %}
+                    <div role="tabpanel" class="tab-pane {% if forloop.first %}active{% endif %}"
+                         id="{{ page.0.schedule.name|slugify }}">
+                        <div class="panel panel-primary">
+                            <div class="panel-heading">
+                                <h3>{{ page.0.schedule.name }}</h3>
+                            </div>
+                            <div class="panel-body">
+                                {% include "webinterface_snippets/schedule_assignment_table.html" %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    Keine Putzdienste
+                {% endif %}
+            {% empty %}
+                Keine Putzpläne
+            {% endfor %}
+        </div>
+        {% comment %}<div class="row">
+        {% for page in assignments_by_schedule %}
+            {% if page %}
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="panel panel-primary">
+                        <div class="panel-heading">
+                            <h3>{{ page.0.schedule.name }}</h3>
+                        </div>
+                        <div class="panel-body">
+                            {% include "webinterface_snippets/schedule_assignment_table.html" %}
+                        </div>
+                    </div>
                 </div>
-                <div class="panel-body">
-                    {% if time_frame.duty_counter %}
-                        <h3>Statistiken</h3>
-                        <h4>Behalte bitte in Erinnerung, dass auch wenn ein Putzer in dieser Zeitspanne
-                            unfair behandelt scheint, dieser in der Zukunft oder Vergangenheit seine
-                            Gerechtigkeit finden wird.</h4>
-                        <table class="table table-striped table-condensed">
-                            {% for schedule in time_frame.duty_counter %}
-                                <tr>
-                                    <td><b>{{ schedule.0 }}</b></td>
-                                    <td><b>Max: {{ schedule.1 }}<br>Min: {{ schedule.2 }}</b></td>
-                                    {% for cleaner, times in schedule.3 %}
-                                        <td>{{ cleaner }}: {{ times }}</td>
-                                    {% endfor %}
-                                </tr>
-                            {% empty %}
-                                Nichts hier
-                            {% endfor %}
-                        </table>
-                        <h3>Mittlere absolute Abweichung pro Putzdienst</h3>
-                        <table class="table table-striped table-bordered">
-                            {% for schedule in time_frame.deviations_by_schedule %}
-                                <tr>
-                                    <td><b>{{ schedule.0.0 }}: {{ schedule.0.1 }}</b></td>
-                                    {% for cleaner, value in schedule.1 %}
-                                        <td>{{ cleaner }}: {{ value }}</td>
-                                    {% endfor %}
-                                </tr>
-                            {% empty %}
-                                Nichts zum zeigen
-                            {% endfor %}
-                        </table>
-                    {% endif %}
-                    <table class="table table-striped table-bordered">
-                        <tr class="info">
-                            <th>Datum</th>
-                            {% for schedule_name in schedules %}
-                                <th>{{ schedule_name }}</th>
-                            {% endfor %}
-                        </tr>
-                        {% for date in time_frame.assignments %}
-                            <tr>
-                                <td>{{ date.0 }}</td>
-                                {% for duty in date.1 %}
-                                    {% ifequal duty "." %}
-                                        <td style="background-color:#d3d3d3"> </td>
-                                    {% else %}
-                                        <td>
-                                            {% ifnotequal duty "" %}
-                                                {% for cleaner in duty %}
-                                                    {{ cleaner }}
-                                                {% empty %}
-                                                    No cleaners
-                                                {% endfor %}
-                                            {% endifnotequal %}
-                                        </td>
-                                    {% endifequal %}
-                                {% endfor %}
-                            </tr>
-                        {% empty %}
-                            Keine Putzdienste zum Zeigen
-                        {% endfor %}
-                    </table>
-                </div>
-            </div>
+            {% else %}
+                Keine Putzdienste
+            {% endif %}
         {% empty %}
-            <h4>Keine Putzdienst in dieser Zeitspanne.</h4>
+            Keine Putzpläne
         {% endfor %}
-    </div>
+        </div>{% endcomment %}
 {% endblock %}

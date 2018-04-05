@@ -9,7 +9,7 @@
 
     <div class="col-xs-6">
         {% if assignment.cleaning_buddies.all %}
-            <span class="glyphicon glyphicon-record"></span> Mit
+            <span class="glyphicon glyphicon-user"></span> Mit
             {% for cleaner in assignment.cleaning_buddies.all %}
                 {{ cleaner.name }}
                 {% ifnotequal cleaner assignment.cleaning_buddies.last %}

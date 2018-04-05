@@ -119,6 +119,14 @@ class Schedule(models.Model):
         today = timezone.datetime.today()
         return self.assignment_set.filter(cleaning_day__date__range=(today - ends_after, today + starts_before))
 
+    def get_current_cleaning_day(self):
+        """Returns Assignments for this Schedule that are active today or were have
+        recently passed (if no Assignment is currently active) """
+        starts_before = datetime.timedelta(days=app_config().starts_days_before_due)
+        ends_after = datetime.timedelta(days=app_config().ends_days_after_due)
+        today = timezone.datetime.today()
+        return self.cleaningday_set.get(date__range=(today - ends_after, today + starts_before))
+
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
         super(Schedule, self).save(force_insert, force_update, using, update_fields)
@@ -168,7 +176,7 @@ class Schedule(models.Model):
         one_week = timezone.timedelta(days=7)
 
         if clear_existing:
-            self.assignment_set.filter(cleaning_day__date__range=(start_date, end_date)).delete()
+            self.cleaningday_set.filter(date__range=(start_date, end_date)).delete()
 
         date_iterator = start_date
         while date_iterator <= end_date:
@@ -181,7 +189,7 @@ class Schedule(models.Model):
         If the Schedule is not defined on date (see defined_on_date()), then this function fails silently."""
 
         if self.defined_on_date(date):
-            cleaning_day, was_created = self.cleaningday_set.get_or_create(date=date)
+            cleaning_day, was_created = self.cleaningday_set.get_or_create(date=correct_dates_to_due_day(date))
 
             ratios = self.deployment_ratios(date)
 
@@ -351,6 +359,12 @@ class CleaningDay(models.Model):
             for task in task_list:
                 self.task_set.create(name=task)
 
+    def open_tasks(self):
+        return self.task_set.filter(cleaned_by__isnull=True)
+
+    def done_tasks(self):
+        return self.task_set.filter(cleaned_by__isnull=False)
+
     def delete(self, using=None, keep_parents=False):
         self.task_set.all().delete()
         super().delete(using, keep_parents)
@@ -364,7 +378,7 @@ class Assignment(models.Model):
     cleaning_day = models.ForeignKey(CleaningDay, on_delete=models.CASCADE)
 
     class Meta:
-        ordering = ('schedule',)
+        ordering = ('cleaning_day__date',)
 
     def __str__(self):
         return "{}: {}, {} ".format(self.schedule.name, self.cleaner.name, self.cleaning_day.date.strftime('%d-%b-%Y'))
@@ -380,6 +394,19 @@ class Assignment(models.Model):
 
     def tasks_cleaned(self):
         return Task.objects.filter(cleaned_by=self)
+
+    def is_up_for_switching(self):
+        duty_switch = DutySwitch.objects.filter(source_assignment=self)
+        if duty_switch.exists():
+            return duty_switch.first()
+        else:
+            return False
+
+    def finished_cleaning(self):
+        if self.cleaning_day.task_set.all():
+            return not self.cleaning_day.task_set.filter(cleaned_by__isnull=True).exists()
+        else:
+            return False
 
 
 class Task(models.Model):

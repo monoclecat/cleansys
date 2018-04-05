@@ -1,0 +1,29 @@
+<table class="table table-striped" style="margin-bottom: 0">
+    <tr>
+        <td><span class="glyphicon glyphicon-calendar"></span> Datum</td>
+        <td><span class="glyphicon glyphicon-user"></span> Putzer</td>
+        {% if page and page.0.schedule.cleaners_per_date > 1 %}
+            <td></td>
+        {% endif %}
+    </tr>
+    {% for assignment in page %}
+        {% ifchanged assignment.cleaning_day.date %}
+            {% if not forloop.first %}
+                </tr>
+            {% endif %}
+            <tr>
+            <td>{{ assignment.cleaning_day.date }}</td>
+        {% endifchanged %}
+        <td {% if highlighted_cleaner in assignment.cleaners_on_date_for_schedule.all %}
+                class="success" {% endif %}>
+            {% if request.user.is_superuser %}
+                <a href="#">{{ assignment.cleaner.name }}</a>
+            {% else %}
+                {{ assignment.cleaner.name }}
+            {% endif %}
+        </td>
+        {% if forloop.last %}
+            </tr>
+        {% endif %}
+    {% endfor %}
+</table>

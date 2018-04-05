@@ -6,7 +6,11 @@ Putzdienst erledigen
 {% endblock %}
 
 {% block main %}
-    {% include "webinterface_snippets/back_button_to_cleaner_page.html" %}
+    <div class="row">
+        <div class="btn btn-group btn-group-md" role="group">
+            {% include "webinterface_snippets/button_to_cleaner_page.html" %}
+        </div>
+    </div>
 
     {% if already_cleaned_error %}
         <h3 style="padding: 1em;" class="bg-danger">{{ already_cleaned_error }}</h3>
@@ -26,8 +30,8 @@ Putzdienst erledigen
         Aufgabe, um sie abzuschließen.</h4>
 
     <p>Bitte denke daran, dass du die Verantwortung für die richtige
-        Ausführung der Aufgaben verantwortlich bist, die du hier anklickst. Sollten die Aufgaben
-        nicht richtig ausgeführt worden sein, so haftest du.</p>
+        Ausführung der Aufgaben verantwortlich bist, die du hier anklickst. <b>Sollten die Aufgaben
+            nicht richtig ausgeführt worden sein, so haftest du.</b></p>
 
     <div class="row">
         {% for task in tasks %}

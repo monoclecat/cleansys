@@ -7,6 +7,11 @@ Deine Putzdienste
 {% endblock %}
 
 {% block main %}
+        <div class="row">
+            <div class="btn btn-group btn-group-md" role="group">
+                {% include "webinterface_snippets/button_to_schedule_list_page.html" %}
+            </div>
+        </div>
         <h2>Hallo {{ cleaner.name }}!</h2>
 
         {% if cleaner.dutyswitch_requests_received %}
@@ -78,11 +83,6 @@ Deine Putzdienste
         {% endif %}
         <br>
 
-        <a class="btn btn-warning btn-block btn-lg" style="white-space: normal"
-           href="{% url "webinterface:schedule-list" %}" role="button">
-            <span class="glyphicon glyphicon-list-alt"></span> Putzpläne ansehen</a>
-        <br>
-
         {% if assignments_due_now %}
             <div class="well well-sm" style="margin-right: -10px; margin-left: -10px">
                 <h3 style="margin-top: 0.25em">Dieses Wochenende hast du Putzdienst!</h3>
@@ -94,15 +94,29 @@ Deine Putzdienste
                             <form class="form-inline" method="post">
                                 {% csrf_token %}
                                 <input type="hidden" name="source_assignment_pk" value="{{ assignment.pk }}">
-                                {% if not assignment.tasks_cleaned.all %}
+
+                                {% if assignment.tasks_cleaned.all %}
+                                    <div class="col-xs-6">
+                                        <button class="btn btn-default btn-sm" disabled style="white-space: normal;
+                                            margin: 0.5em" >Tauschen nicht mehr möglich
+                                        </button>
+                                    </div>
+                                {% else %}
                                     <div class="col-xs-6">
                                         {% include 'webinterface_snippets/cleaner_switch_duty_button.html' %}
                                     </div>
                                 {% endif %}
+
                                 <div class="col-xs-12">
-                                    <button class="btn btn-success btn-block" type="submit" name="clean"
-                                        style="white-space: normal" >Putzen
-                                        <span class="glyphicon glyphicon-chevron-right"></span></button>
+                                    <button class="btn btn-success btn-block
+                                            {% if assignment.finished_cleaning %}active{% endif %}"
+                                            type="submit" name="clean" style="white-space: normal">
+                                        {% if assignment.finished_cleaning %}
+                                            Fertig geputzt <span class="glyphicon glyphicon-ok">
+                                        {% else %}
+                                            Putzen <span class="glyphicon glyphicon-chevron-right"></span>
+                                        {% endif %}
+                                        </button>
                                 </div>
                             </form>
                         {% else %}
@@ -129,13 +143,22 @@ Deine Putzdienste
                     <div class="col-xs-12">
                         {% include "webinterface_snippets/assignment_table_row.html" %}
                         <div class="row">
-                            <form class="form-inline" method="post">
-                                {% csrf_token %}
-                                <input type="hidden" name="source_assignment_pk" value="{{ assignment.pk }}">
+                            {% if assignment.is_up_for_switching %}
                                 <div class="col-xs-6">
-                                    {% include 'webinterface_snippets/cleaner_switch_duty_button.html' %}
+                                    <a class="btn btn-default btn-sm"
+                                       href="{% url 'webinterface:switch-duty' assignment.is_up_for_switching.pk %}"
+                                       role="button" style="white-space: normal; margin: 0.5em">
+                                        Tausch-Anfrage ansehen <span class="glyphicon glyphicon-eye-open"></span></a>
                                 </div>
-                            </form>
+                            {% else %}
+                                <form class="form-inline" method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="source_assignment_pk" value="{{ assignment.pk }}">
+                                    <div class="col-xs-6">
+                                        {% include 'webinterface_snippets/cleaner_switch_duty_button.html' %}
+                                    </div>
+                                </form>
+                            {% endif %}
                         </div>
                     </div>
                     </div>
@@ -143,5 +166,11 @@ Deine Putzdienste
                     Keine Putzdienste zu zeigen
                 {% endfor %}
             </div>
+        </div>
+
+        <div class="row" style="padding: 20px 0px">
+            <a class="btn btn-default btn-sm" role="button" href="{% url 'webinterface:logout' %}">
+                 Du bist nicht {{ cleaner.name }}? <span class="glyphicon glyphicon-arrow-right"></span> Logout
+            </a>
         </div>
 {% endblock %}

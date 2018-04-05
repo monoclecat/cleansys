@@ -6,7 +6,21 @@ Putzdienst tauschen
 {% endblock %}
 
 {% block main %}
-    {% include "webinterface_snippets/back_button_to_cleaner_page.html" %}
+    <div class="row">
+        <div class="btn btn-group btn-group-md" role="group">
+            {% include "webinterface_snippets/button_to_cleaner_page.html" %}
+            {% ifequal perspective 'source' %}
+                <input type="submit" name="delete" class="btn btn-default" value="Tauschanfrage löschen"
+                        form="duty_switch_delete"/>
+                <form id="duty_switch_delete" class="form-inline" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="redirect_cleaner_slug"
+                           value="{{ object.source_assignment.cleaner.slug }}">
+
+                </form>
+            {% endifequal %}
+        </div>
+    </div>
 
     {% ifequal perspective 'source' %}
         {% if not object.selected_assignment %}
@@ -40,17 +54,6 @@ Putzdienst tauschen
                 </div>
             </div>
         {% endif %}
-
-        <p>
-            <form class="form-inline" method="post">
-                {% csrf_token %}
-                <input type="hidden" name="redirect_cleaner_slug"
-                       value="{{ object.source_assignment.cleaner.slug }}">
-                <input type="submit" name="delete"
-                    class="btn btn-default btn-sm"
-                    value="Tauschanfrage löschen"/>
-            </form>
-        </p>
 
         <div class="row">
             {% if object.filtered_destinations.all %}
