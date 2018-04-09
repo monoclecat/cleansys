@@ -1,7 +1,7 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.urls import reverse_lazy, reverse
 from django.http import HttpResponseRedirect, QueryDict
-from django.http.response import HttpResponseNotFound, HttpResponseForbidden
+from django.http.response import HttpResponseForbidden
 from django.contrib.auth.views import LoginView
 from django.views.generic import TemplateView
 from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
@@ -9,6 +9,7 @@ from django.views.generic.detail import DetailView
 from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
 from django.views.generic.list import ListView
+from slackbot.slackbot import start_slack, slack_running
 
 from .forms import *
 from .models import *
@@ -254,11 +255,12 @@ class ConfigView(FormView):
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
         context['schedule_list'] = Schedule.objects.all()
-        all_active_cleaners = Cleaner.objects.filter(moved_out__gte=timezone.now().date())
-        context['cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=False)
-        context['no_slack_cleaner_list'] = all_active_cleaners.filter(slack_id__isnull=True)
-        context['deactivated_cleaner_list'] = Cleaner.objects.exclude(moved_out__gte=timezone.now().date())
+        all_active_cleaners = Cleaner.objects.active()
+        context['cleaner_list'] = all_active_cleaners.has_slack_id()
+        context['no_slack_cleaner_list'] = all_active_cleaners.no_slack_id()
+        context['deactivated_cleaner_list'] = Cleaner.objects.inactive()
         context['schedule_group_list'] = ScheduleGroup.objects.all()
+        context['slack_running'] = slack_running()
         return context
 
     def post(self, request, *args, **kwargs):
@@ -266,6 +268,11 @@ class ConfigView(FormView):
         Handles POST requests, instantiating a form instance with the passed
         POST variables and then checked for validity.
         """
+        if 'start_slack' in request.POST:
+            if not slack_running():
+                start_slack()
+                return HttpResponseRedirect(reverse_lazy('webinterface:config'))
+
         form = self.get_form()
 
         if form.is_valid():
@@ -317,7 +324,6 @@ class ResultsView(TemplateView):
             context['assignments_by_schedule'].append(
                 schedule.assignment_set.filter(cleaning_day__date__range=(from_date, to_date)))
         return self.render_to_response(context)
-
 
 
 class ResultsViewOld(TemplateView):
@@ -508,6 +514,15 @@ class CleanerUpdateView(UpdateView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Ändere Putzerprofil"
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        if form.is_valid():
+            self.object = form.save()
+            return HttpResponseRedirect(self.get_success_url())
+        else:
+            return self.form_invalid(form)
 
 
 class CleanerDeleteView(DeleteView):

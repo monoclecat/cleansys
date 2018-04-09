@@ -1,0 +1,7 @@
+Django==2.0.4
+Celery==4.1
+django-bootstrap3==9.1.0
+django-crispy-forms==1.7.2
+slackclient==1.2.1
+django_celery_beat==1.1.1
+django_celery_results==1.0.1

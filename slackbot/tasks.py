@@ -5,6 +5,7 @@ from .slackbot import *
 
 @app.task(ignore_result=True)
 def poll_slack():
+    print(1)
     if slack_running():
         read_slack()
     else:

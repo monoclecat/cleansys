@@ -109,10 +109,7 @@ class ResultsForm(forms.Form):
 class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
-        if slack_running():
-            exclude = ('slug', 'user', 'time_zone')
-        else:
-            exclude = ('slack_id', 'slug', 'user', 'time_zone')
+        exclude = ('slug', 'user', 'time_zone')
 
     name = forms.CharField(max_length=10, label="Name des Putzers",
                            required=True, widget=forms.TextInput)
@@ -135,7 +132,7 @@ class CleanerForm(forms.ModelForm):
     preference = forms.ChoiceField(choices=Cleaner.PREFERENCE, initial=2,
                                    label="Was ist die Vorliebe des Putzers?")
 
-    slack_id = forms.ChoiceField(choices=get_slack_users(), label="Wähle des Putzers Slackprofil aus.",
+    slack_id = forms.ChoiceField(choices=(None, "--------------------"), label="Wähle des Putzers Slackprofil aus.",
                                  required=False)
 
     def __init__(self, *args, **kwargs):
@@ -154,6 +151,7 @@ class CleanerForm(forms.ModelForm):
             'moved_in',
             'moved_out',
             'schedule_group',
+            'preference',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
@@ -164,9 +162,11 @@ class CleanerForm(forms.ModelForm):
             self.fields['moved_in'].disabled = True
 
         if slack_running():
-            self.helper.layout.fields.insert(4, 'slack_id')
+            self.fields['slack_id'].choices = get_slack_users()
+            self.helper.layout.fields.insert(5, 'slack_id')
         else:
-            self.helper.layout.fields.insert(4, HTML("<p><i>Slack ist ausgeschaltet. Schalte Slack ein, um "
+            self.Meta.exclude += ('slack_id',)
+            self.helper.layout.fields.insert(5, HTML("<p><i>Slack ist ausgeschaltet. Schalte Slack ein, um "
                                                      "dem Putzer eine Slack-ID zuordnen zu können.</i></p>"))
 
         if kwargs['instance']:

@@ -7,28 +7,32 @@ Putzdienst tauschen
 
 {% block main %}
     <div class="row">
-        <div class="btn btn-group btn-group-md" role="group">
+        <div class="btn btn-group btn-group-md btn-group-justified" role="group">
             {% include "webinterface_snippets/button_to_cleaner_page.html" %}
             {% ifequal perspective 'source' %}
-                <input type="submit" name="delete" class="btn btn-default" value="Tauschanfrage löschen"
-                        form="duty_switch_delete"/>
-                <form id="duty_switch_delete" class="form-inline" method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="redirect_cleaner_slug"
-                           value="{{ object.source_assignment.cleaner.slug }}">
-
-                </form>
+                <div class="btn-group btn-group-md" role="group">
+                    <button class="btn btn-default" type="submit" name="delete" form="duty_switch_delete">
+                        <span class="glyphicon glyphicon-trash"></span> Löschen</button>
+                </div>
             {% endifequal %}
         </div>
     </div>
 
     {% ifequal perspective 'source' %}
+        <form id="duty_switch_delete" class="form-inline" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="redirect_cleaner_slug"
+                   value="{{ object.source_assignment.cleaner.slug }}">
+
+        </form>
         {% if not object.selected_assignment %}
             <div class="panel panel-primary">
                 <div class="panel-heading">
-                    <h3>Hallo {{ object.source_assignment.cleaner.name }}, wie ich sehe möchtest du
-                        deinen Putzdienst für {{ object.source_assignment.schedule.name }}
-                        am {{ object.source_assignment.cleaning_day.date }} tauschen.</h3>
+                    <h3>
+                        Deine Tauschanfrage<br>
+                        <span class="glyphicon glyphicon-play"></span> {{ object.source_assignment.schedule.name }}<br>
+                        <span class="glyphicon glyphicon-calendar"></span> {{ object.source_assignment.cleaning_day.date }}
+                    </h3>
                 </div>
             </div>
         {% else %}
@@ -71,7 +75,6 @@ Putzdienst tauschen
                                 <span class="glyphicon glyphicon-sort"></span><br>
                                 <span class="glyphicon glyphicon-calendar"></span> {{ option.cleaning_day.date }}
                                 <span class="glyphicon glyphicon-user"></span> {{ option.cleaner.name }}
-
                             </button>
                         </form>
                     </div>

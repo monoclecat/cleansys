@@ -7,7 +7,7 @@
 
 {% block main %}
     <div class="row">
-        <div class="btn btn-group btn-group-md" role="group">
+        <div class="btn btn-group btn-group-md btn-group-justified" role="group">
             {% include "webinterface_snippets/button_to_cleaner_page.html" %}
             {% include "webinterface_snippets/button_to_schedule_list_page.html" %}
         </div>
@@ -28,9 +28,9 @@
             {% endfor %}
             </ul>
             Noch nicht geputzt:
-            <ul>
+            <ul style="list-style: none;">
             {% for task in schedule.get_current_cleaning_day.open_tasks %}
-                <li>{{ task.name }}</li>
+                <li><span class="glyphicon glyphicon-unchecked"></span> {{ task.name }}</li>
             {% endfor %}
             </ul>
         </div>

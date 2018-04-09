@@ -231,6 +231,15 @@ class CleanerQuerySet(models.QuerySet):
     def active(self):
         return self.filter(moved_out__gte=timezone.now().date())
 
+    def inactive(self):
+        return self.exclude(moved_out__gte=timezone.now().date())
+
+    def no_slack_id(self):
+        return self.filter(slack_id='')
+
+    def has_slack_id(self):
+        return self.exclude(slack_id='')
+
 
 class CleanerManager(models.Manager):
     def get_queryset(self):
@@ -254,7 +263,7 @@ class Cleaner(models.Model):
     moved_in = models.DateField()
     moved_out = models.DateField()
     time_zone = models.CharField(max_length=30, default="Europe/Berlin")
-    slack_id = models.CharField(max_length=10, null=True)
+    slack_id = models.CharField(max_length=10, default='')
     schedule_group = models.ForeignKey(ScheduleGroup, on_delete=models.SET_NULL, null=True)
     PREFERENCE = ((1, 'Ich möchte immer nur einen Putzdienst auf einmal machen müssen.'),
                   (2, 'Ich möchte höchstens zwei Putzdienste auf einmal machen müssen.'),

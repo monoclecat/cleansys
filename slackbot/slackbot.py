@@ -54,7 +54,7 @@ def get_slack_users():
     else:
         response = []
     if not response:
-        return []
+        return [(None, "--------------------")]
     users = [(None, "--------------------")]
     for user in response['members']:
         if 'bot_id' not in user['profile'] and user['name'] != "slackbot":

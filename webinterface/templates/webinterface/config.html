@@ -17,6 +17,15 @@ Einstellungen
         <div class="row">
             <div class="col-md-2 col-lg-3" style="padding: 2em 2em 0 2em;">
                 <a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:logout' %}">Logout</a>
+                <br>
+                {% if not slack_running %}
+                    <form method="POST" class="form form-inline">
+                        {% csrf_token %}
+                        <button class="btn btn-danger btn-block" type="submit" name="start_slack"
+                                style="white-space: normal;">
+                            <span class="glyphicon glyphicon-exclamation-sign"></span> Slack Server starten</button>
+                    </form>
+                {% endif %}
             </div>
             <div class="col-sm-10 col-sm-offset-1 col-md-8 col-sm-offset-0 col-lg-6">
                 <div class="well" style="margin-top: 1em">
