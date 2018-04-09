@@ -340,14 +340,14 @@ class Cleaner(models.Model):
                 for schedule in self.schedule_group.schedules.all():
                     schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
-        if self.schedule_group and self.schedule_group != self.__last_group:
-            if self.__last_group:
-                schedules_to_reassign = self.schedule_group.schedules.all() | self.__last_group.schedules.all()
-            else:
-                schedules_to_reassign = self.schedule_group.schedules.all()
-            for schedule in schedules_to_reassign:
-                schedule.new_cleaning_duties(correct_dates_to_due_day(self.moved_in),
-                                             correct_dates_to_due_day(self.moved_out))
+        # if self.schedule_group and self.schedule_group != self.__last_group:
+        #     if self.__last_group:
+        #         schedules_to_reassign = self.schedule_group.schedules.all() | self.__last_group.schedules.all()
+        #     else:
+        #         schedules_to_reassign = self.schedule_group.schedules.all()
+        #     for schedule in schedules_to_reassign:
+        #         schedule.new_cleaning_duties(correct_dates_to_due_day(self.moved_in),
+        #                                      correct_dates_to_due_day(self.moved_out))
 
 
 class CleaningDay(models.Model):

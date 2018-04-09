@@ -15,6 +15,7 @@ class SchedulingTest(TestCase):
         cls.config = Config.objects.create(date_due=6)
 
         cls.start_date = correct_dates_to_due_day(datetime.date(2011, 1, 1))
+        cls.mid_date = correct_dates_to_due_day(datetime.date(2012, 1, 1))
         cls.end_date = correct_dates_to_due_day(datetime.date(2013, 1, 1))
 
         # The names indicate which cleaners are assigned
@@ -104,34 +105,14 @@ class SchedulingTest(TestCase):
             name="C15", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
             preference=3)
 
-        # MODE
-        # 0(nothing changes) = 5 Cleaners have a preference == 1, 5 Cleaners preference == 2, 5 Cleaners preference == 3
-        # 1 = All Cleaners have a preference == 1
-        cls.MODE = 0
-        if cls.MODE == 1:
-            for cleaner in Cleaner.objects.all():
-                cleaner.preference = 1
-
-        cls.timing_results = [['All Schedules', 0]]
-        start_global = timeit.default_timer()
-        for schedule in Schedule.objects.all():
-            logging.info("Creating Assignments for {}".format(schedule.name))
-            start_schedule = timeit.default_timer()
-            schedule.new_cleaning_duties(cls.start_date, cls.end_date)
-            end_schedule = timeit.default_timer()
-            cls.timing_results.append([schedule.name, end_schedule - start_schedule])
-        end_global = timeit.default_timer()
-        cls.timing_results[0][1] = end_global - start_global
-
-    def test_output_timing_results(self):
+    def print__timing_results(self, timing_results):
         print("")
         print("Timing results")
-        for schedule, time in self.timing_results:
+        for schedule, time in timing_results:
             print("   {}: {}s".format(schedule, round(time, 3)))
         print("")
 
-    def test_output_assignment_count(self):
-        print("")
+    def print__assignment_count(self):
         print("Assignment count per Schedule")
         for schedule in Schedule.objects.all():
             print("   Schedule: {}".format(schedule.name))
@@ -140,11 +121,72 @@ class SchedulingTest(TestCase):
                     cleaner.name, schedule.assignment_set.filter(cleaner=cleaner).count()))
         print("")
 
-    def test_output_ratios(self):
-        print("")
+    def print__cleaning_ratios(self, date):
         print("Cleaning ratios")
         for schedule in Schedule.objects.all():
             print("   Schedule: {}".format(schedule.name))
-            for cleaner, ratio in schedule.deployment_ratios(self.end_date):
+            for cleaner, ratio in schedule.deployment_ratios(date):
                 print("      Cleaner: {} Ratio: {}".format(cleaner.name, round(ratio, 3)))
         print("")
+
+    def print__assignments_in_timeframe(self, date1, date2):
+        print("Schedule assignments")
+        for schedule in Schedule.objects.all():
+            print("   Schedule: {}".format(schedule.name))
+            for cleaning_day in schedule.cleaningday_set.filter(date__range=(min(date1, date2), max(date1, date2))):
+                print("      Date: {} Cleaners: ".format(cleaning_day.date), end="")
+                for assignment in cleaning_day.assignment_set.all():
+                    print(assignment.cleaner, end=" ")
+                print("")
+        print("")
+
+    def test__switch_groups_at_mid_date(self):
+        for schedule in Schedule.objects.all():
+            logging.info("Creating Assignments for {}".format(schedule.name))
+            schedule.new_cleaning_duties(self.start_date, self.mid_date)
+
+        print("At middle of time frame: ")
+        self.print__cleaning_ratios(self.mid_date)
+
+        # The following cleaners change groups:
+        # C2, C3 -> group_c6_to_c9; C7, C8 -> group_c1_to_c5
+        #
+        self.cleaner2.schedule_group = self.group_c6_to_c9
+        self.cleaner3.schedule_group = self.group_c6_to_c9
+        self.cleaner7.schedule_group = self.group_c1_to_c5
+        self.cleaner8.schedule_group = self.group_c1_to_c5
+        self.cleaner2.save()
+        self.cleaner3.save()
+        self.cleaner7.save()
+        self.cleaner8.save()
+
+        for schedule in Schedule.objects.all():
+            logging.info("Creating Assignments for {}".format(schedule.name))
+            schedule.new_cleaning_duties(self.mid_date, self.end_date)
+
+        print("At end of time frame: ")
+        self.print__cleaning_ratios(self.end_date)
+
+        print("Assignments before and after group switching on {}".format(self.mid_date))
+        self.print__assignments_in_timeframe(
+            self.mid_date-datetime.timedelta(days=60), self.mid_date+datetime.timedelta(days=90))
+
+    def test__no_group_switching__timed(self):
+        timing_results = [['All Schedules', 0]]
+        start_global = timeit.default_timer()
+        for schedule in Schedule.objects.all():
+            logging.info("Creating Assignments for {}".format(schedule.name))
+            start_schedule = timeit.default_timer()
+            schedule.new_cleaning_duties(self.start_date, self.end_date)
+            end_schedule = timeit.default_timer()
+            timing_results.append([schedule.name, end_schedule - start_schedule])
+        end_global = timeit.default_timer()
+        timing_results[0][1] = end_global - start_global
+
+        self.print__timing_results(timing_results)
+        self.print__assignment_count()
+        self.print__cleaning_ratios(self.end_date)
+
+
+
+
