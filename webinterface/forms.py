@@ -113,8 +113,7 @@ class CleanerForm(forms.ModelForm):
 
     name = forms.CharField(max_length=10, label="Name des Putzers", widget=forms.TextInput)
 
-    schedule_group = forms.\
-        ModelChoiceField(queryset=ScheduleGroup.objects.all(), widget=forms.RadioSelect,
+    schedule_group = forms.ModelChoiceField(queryset=ScheduleGroup.objects.active(),
                          label="Zugehörigkeit", help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
 
     schedule_group__action_date = forms.DateField(input_formats=['%d.%m.%Y'], required=True)
@@ -123,6 +122,24 @@ class CleanerForm(forms.ModelForm):
 
     slack_id = forms.ChoiceField(choices=(None, "--------------------"), label="Wähle des Putzers Slackprofil aus.",
                                  required=False)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        schedule_group__action_date = cleaned_data.get('schedule_group__action_date')
+        schedule_group = cleaned_data.get('schedule_group')
+        queryset = Cleaner.objects.filter(name=cleaned_data['name'])
+        if queryset.exists():
+            # We are in the UpdateView
+            cleaner = queryset.first()
+            if cleaner.current_affiliation().group != schedule_group:
+                if not schedule_group__action_date:
+                    raise forms.ValidationError("Zur neuen Zugehörigkeit muss auch ein Datum angegeben werden!",
+                                                code='new_aff_no_date')
+                if schedule_group__action_date < cleaner.current_affiliation().beginning:
+                    raise forms.ValidationError("Der Beginn der neuen Zugehörigkeit kann nicht vor dem "
+                                                "Beginn der alten Zugehörigkeit liegen!",
+                                                code='new_aff_before_old_aff')
+        return cleaned_data
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
@@ -135,14 +152,19 @@ class CleanerForm(forms.ModelForm):
         self.helper.layout = Layout(
             'name',
             'preference',
-            Fieldset(
-                'Einzug/Umzug/Auszug',
-                'schedule_group',
-                'schedule_group__action_date'),
+            Accordion(
+                AccordionGroup(
+                    'Zugehörigkeit',
+                    HTML('<p class="bg-warning">Wenn sich nichts ändert, '
+                         'bitte auch hier nichts ändern oder eingeben.</p>'),
+                    'schedule_group',
+                    'schedule_group__action_date'
+                ),
+            ),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> ")
         )
 
         if 'instance' in kwargs and kwargs['instance']:
@@ -150,10 +172,25 @@ class CleanerForm(forms.ModelForm):
             self.fields['schedule_group'].empty_label = "---Ausgezogen---"
             self.fields['schedule_group'].required = False
             self.fields['schedule_group'].initial = kwargs['instance'].affiliation_set.first().group
-            self.helper.layout.fields[2].insert(1, HTML('<p class="bg-danger">Bei Änderung der Zugehörigkeit muss '
-                                                     'auch ein Datum angegeben werden!</p>'))
             self.fields['schedule_group__action_date'].required = False
             self.fields['schedule_group__action_date'].label = "Der Putzer zieht zum TT.MM.YYYY um bzw. aus."
+
+            for affiliation in kwargs['instance'].affiliation_set.all():
+                if affiliation.beginning < timezone.now().date() and affiliation.end < timezone.now().date():
+                    edit_button = HTML(
+                        '<a class=\"btn btn-info\" role=\"button\" disabled="disabled">'
+                        '<span class=\"glyphicon glyphicon-cog\"></span> Bearbeiten</a>')
+                else:
+                    edit_button = HTML(
+                        '<a class=\"btn btn-info\" href=\"{% url \'webinterface:affiliation-edit\' '
+                        +str(affiliation.pk)+' %}\" role=\"button\">'
+                        '<span class=\"glyphicon glyphicon-cog\"></span> Bearbeiten</a>')
+                group_name = str(affiliation.group) if affiliation.group else "Keine Gruppe"
+                self.helper.layout.fields[2].append(
+                    AccordionGroup(
+                        group_name+' - '+str(affiliation.beginning.strftime('%d-%b-%Y'))+
+                        ' bis '+str(affiliation.end.strftime('%d-%b-%Y')), edit_button)
+                )
         else:
             # We are in the CreateView
             self.fields['schedule_group'].empty_label = None
@@ -165,7 +202,7 @@ class CleanerForm(forms.ModelForm):
             self.helper.layout.fields.insert(5, 'slack_id')
         else:
             self.Meta.exclude += ('slack_id',)
-            self.helper.layout.fields.insert(5, HTML("<p><i>Slack ist ausgeschaltet. Schalte Slack ein, um "
+            self.helper.layout.fields.insert(0, HTML("<p><i>Slack ist ausgeschaltet. Schalte Slack ein, um "
                                                      "dem Putzer eine Slack-ID zuordnen zu können.</i></p>"))
 
         if kwargs['instance']:
@@ -173,6 +210,50 @@ class CleanerForm(forms.ModelForm):
                 "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
                 "href=\"{% url 'webinterface:cleaner-delete' object.pk %}\""
                 "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzer</a>"))
+
+
+class AffiliationForm(forms.ModelForm):
+    class Meta:
+        model = Affiliation
+        exclude = ('cleaner','group')
+
+    beginning = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Beginn der Zugehörigkeit")
+    end = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Ende der Zugehörigkeit")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        beginning = cleaned_data['beginning']
+        end = cleaned_data['end']
+        if beginning > end:
+            raise forms.ValidationError("Das Ende darf nicht vor dem Beginn liegen!", code='end_before_beginning')
+        return cleaned_data
+
+    def __init__(self, *args, **kwargs):
+        super(AffiliationForm, self).__init__(*args, **kwargs)
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'beginning',
+            'end',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:cleaner-edit\' object.cleaner.pk %}\" role=\"button\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
+                 )
+        )
+
+        if 'instance' in kwargs and kwargs['instance']:
+            disable_group = False
+            if kwargs['instance'].beginning < timezone.now().date():
+                self.fields['beginning'].disabled = True
+                disable_group = True
+            if kwargs['instance'].end < timezone.now().date():
+                self.fields['end'].disabled = True
+                disable_group = True
+
+            self.helper.layout.fields.insert(0, HTML("<h3>"+str(kwargs['instance'].group)+"</h3>"))
+
+
 
 
 class CleaningScheduleForm(forms.ModelForm):
@@ -195,7 +276,7 @@ class CleaningScheduleForm(forms.ModelForm):
                                             "beim anderen 'Ungerade Wochen' aus.")
 
     schedule_group = forms. \
-        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.all(),
+        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.active(),
                                  widget=forms.CheckboxSelectMultiple,
                                  label="Zugehörigkeit", required=False,
                                  help_text="Wähle die Gruppe, zu der der Putzplan gehört.")
@@ -236,7 +317,7 @@ class CleaningScheduleForm(forms.ModelForm):
 class CleaningScheduleGroupForm(forms.ModelForm):
     class Meta:
         model = ScheduleGroup
-        fields = '__all__'
+        exclude = ('disabled',)
 
     name = forms.CharField(max_length=30, label="Name der Putzplan-Gruppe",
                            help_text="Dieser Name steht für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
@@ -266,10 +347,9 @@ class CleaningScheduleGroupForm(forms.ModelForm):
 
         if kwargs['instance']:
             self.helper.layout.fields.append(HTML(
-                "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
-                "href=\"{% url 'webinterface:cleaning-schedule-group-delete' object.pk %}\""
-                "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> "
-                "Lösche Putzplan-Gruppierung</a>"))
+                "<button class=\"btn btn-danger pull-right\" type=\"submit\" name=\"delete\">"
+                "<span class=\"glyphicon glyphicon-ok\"></span> Löschen</button> "
+                ))
 
 
 

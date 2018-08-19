@@ -255,11 +255,20 @@ class ConfigView(FormView):
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
         context['schedule_list'] = Schedule.objects.all()
-        all_active_cleaners = Cleaner.objects.active()
-        context['cleaner_list'] = all_active_cleaners.has_slack_id()
-        context['no_slack_cleaner_list'] = all_active_cleaners.no_slack_id()
-        context['deactivated_cleaner_list'] = Cleaner.objects.inactive()
-        context['schedule_group_list'] = ScheduleGroup.objects.all()
+
+        context['cleaner_list'] = list()
+        context['no_slack_cleaner_list'] = list()
+        context['deactivated_cleaner_list'] = list()
+        for cleaner in Cleaner.objects.all():
+            if cleaner.current_affiliation().group != None:
+                if cleaner.slack_id:
+                    context['cleaner_list'].append(cleaner)
+                else:
+                    context['no_slack_cleaner_list'].append(cleaner)
+            else:
+                context['deactivated_cleaner_list'].append(cleaner)
+
+        context['schedule_group_list'] = ScheduleGroup.objects.active()
         context['slack_running'] = slack_running()
         return context
 
@@ -326,157 +335,6 @@ class ResultsView(TemplateView):
         return self.render_to_response(context)
 
 
-class ResultsViewOld(TemplateView):
-    template_name = 'webinterface/results.html'
-
-    def post(self, request, *args, **kwargs):
-        if 'regenerate_all' in request.POST:
-            clear_existing = True
-        else:
-            clear_existing = False
-
-        time_start = timeit.default_timer()
-        for schedule in Schedule.objects.all():
-            schedule.new_cleaning_duties(
-                datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date(),
-                datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date(),
-                clear_existing)
-        time_end = timeit.default_timer()
-        logging.info("Assigning cleaning schedules took {}s".format(round(time_end-time_start, 2)))
-
-        results_kwargs = {'from_date': kwargs['from_date'], 'to_date': kwargs['to_date']}
-
-        if 'options' in kwargs:
-            results_kwargs['options'] = kwargs['options']
-
-        return HttpResponseRedirect(
-            reverse_lazy('webinterface:results', kwargs=results_kwargs))
-
-    def get(self, request, *args, **kwargs):
-
-        from_date_raw = datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date()
-        to_date_raw = datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date()
-
-        kwargs['from_date'], kwargs['to_date'] = correct_dates_to_due_day([from_date_raw, to_date_raw])
-
-        if kwargs['to_date'] < kwargs['from_date']:
-            temp_date = kwargs['from_date']
-            kwargs['from_date'] = kwargs['to_date']
-            kwargs['to_date'] = temp_date
-        context = dict()
-
-        context['schedules'] = Schedule.objects.all().order_by('frequency')
-
-        context['dates'] = []
-        date_iterator = kwargs['from_date']
-        one_week = timezone.timedelta(days=7)
-        while date_iterator <= kwargs['to_date']:
-            context['dates'].append(date_iterator)
-            date_iterator += one_week
-
-        relevant_cleaners = Cleaner.objects.filter(moved_in__lt=kwargs['to_date'], moved_out__gt=kwargs['from_date'])
-        moved_in_during_timeframe = sorted(relevant_cleaners.filter(
-            moved_in__gte=kwargs['from_date']).values('pk', 'moved_in'), key=itemgetter('moved_in'))
-
-        moved_out_during_timeframe = sorted(relevant_cleaners.filter(
-            moved_out__lte=kwargs['to_date']).values('pk', 'moved_out'), key=itemgetter('moved_out'))
-
-        move_ins_and_move_outs = []
-        for move_in_event in moved_in_during_timeframe:
-            if move_ins_and_move_outs:
-                if correct_dates_to_due_day(move_in_event['moved_in']) == move_ins_and_move_outs[-1]['start_date']:
-                    move_ins_and_move_outs[-1]['moved_in'].append(Cleaner.objects.get(pk=move_in_event['pk']))
-                    continue
-            move_ins_and_move_outs.append({'start_date': correct_dates_to_due_day(move_in_event['moved_in']),
-                                           'moved_in': [Cleaner.objects.get(pk=move_in_event['pk'])], 'moved_out': []})
-
-        for move_out_event in moved_out_during_timeframe:
-            for move_in_event in move_ins_and_move_outs:
-                if correct_dates_to_due_day(move_out_event['moved_out']) == \
-                        move_in_event['start_date']:  # Here moved_out is a date
-                    move_in_event['moved_out'].append(Cleaner.objects.get(pk=move_out_event['pk']))
-                    break
-            else:
-                move_ins_and_move_outs.append({'start_date': correct_dates_to_due_day(move_out_event['moved_out']),
-                                               'moved_in': [],
-                                               'moved_out': [Cleaner.objects.get(pk=move_out_event['pk'])]})
-
-        move_ins_and_move_outs = sorted(move_ins_and_move_outs, key=itemgetter('start_date'))
-
-        context['results'] = []
-        if move_ins_and_move_outs:
-            if kwargs['from_date'] != move_ins_and_move_outs[0]['start_date']:
-                context['results'].append({'start_date': kwargs['from_date'],
-                                           'end_date': move_ins_and_move_outs[0]['start_date'] - one_week,
-                                           'moved_in': [], 'moved_out': []})
-
-            miamo_iterator = 1
-            while miamo_iterator < len(move_ins_and_move_outs):
-                move_ins_and_move_outs[miamo_iterator - 1]['end_date'] = \
-                    move_ins_and_move_outs[miamo_iterator]['start_date'] - one_week
-                miamo_iterator += 1
-            move_ins_and_move_outs[-1]['end_date'] = kwargs['to_date']
-        else:
-            context['results'].append({'start_date': kwargs['from_date'],
-                                       'end_date': kwargs['to_date'],
-                                       'moved_in': [], 'moved_out': []})
-
-        context['results'] += move_ins_and_move_outs
-
-        for time_frame in context['results']:
-            date_iterator = time_frame['start_date']
-            time_frame['assignments'] = []
-            while date_iterator <= time_frame['end_date']:
-                assignments_on_date = [date_iterator]
-                schedules = []
-                for schedule in context['schedules']:
-                    if schedule.defined_on_date(date_iterator):
-                        assignments = schedule.assignment_set.filter(cleaning_day__date=date_iterator)
-                        if assignments.exists():
-                            cleaners_for_assignment = []
-                            for assignment in assignments:
-                                cleaners_for_assignment.append(assignment.cleaner.name)
-                            schedules.append(cleaners_for_assignment)
-                        else:
-                            schedules.append("")
-                    else:
-                        schedules.append(".")
-                    assignments_on_date.append(schedules)
-                time_frame['assignments'].append(assignments_on_date)
-                date_iterator += one_week
-
-        if 'options' in kwargs and kwargs['options'] == 'stats':
-            for time_frame in context['results']:
-                time_frame['duty_counter'] = []
-                time_frame['deviations_by_schedule'] = []
-                for schedule in context['schedules']:
-                    assignments_in_timeframe = schedule.assignment_set.filter(
-                        cleaning_day__date__range=(time_frame['start_date'], time_frame['end_date']))
-
-                    element = [schedule.name, 0, 0, []]
-
-                    deviation_of = []
-                    sum_deviation_values = 0
-                    ratios = schedule.deployment_ratios(for_date=time_frame['end_date'])
-                    if ratios:
-                        for cleaner, ratio in ratios:
-                            element[3].append([cleaner.name, assignments_in_timeframe.filter(cleaner=cleaner).count()])
-
-                            deviation_of.append([cleaner, round(abs(1 - ratio), 3)])
-                            sum_deviation_values += abs(1 - ratio)
-
-                        element[3] = sorted(element[3], key=itemgetter(1), reverse=True)
-                        element[1] = element[3][0][1]
-                        element[2] = element[3][-1][1]
-                        time_frame['duty_counter'].append(element)
-
-                        schedule_data = [[schedule.name, round(sum_deviation_values / len(deviation_of), 3)]]
-                        schedule_data.append(sorted(deviation_of, key=itemgetter(1), reverse=True))
-                        time_frame['deviations_by_schedule'].append(schedule_data)
-
-        return self.render_to_response(context)
-
-
 class ConfigUpdateView(UpdateView):
     form_class = ConfigForm
     model = Config
@@ -528,13 +386,10 @@ class CleanerUpdateView(UpdateView):
         action_date = form.cleaned_data['schedule_group__action_date']
         old_assoc = self.object.affiliation_set.first()
         if old_assoc.group != schedule_group:
-            if not action_date:
-                return self.form_invalid(form)
             old_assoc.end = action_date
             old_assoc.save()
             Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=action_date)
         return HttpResponseRedirect(self.get_success_url())
-
 
 
 class CleanerDeleteView(DeleteView):
@@ -546,6 +401,22 @@ class CleanerDeleteView(DeleteView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Putzer"
         return context
+
+
+class AffiliationUpdateView(UpdateView):
+    form_class = AffiliationForm
+    model = Affiliation
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Bearbeite Zugehörigkeit"
+        return context
+
+    def form_valid(self, form):
+        self.object = form.save()
+        return HttpResponseRedirect(reverse_lazy('webinterface:cleaner-edit',kwargs={'pk': self.object.cleaner.pk}))
 
 
 class CleaningScheduleNewView(CreateView):
@@ -620,14 +491,20 @@ class CleaningScheduleGroupUpdateView(UpdateView):
         context['title'] = "Ändere eine Putzplan-Gruppierung"
         return context
 
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        if form.is_valid():
+            self.object = form.save()
+            if 'delete' in request.POST:
+                for affiliation in self.object.affiliation_set.all():
+                    if affiliation.end > timezone.now().date():
+                        affiliation.end = timezone.now().date()
+                        affiliation.save()
+                self.object.disabled = True
+                self.object.save()
+            return HttpResponseRedirect(self.get_success_url())
+        else:
+            return self.form_invalid(form)
 
-class CleaningScheduleGroupDeleteView(DeleteView):
-    form_class = CleaningScheduleGroupForm
-    model = ScheduleGroup
-    success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/generic_delete_form.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = "Lösche Putzplan-Gruppierung"
-        return context

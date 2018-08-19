@@ -215,11 +215,22 @@ class Schedule(models.Model):
             return False
 
 
+class ScheduleGroupQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(disabled=False)
+
+    def disabled(self):
+        return self.filter(disabled=True)
+
+
 class ScheduleGroup(models.Model):
     class Meta:
         ordering = ("name", )
     name = models.CharField(max_length=30, unique=True)
     schedules = models.ManyToManyField(Schedule)
+    disabled = models.BooleanField(default=False)
+
+    objects = ScheduleGroupQuerySet.as_manager()
 
     def __str__(self):
         return self.name
@@ -271,6 +282,9 @@ class Cleaner(models.Model):
 
     def __str__(self):
         return self.name
+
+    def current_affiliation(self):
+        return self.affiliation_set.first()
 
     def rejected_dutyswitch_requests(self):
         return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
@@ -349,7 +363,10 @@ class Affiliation(models.Model):
     end = models.DateField(default=datetime.date.max)
 
     def __str__(self):
-        return self.cleaner.name + " in " + self.group.name + " from " + str(self.beginning) + " to " + str(self.end)
+        if self.group:
+            return self.cleaner.name + " in " + self.group.name + " from " + str(self.beginning) + " to " + str(self.end)
+        else:
+            return self.cleaner.name + " moved out from " + str(self.beginning) + " to " + str(self.end)
 
 
 class CleaningDay(models.Model):
