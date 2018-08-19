@@ -105,11 +105,11 @@ class Schedule(models.Model):
             spaceless.append(task)
         return spaceless
 
-    def cleaners_assigned(self):
-        return Cleaner.objects.filter(schedule_group__schedules=self)
+    def affiliations(self):
+        return Affiliation.objects.filter(group__schedules=self)
 
-    def cleaners_active_on_date(self, date):
-        return self.cleaners_assigned().filter(moved_out__gte=date, moved_in__lte=date)
+    def affiliations_active_on_date(self, date):
+        return self.affiliations().filter(beginning__lte=date, end__gt=date)
 
     def get_active_assignments(self):
         """Returns Assignments for this Schedule that are active today or were have
@@ -138,27 +138,25 @@ class Schedule(models.Model):
             for date in all_duty_dates:
                 self.create_assignment(date)
 
-    def deployment_ratios(self, date, cleaners=None):
-        """Returns <number of duties a cleaner cleans in>/<total number of duties> on date for_date.
-        Ratios are calculated over a time window that stretches into the past and the future, ignoring
-        duties that have no cleaners assigned. If you wish to know only the ratio of a select number
-        of cleaners, pass them in a list in the cleaners argument. Otherwise all ratios will be returned."""
+    def deployment_ratios(self, date):
         ratios = []
 
-        members_on_date = self.cleaners_active_on_date(date)
+        active_affiliations = self.affiliations_active_on_date(date)
 
-        if cleaners:
-            iterate_over = cleaners
-        else:
-            iterate_over = members_on_date
+        if active_affiliations.exists():
+            for active_affiliation in active_affiliations:
+                cleaner = active_affiliation.cleaner
+                assignments_during_affiliations = Assignment.objects.none()
 
-        if iterate_over:
-            for cleaner in iterate_over:
-                all_assignments = self.assignment_set.filter(cleaning_day__date__range=(cleaner.moved_in, cleaner.moved_out))
+                for affiliation in cleaner.affiliation_set.all():
+                    assignments_during_affiliations |= self.assignment_set.filter(
+                        cleaning_day__date__range=(affiliation.beginning, affiliation.end))
 
-                if all_assignments.exists():
-                    proportion__self_assigned = all_assignments.filter(cleaner=cleaner).count() / all_assignments.count()
-                    ratios.append([cleaner, proportion__self_assigned * len(members_on_date)])
+                if assignments_during_affiliations.exists():
+                    proportion__self_assigned = assignments_during_affiliations.filter(cleaner=cleaner).count() \
+                        / assignments_during_affiliations.count()
+
+                    ratios.append([cleaner, proportion__self_assigned])
                 else:
                     ratios.append([cleaner, 0])
             return sorted(ratios, key=itemgetter(1), reverse=False)
@@ -229,10 +227,10 @@ class ScheduleGroup(models.Model):
 
 class CleanerQuerySet(models.QuerySet):
     def active(self):
-        return self.filter(moved_out__gte=timezone.now().date())
+        return self.filter(affiliation__end__gte=timezone.now().date())
 
     def inactive(self):
-        return self.exclude(moved_out__gte=timezone.now().date())
+        return self.exclude(affiliation__end__gte=timezone.now().date())
 
     def no_slack_id(self):
         return self.filter(slack_id='')
@@ -260,23 +258,16 @@ class Cleaner(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=10, unique=True)
     slug = models.CharField(max_length=10, unique=True)
-    moved_in = models.DateField()
-    moved_out = models.DateField()
+
     time_zone = models.CharField(max_length=30, default="Europe/Berlin")
     slack_id = models.CharField(max_length=10, default='')
-    schedule_group = models.ForeignKey(ScheduleGroup, on_delete=models.SET_NULL, null=True)
+
     PREFERENCE = ((1, 'Ich möchte immer nur einen Putzdienst auf einmal machen müssen.'),
                   (2, 'Ich möchte höchstens zwei Putzdienste auf einmal machen müssen.'),
                   (3, 'Mir ist es egal, wie viele Putzdienste ich auf einmal habe.'))
     preference = models.IntegerField(choices=PREFERENCE, default=2)
 
     objects = CleanerManager.from_queryset(CleanerQuerySet)()
-
-    def __init__(self, *args, **kwargs):
-        super(Cleaner, self).__init__(*args, **kwargs)
-        self.__last_moved_in = self.moved_in
-        self.__last_moved_out = self.moved_out
-        self.__last_group = self.schedule_group
 
     def __str__(self):
         return self.name
@@ -303,9 +294,6 @@ class Cleaner(models.Model):
             or self.preference == 3
 
     def delete(self, using=None, keep_parents=False):
-        if self.schedule_group:
-            for schedule in self.schedule_group.schedules.all():
-                schedule.new_cleaning_duties(self.moved_in, self.moved_out)
         self.user.delete()
         super().delete(using, keep_parents)
 
@@ -328,17 +316,17 @@ class Cleaner(models.Model):
 
         super().save(force_insert, force_update, using, update_fields)
 
-        if self.moved_out != self.__last_moved_out:
-            prev_last_duty, new_last_duty = correct_dates_to_due_day([self.__last_moved_out, self.moved_out])
-            if prev_last_duty and prev_last_duty != new_last_duty:
-                for schedule in self.schedule_group.schedules.all():
-                    schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
-
-        if self.moved_in != self.__last_moved_in:
-            prev_first_duty, new_first_duty = correct_dates_to_due_day([self.__last_moved_in, self.moved_in])
-            if prev_first_duty and prev_first_duty != new_first_duty:
-                for schedule in self.schedule_group.schedules.all():
-                    schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
+        # if self.moved_out != self.__last_moved_out:
+        #     prev_last_duty, new_last_duty = correct_dates_to_due_day([self.__last_moved_out, self.moved_out])
+        #     if prev_last_duty and prev_last_duty != new_last_duty:
+        #         for schedule in self.schedule_group.schedules.all():
+        #             schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
+        #
+        # if self.moved_in != self.__last_moved_in:
+        #     prev_first_duty, new_first_duty = correct_dates_to_due_day([self.__last_moved_in, self.moved_in])
+        #     if prev_first_duty and prev_first_duty != new_first_duty:
+        #         for schedule in self.schedule_group.schedules.all():
+        #             schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
         # if self.schedule_group and self.schedule_group != self.__last_group:
         #     if self.__last_group:
@@ -348,6 +336,20 @@ class Cleaner(models.Model):
         #     for schedule in schedules_to_reassign:
         #         schedule.new_cleaning_duties(correct_dates_to_due_day(self.moved_in),
         #                                      correct_dates_to_due_day(self.moved_out))
+
+
+class Affiliation(models.Model):
+    class Meta:
+        ordering=('-end',)
+    # TODO Make sure affiliations for a cleaner do NOT overlap in time!
+    cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE, null=True)
+    group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE, null=True)
+
+    beginning = models.DateField(null=True)
+    end = models.DateField(default=datetime.date.max)
+
+    def __str__(self):
+        return self.cleaner.name + " in " + self.group.name + " from " + str(self.beginning) + " to " + str(self.end)
 
 
 class CleaningDay(models.Model):
@@ -384,6 +386,7 @@ class Assignment(models.Model):
     cleaners_comment = models.CharField(max_length=200)
     created = models.DateField(auto_now_add=timezone.now().date())
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+    # TODO Why do we need a FK to schedule if we have one to CleaningDay?
     cleaning_day = models.ForeignKey(CleaningDay, on_delete=models.CASCADE)
 
     class Meta:
@@ -503,15 +506,16 @@ class DutySwitch(models.Model):
     def look_for_destinations(self):
         schedule = self.source_assignment.schedule
 
-        cleaners_of_schedule = schedule.cleaners_assigned().exclude(pk=self.source_assignment.cleaner.pk)
+        active_affiliations = schedule.affiliations_active_on_date(self.source_assignment.cleaning_day.date).\
+            exclude(cleaner=self.source_assignment.cleaner)
 
         cleaning_day = self.source_assignment.cleaning_day
-        cleaners_of_schedule = cleaners_of_schedule.exclude(pk__in=cleaning_day.excluded.all())
+        active_affiliations = active_affiliations.exclude(cleaner__in=cleaning_day.excluded.all())
 
         candidates = []
-        for cleaner in cleaners_of_schedule:
-            if cleaner.is_eligible_for_date(self.source_assignment.cleaning_day.date):
-                candidates.append(cleaner)
+        for affiliation in active_affiliations:
+            if affiliation.cleaner.is_eligible_for_date(self.source_assignment.cleaning_day.date):
+                candidates.append(affiliation.cleaner)
 
         logging.debug("------------ Looking for replacement cleaners -----------")
 

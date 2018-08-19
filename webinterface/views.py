@@ -503,6 +503,13 @@ class CleanerNewView(CreateView):
         context['title'] = "Füge neuen Putzer hinzu"
         return context
 
+    def form_valid(self, form):
+        self.object = form.save()
+        schedule_group = form.cleaned_data['schedule_group']
+        beginning = form.cleaned_data['schedule_group__action_date']
+        Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=beginning)
+        return HttpResponseRedirect(self.get_success_url())
+
 
 class CleanerUpdateView(UpdateView):
     form_class = CleanerForm
@@ -515,14 +522,19 @@ class CleanerUpdateView(UpdateView):
         context['title'] = "Ändere Putzerprofil"
         return context
 
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        form = self.get_form()
-        if form.is_valid():
-            self.object = form.save()
-            return HttpResponseRedirect(self.get_success_url())
-        else:
-            return self.form_invalid(form)
+    def form_valid(self, form):
+        self.object = form.save()
+        schedule_group = form.cleaned_data['schedule_group']
+        action_date = form.cleaned_data['schedule_group__action_date']
+        old_assoc = self.object.affiliation_set.first()
+        if old_assoc.group != schedule_group:
+            if not action_date:
+                return self.form_invalid(form)
+            old_assoc.end = action_date
+            old_assoc.save()
+            Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=action_date)
+        return HttpResponseRedirect(self.get_success_url())
+
 
 
 class CleanerDeleteView(DeleteView):
@@ -547,6 +559,13 @@ class CleaningScheduleNewView(CreateView):
         context['title'] = "Erzeuge neuen Putzplan"
         return context
 
+    def form_valid(self, form):
+        self.object = form.save()
+        schedule_group = form.cleaned_data['schedule_group']
+        for group in schedule_group:
+            group.schedules.add(self.object)
+        return HttpResponseRedirect(self.get_success_url())
+
 
 class CleaningScheduleUpdateView(UpdateView):
     form_class = CleaningScheduleForm
@@ -558,6 +577,13 @@ class CleaningScheduleUpdateView(UpdateView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Ändere Putzplan"
         return context
+
+    def form_valid(self, form):
+        self.object = form.save()
+        schedule_group = form.cleaned_data['schedule_group']
+        for group in schedule_group:
+            group.schedules.add(self.object)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class CleaningScheduleDeleteView(DeleteView):

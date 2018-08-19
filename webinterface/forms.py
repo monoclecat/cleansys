@@ -111,36 +111,22 @@ class CleanerForm(forms.ModelForm):
         model = Cleaner
         exclude = ('slug', 'user', 'time_zone')
 
-    name = forms.CharField(max_length=10, label="Name des Putzers",
-                           required=True, widget=forms.TextInput)
-
-    moved_in = forms.DateField(input_formats=['%d.%m.%Y'], label="Eingezogen am TT.MM.YYYY",
-                               help_text="Kann spätestens bis zwei Wochen nach Einzug geändert werden.",
-                               widget=forms.DateInput(format='%d.%m.%Y'))
-    moved_out = forms.DateField(input_formats=['%d.%m.%Y'], label="Ausgezogen am TT.MM.YYYY",
-                                widget=forms.DateInput(format='%d.%m.%Y'),
-                                help_text="Falls du einen neuen Putzer erstellst, ist es eine gute Idee, diesen "
-                                          "Wert auf das Einzugsdatum plus 3 Jahre zu setzen.")
+    name = forms.CharField(max_length=10, label="Name des Putzers", widget=forms.TextInput)
 
     schedule_group = forms.\
-        ModelChoiceField(queryset=ScheduleGroup.objects.all(),
-                         required=True, empty_label=None,
-                         widget=forms.RadioSelect,
-                         label="Zugehörigkeit",
-                         help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
+        ModelChoiceField(queryset=ScheduleGroup.objects.all(), widget=forms.RadioSelect,
+                         label="Zugehörigkeit", help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
 
-    preference = forms.ChoiceField(choices=Cleaner.PREFERENCE, initial=2,
-                                   label="Was ist die Vorliebe des Putzers?")
+    schedule_group__action_date = forms.DateField(input_formats=['%d.%m.%Y'], required=True)
+
+    preference = forms.ChoiceField(choices=Cleaner.PREFERENCE, initial=2, label="Putzvorlieben")
 
     slack_id = forms.ChoiceField(choices=(None, "--------------------"), label="Wähle des Putzers Slackprofil aus.",
                                  required=False)
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
-        disable_moved_in = False
         if 'instance' in kwargs and kwargs['instance']:
-            if kwargs['instance'].moved_in < timezone.datetime.today().date() - datetime.timedelta(days=14):
-                disable_moved_in = True
             kwargs['initial'] = initial
 
         super(CleanerForm, self).__init__(*args, **kwargs)
@@ -148,18 +134,31 @@ class CleanerForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             'name',
-            'moved_in',
-            'moved_out',
-            'schedule_group',
             'preference',
+            Fieldset(
+                'Einzug/Umzug/Auszug',
+                'schedule_group',
+                'schedule_group__action_date'),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
         )
 
-        if disable_moved_in:
-            self.fields['moved_in'].disabled = True
+        if 'instance' in kwargs and kwargs['instance']:
+            # We are in the UpdateView
+            self.fields['schedule_group'].empty_label = "---Ausgezogen---"
+            self.fields['schedule_group'].required = False
+            self.fields['schedule_group'].initial = kwargs['instance'].affiliation_set.first().group
+            self.helper.layout.fields[2].insert(1, HTML('<p class="bg-danger">Bei Änderung der Zugehörigkeit muss '
+                                                     'auch ein Datum angegeben werden!</p>'))
+            self.fields['schedule_group__action_date'].required = False
+            self.fields['schedule_group__action_date'].label = "Der Putzer zieht zum TT.MM.YYYY um bzw. aus."
+        else:
+            # We are in the CreateView
+            self.fields['schedule_group'].empty_label = None
+            self.fields['schedule_group__action_date'].label = "Der Putzer zieht zum TT.MM.YYYY ein."
+
 
         if slack_running():
             self.fields['slack_id'].choices = get_slack_users()
@@ -266,16 +265,11 @@ class CleaningScheduleGroupForm(forms.ModelForm):
         )
 
         if kwargs['instance']:
-            if not kwargs['instance'].cleaner_set.all():
-                self.helper.layout.fields.append(HTML(
-                    "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
-                    "href=\"{% url 'webinterface:cleaning-schedule-group-delete' object.pk %}\""
-                    "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> "
-                    "Lösche Putzplan-Gruppierung</a>"))
-            else:
-                self.helper.layout.fields.append(HTML(
-                    "<p><i>Um diese Gruppe zu löschen müssen erst alle Putzer daraus entfernt werden. <br>"
-                    "Diese sind: {% for cleaner in object.cleaners.all %} {{cleaner.name}} {% endfor %}</i></p>"))
+            self.helper.layout.fields.append(HTML(
+                "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
+                "href=\"{% url 'webinterface:cleaning-schedule-group-delete' object.pk %}\""
+                "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> "
+                "Lösche Putzplan-Gruppierung</a>"))
 
 
 
