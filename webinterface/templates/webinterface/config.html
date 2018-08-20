@@ -100,7 +100,7 @@ Einstellungen
                     <span class="glyphicon glyphicon-plus"></span> Neuer Putzplan</a></h2>
                 <div class="well">
                     <div class="row">
-                        {% for schedule in schedule_list %}
+                        {% for schedule in active_schedule_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
                                 <a class="btn btn-primary btn-lg btn-block" role="button"
                                    href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}">
@@ -110,6 +110,17 @@ Einstellungen
                         {% empty %}
                             <p>Keine Putzpläne zu Zeigen...</p>
                         {% endfor %}
+                        {% if disabled_schedule_list %}
+                            <h3>Deaktivierte Putzpläne</h3>
+                            {% for schedule in disabled_schedule_list %}
+                            <div class="col-xs-12 col-sm-6" style="padding: 5px">
+                                <a class="btn btn-default btn-lg btn-block" role="button"
+                                   href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}">
+                                    <span class="glyphicon glyphicon-cog"></span> {{ schedule.name }}
+                                </a>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
                     </div>
                 </div>
 
@@ -119,16 +130,27 @@ Einstellungen
                     <span class="glyphicon glyphicon-plus"></span> Neue Putzplan-Gruppierung</a></h2>
                 <div class="well">
                     <div class="row">
-                        {% for schedule in schedule_group_list %}
+                        {% for group in active_schedule_group_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
                                 <a class="btn btn-primary btn-lg btn-block" role="button" style="white-space: normal"
-                                   href="{% url 'webinterface:cleaning-schedule-group-edit' schedule.pk %}">
-                                    <span class="glyphicon glyphicon-cog"></span> {{ schedule.name }}
+                                   href="{% url 'webinterface:cleaning-schedule-group-edit' group.pk %}">
+                                    <span class="glyphicon glyphicon-cog"></span> {{ group.name }}
                                 </a>
                             </div>
                         {% empty %}
                             <p>Keine Putzplan-Gruppen zu Zeigen...</p>
                         {% endfor %}
+                        {% if disabled_schedule_list %}
+                            <h3>Deaktivierte Putzplan-Gruppen</h3>
+                            {% for group in disabled_schedule_group_list %}
+                            <div class="col-xs-12 col-sm-6" style="padding: 5px">
+                                <a class="btn btn-default btn-lg btn-block" role="button"
+                                   href="{% url 'webinterface:cleaning-schedule-group-edit' group.pk %}">
+                                    <span class="glyphicon glyphicon-cog"></span> {{ group.name }}
+                                </a>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
                     </div>
                 </div>
             </div>

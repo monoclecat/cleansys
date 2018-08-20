@@ -48,8 +48,6 @@ urlpatterns = [
     path('cleaning-schedule-new/', staff_member_required(CleaningScheduleNewView.as_view()), name='cleaning-schedule-new'),
     path('cleaning-schedule-edit/<int:pk>/', staff_member_required(CleaningScheduleUpdateView.as_view()),
          name='cleaning-schedule-edit'),
-    path('cleaning-schedule-delete/<int:pk>/', staff_member_required(CleaningScheduleDeleteView.as_view()),
-         name='cleaning-schedule-delete'),
 
     path('cleaning-schedule-group-new/', staff_member_required(CleaningScheduleGroupNewView.as_view()),
          name='cleaning-schedule-group-new'),

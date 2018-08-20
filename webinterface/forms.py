@@ -131,7 +131,8 @@ class CleanerForm(forms.ModelForm):
         if queryset.exists():
             # We are in the UpdateView
             cleaner = queryset.first()
-            if cleaner.current_affiliation().group != schedule_group:
+
+            if cleaner.is_active() and cleaner.current_affiliation().group != schedule_group:
                 if not schedule_group__action_date:
                     raise forms.ValidationError("Zur neuen Zugehörigkeit muss auch ein Datum angegeben werden!",
                                                 code='new_aff_no_date')
@@ -171,7 +172,7 @@ class CleanerForm(forms.ModelForm):
             # We are in the UpdateView
             self.fields['schedule_group'].empty_label = "---Ausgezogen---"
             self.fields['schedule_group'].required = False
-            self.fields['schedule_group'].initial = kwargs['instance'].affiliation_set.first().group
+            self.fields['schedule_group'].initial = kwargs['instance'].current_affiliation().group
             self.fields['schedule_group__action_date'].required = False
             self.fields['schedule_group__action_date'].label = "Der Putzer zieht zum TT.MM.YYYY um bzw. aus."
 
@@ -286,6 +287,8 @@ class CleaningScheduleForm(forms.ModelForm):
                                       "empfehle ich dir, vor und nach dem Komma kein Leerzeichen zu lassen, also so: "
                                       "Herd,Ofen,Oberflächen")
 
+    disabled = forms.BooleanField(label="Deaktivieren", required=False)
+
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
         if 'instance' in kwargs and kwargs['instance']:
@@ -301,23 +304,18 @@ class CleaningScheduleForm(forms.ModelForm):
             'frequency',
             'schedule_group',
             'tasks',
+            'disabled',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
         )
 
-        if kwargs['instance']:
-            self.helper.layout.fields.append(HTML(
-                "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
-                "href=\"{% url 'webinterface:cleaning-schedule-delete' object.pk %}\""
-                "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzplan</a>"))
-
 
 class CleaningScheduleGroupForm(forms.ModelForm):
     class Meta:
         model = ScheduleGroup
-        exclude = ('disabled',)
+        fields = '__all__'
 
     name = forms.CharField(max_length=30, label="Name der Putzplan-Gruppe",
                            help_text="Dieser Name steht für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
@@ -332,6 +330,8 @@ class CleaningScheduleGroupForm(forms.ModelForm):
                                  label="Putzpläne", required=False,
                                  help_text="Wähle die Putzpläne, die dieser Gruppe angehören.")
 
+    disabled = forms.BooleanField(required=False, label="Deaktivieren")
+
     def __init__(self, *args, **kwargs):
         super(CleaningScheduleGroupForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
@@ -339,17 +339,12 @@ class CleaningScheduleGroupForm(forms.ModelForm):
         self.helper.layout = Layout(
             'name',
             'schedules',
+            'disabled',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> ")
         )
-
-        if kwargs['instance']:
-            self.helper.layout.fields.append(HTML(
-                "<button class=\"btn btn-danger pull-right\" type=\"submit\" name=\"delete\">"
-                "<span class=\"glyphicon glyphicon-ok\"></span> Löschen</button> "
-                ))
 
 
 

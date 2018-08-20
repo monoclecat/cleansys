@@ -35,7 +35,7 @@ class ScheduleList(ListView):
 
 class LoginByClickView(LoginView):
     template_name = "webinterface/login_byclick.html"
-    extra_context = {'cleaner_list': Cleaner.objects.active()}
+    extra_context = {'cleaner_list': Cleaner.objects.all()}
 
     def post(self, request, *args, **kwargs):
         form = self.get_form()
@@ -254,13 +254,14 @@ class ConfigView(FormView):
 
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
-        context['schedule_list'] = Schedule.objects.all()
+        context['active_schedule_list'] = Schedule.objects.active()
+        context['disabled_schedule_list'] = Schedule.objects.disabled()
 
         context['cleaner_list'] = list()
         context['no_slack_cleaner_list'] = list()
         context['deactivated_cleaner_list'] = list()
         for cleaner in Cleaner.objects.all():
-            if cleaner.current_affiliation().group != None:
+            if cleaner.is_active():
                 if cleaner.slack_id:
                     context['cleaner_list'].append(cleaner)
                 else:
@@ -268,7 +269,8 @@ class ConfigView(FormView):
             else:
                 context['deactivated_cleaner_list'].append(cleaner)
 
-        context['schedule_group_list'] = ScheduleGroup.objects.active()
+        context['active_schedule_group_list'] = ScheduleGroup.objects.active()
+        context['disabled_schedule_group_list'] = ScheduleGroup.objects.disabled()
         context['slack_running'] = slack_running()
         return context
 
@@ -384,11 +386,12 @@ class CleanerUpdateView(UpdateView):
         self.object = form.save()
         schedule_group = form.cleaned_data['schedule_group']
         action_date = form.cleaned_data['schedule_group__action_date']
-        old_assoc = self.object.affiliation_set.first()
+        old_assoc = self.object.current_affiliation()
         if old_assoc.group != schedule_group:
             old_assoc.end = action_date
             old_assoc.save()
-            Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=action_date)
+            if schedule_group is not None:
+                Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=action_date)
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -457,17 +460,6 @@ class CleaningScheduleUpdateView(UpdateView):
         return HttpResponseRedirect(self.get_success_url())
 
 
-class CleaningScheduleDeleteView(DeleteView):
-    model = Schedule
-    success_url = reverse_lazy('webinterface:config')
-    template_name = 'webinterface/generic_delete_form.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = "Lösche Putzplan"
-        return context
-
-
 class CleaningScheduleGroupNewView(CreateView):
     form_class = CleaningScheduleGroupForm
     model = ScheduleGroup
@@ -478,6 +470,8 @@ class CleaningScheduleGroupNewView(CreateView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Erstelle eine neue Putzplan-Gruppierung"
         return context
+
+
 
 
 class CleaningScheduleGroupUpdateView(UpdateView):
@@ -491,20 +485,12 @@ class CleaningScheduleGroupUpdateView(UpdateView):
         context['title'] = "Ändere eine Putzplan-Gruppierung"
         return context
 
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        form = self.get_form()
-        if form.is_valid():
-            self.object = form.save()
-            if 'delete' in request.POST:
-                for affiliation in self.object.affiliation_set.all():
-                    if affiliation.end > timezone.now().date():
-                        affiliation.end = timezone.now().date()
-                        affiliation.save()
-                self.object.disabled = True
-                self.object.save()
-            return HttpResponseRedirect(self.get_success_url())
-        else:
-            return self.form_invalid(form)
+    def form_valid(self, form):
+        if form.cleaned_data.get('disabled') == True:
+            for affiliation in self.object.affiliation_set.all():
+                if affiliation.end > timezone.now().date():
+                    affiliation.end = timezone.now().date()
+                    affiliation.save()
+        return super().form_valid(form)
 
 

@@ -73,6 +73,14 @@ except OperationalError:
     pass
 
 
+class ScheduleQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(disabled=False)
+
+    def disabled(self):
+        return self.filter(disabled=True)
+
+
 class Schedule(models.Model):
     class Meta:
         ordering = ('cleaners_per_date',)
@@ -85,6 +93,10 @@ class Schedule(models.Model):
     FREQUENCY_CHOICES = ((1, 'Jede Woche'), (2, 'Gerade Wochen'), (3, 'Ungerade Wochen'))
     frequency = models.IntegerField(default=1, choices=FREQUENCY_CHOICES)
     tasks = models.CharField(max_length=200, null=True)
+
+    disabled = models.BooleanField(default=False)
+
+    objects = ScheduleQuerySet.as_manager()
 
     def __str__(self):
         return self.name
@@ -237,11 +249,11 @@ class ScheduleGroup(models.Model):
 
 
 class CleanerQuerySet(models.QuerySet):
-    def active(self):
-        return self.filter(affiliation__end__gte=timezone.now().date())
-
-    def inactive(self):
-        return self.exclude(affiliation__end__gte=timezone.now().date())
+    # def active(self):
+    #     return ???
+    #
+    # def inactive(self):
+    #     return ???
 
     def no_slack_id(self):
         return self.filter(slack_id='')
@@ -284,7 +296,15 @@ class Cleaner(models.Model):
         return self.name
 
     def current_affiliation(self):
-        return self.affiliation_set.first()
+        current_affiliation_queryset = self.affiliation_set.filter(
+            beginning__lt=timezone.now().date(), end__gte=timezone.now().date())
+        if current_affiliation_queryset.exists():
+            return current_affiliation_queryset.first()
+        else:
+            return None
+
+    def is_active(self):
+        return self.current_affiliation() is not None
 
     def rejected_dutyswitch_requests(self):
         return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
@@ -356,8 +376,8 @@ class Affiliation(models.Model):
     class Meta:
         ordering=('-end',)
     # TODO Make sure affiliations for a cleaner do NOT overlap in time!
-    cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE, null=True)
-    group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE, null=True)
+    cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
+    group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE)
 
     beginning = models.DateField(null=True)
     end = models.DateField(default=datetime.date.max)
