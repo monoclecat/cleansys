@@ -7,6 +7,9 @@ from crispy_forms.bootstrap import *
 from slackbot.slackbot import get_slack_users, slack_running
 from django.contrib.auth.forms import AuthenticationForm
 
+import re
+
+pv_email = re.compile("(\S+)\.(\S+)@pvka\.de")
 
 class ConfigForm(forms.ModelForm):
     class Meta:
@@ -111,7 +114,9 @@ class CleanerForm(forms.ModelForm):
         model = Cleaner
         exclude = ('slug', 'user', 'time_zone')
 
-    name = forms.CharField(max_length=10, label="Name des Putzers", widget=forms.TextInput)
+    name = forms.CharField(max_length=20, label="Name des Putzers", widget=forms.TextInput)
+
+    email = forms.EmailField(label="Email des Putzers in der Form vorname.nachname@pvka.de")
 
     schedule_group = forms.ModelChoiceField(queryset=ScheduleGroup.objects.active(),
                          label="Zugehörigkeit", help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
@@ -125,6 +130,10 @@ class CleanerForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        if pv_email.match(cleaned_data.get('email')) is None:
+            raise forms.ValidationError("Ungültige Email! Sie muss wie folgt aussehen: vorname.nachname@pvka.de")
+
         schedule_group__action_date = cleaned_data.get('schedule_group__action_date')
         schedule_group = cleaned_data.get('schedule_group')
         queryset = Cleaner.objects.filter(name=cleaned_data['name'])
@@ -152,6 +161,7 @@ class CleanerForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             'name',
+            'email',
             'preference',
             Accordion(
                 AccordionGroup(
@@ -172,7 +182,8 @@ class CleanerForm(forms.ModelForm):
             # We are in the UpdateView
             self.fields['schedule_group'].empty_label = "---Ausgezogen---"
             self.fields['schedule_group'].required = False
-            self.fields['schedule_group'].initial = kwargs['instance'].current_affiliation().group
+            if kwargs['instance'].is_active():
+                self.fields['schedule_group'].initial = kwargs['instance'].current_affiliation().group
             self.fields['schedule_group__action_date'].required = False
             self.fields['schedule_group__action_date'].label = "Der Putzer zieht zum TT.MM.YYYY um bzw. aus."
 
@@ -187,7 +198,7 @@ class CleanerForm(forms.ModelForm):
                         +str(affiliation.pk)+' %}\" role=\"button\">'
                         '<span class=\"glyphicon glyphicon-cog\"></span> Bearbeiten</a>')
                 group_name = str(affiliation.group) if affiliation.group else "Keine Gruppe"
-                self.helper.layout.fields[2].append(
+                self.helper.layout.fields[3].append(
                     AccordionGroup(
                         group_name+' - '+str(affiliation.beginning.strftime('%d-%b-%Y'))+
                         ' bis '+str(affiliation.end.strftime('%d-%b-%Y')), edit_button)
@@ -310,6 +321,10 @@ class CleaningScheduleForm(forms.ModelForm):
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
         )
+
+        if 'instance' in kwargs and kwargs['instance']:
+            self.helper.layout.fields['frequency'].disabled = True
+            self.helper.layout.fields['cleaners_per_date'].disabled = True
 
 
 class CleaningScheduleGroupForm(forms.ModelForm):

@@ -4,7 +4,8 @@ from operator import itemgetter
 import datetime
 from django.contrib.auth.hashers import make_password
 from django.utils.text import slugify
-from django.core.paginator import Paginator
+from django.db.models.signals import pre_save, post_save
+from django.dispatch import receiver
 import logging
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -39,7 +40,7 @@ class Config(models.Model):
     trust_in_users = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
-        models.Model.__init__(self, *args, **kwargs)
+        Config.__init__(self, *args, **kwargs)
         self.__trust_in_users = self.trust_in_users
         self.__date_due = self.date_due
 
@@ -144,11 +145,7 @@ class Schedule(models.Model):
         super(Schedule, self).save(force_insert, force_update, using, update_fields)
 
         if self.cleaners_per_date != self.__last_cleaners_per_date or self.frequency != self.__last_frequency:
-            all_duty_dates = list(self.cleaningday_set.values_list('date', flat=True))
-            self.cleaningday_set.all().delete()
-            self.assignment_set.all().delete()
-            for date in all_duty_dates:
-                self.create_assignment(date)
+            raise OperationalError("cleaners_per_date and frequency cannot be changed!")
 
     def deployment_ratios(self, date):
         ratios = []
@@ -179,32 +176,56 @@ class Schedule(models.Model):
         return self.frequency == 1 or self.frequency == 2 and date.isocalendar()[1] % 2 == 0 or \
                self.frequency == 3 and date.isocalendar()[1] % 2 == 1
 
-    def new_cleaning_duties(self, date1, date2, clear_existing=True):
+    """
+    Like create_assignment, only that it can cover a timespan and has several more options.
+    
+    date1 does not have to be smaller than date2 or vice-versa. 
+    @param date1 First date of timeframe, will be corrected to the due-day
+    @param date2 Second date of timeframe, will be corrected to the due-day
+    @param mode Sets the mode of creation:
+    - 1: Delete existing Assignments in timeframe and create new Assignments throughout timeframe
+    - 2: Keep existing Assignments and only create new ones where there are none already
+    - 3: Only reassign Assignments on existing CleaningDays, don't generate new CleaningDays
+    """
+    def new_cleaning_duties(self, date1, date2, mode=1):
         """Generates new cleaning duties between date1 and date2."""
-        start_date = min(date1, date2)
-        end_date = max(date1, date2)
+        start_date = correct_dates_to_due_day(min(date1, date2))
+        end_date = correct_dates_to_due_day(max(date1, date2))
         one_week = timezone.timedelta(days=7)
 
-        if clear_existing:
-            self.cleaningday_set.filter(date__range=(start_date, end_date)).delete()
-
-        date_iterator = start_date
-        while date_iterator <= end_date:
-            while self.create_assignment(date_iterator):
-                pass
+        date_iterator = start_date - one_week
+        while date_iterator <= end_date - one_week:
             date_iterator += one_week
+            if mode == 1:
+                self.assignment_set.filter(date=date_iterator).delete()
+            elif mode == 2:
+                pass
+            elif mode == 3:
+                assignments_on_date = self.assignment_set.filter(date=date_iterator)
+                if assignments_on_date.exists():
+                    assignments_on_date.delete()
+                else:
+                    continue
+            else:
+                raise OperationalError("Invalid mode!")
+            while self.create_assignment(date_iterator):
+                # This loop enables Schedules with cleaners_per_date > 1 to be handled correctly, as each
+                # call to create_assignment only assigns one Cleaner
+                pass
+
 
     def create_assignment(self, date):
         """Generates a new Duty and assigns Cleaners to it.
         If the Schedule is not defined on date (see defined_on_date()), then this function fails silently."""
 
-        if self.defined_on_date(date):
-            cleaning_day, was_created = self.cleaningday_set.get_or_create(date=correct_dates_to_due_day(date))
+        corrected_date = correct_dates_to_due_day(date)
+        if self.defined_on_date(corrected_date):
+            cleaning_day, was_created = self.cleaningday_set.get_or_create(date=corrected_date)
 
-            ratios = self.deployment_ratios(date)
+            ratios = self.deployment_ratios(corrected_date)
 
             if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
-                logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'.format(self.name, date))
+                logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'.format(self.name, corrected_date))
                 logging_text = "All cleaners' ratios: "
                 for cleaner, ratio in ratios:
                     logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
@@ -212,12 +233,12 @@ class Schedule(models.Model):
 
             if ratios and cleaning_day.assignment_set.count() < self.cleaners_per_date:
                 for cleaner, ratio in ratios:
-                    if cleaner.is_eligible_for_date(date) and cleaner not in cleaning_day.excluded.all():
+                    if cleaner.is_eligible_for_date(corrected_date) and cleaner not in cleaning_day.excluded.all():
                         logging.debug("   {} inserted!".format(cleaner.name))
                         return self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
                     else:
                         logging.debug("   {} already has {} duties today.".format(
-                            cleaner.name, cleaner.nr_assignments_on_day(date)))
+                            cleaner.name, cleaner.nr_assignments_on_day(corrected_date)))
                 else:
                     logging.debug("   Cleaner's preferences result in no cleaner, we must choose {}".format(ratios[0][0]))
                     return self.assignment_set.create(cleaner=ratios[0][0], cleaning_day=cleaning_day)
@@ -235,6 +256,13 @@ class ScheduleGroupQuerySet(models.QuerySet):
         return self.filter(disabled=True)
 
 
+"""
+A ScheduleGroup can be thought of as the floor you're living on. It simplifies grouping of Cleaners. 
+
+Cleaners can be affiliated to different ScheduleGroups over time, which is tracked by the Affiliation model. 
+A ScheduleGroup should not be deleted (rather disabled), as this causes Affiliations to be deleted, creating holes in the affiliation
+history which can lead to issues in consistency and the assigning of duties to Cleaners.
+"""
 class ScheduleGroup(models.Model):
     class Meta:
         ordering = ("name", )
@@ -275,12 +303,17 @@ class CleanerManager(models.Manager):
             # TODO Send out email/Slack messages for password setting
 
 
+"""
+The Cleaner is the representation of the physical person living in the house. 
+
+The Cleaner is linked to a User and can state his/her preferences in cleaning. 
+"""
 class Cleaner(models.Model):
     class Meta:
         ordering = ('name',)
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
-    name = models.CharField(max_length=10, unique=True)
-    slug = models.CharField(max_length=10, unique=True)
+    name = models.CharField(max_length=20, unique=True)
+    slug = models.CharField(max_length=20, unique=True)
 
     time_zone = models.CharField(max_length=30, default="Europe/Berlin")
     slack_id = models.CharField(max_length=10, default='')
@@ -350,28 +383,13 @@ class Cleaner(models.Model):
 
         super().save(force_insert, force_update, using, update_fields)
 
-        # if self.moved_out != self.__last_moved_out:
-        #     prev_last_duty, new_last_duty = correct_dates_to_due_day([self.__last_moved_out, self.moved_out])
-        #     if prev_last_duty and prev_last_duty != new_last_duty:
-        #         for schedule in self.schedule_group.schedules.all():
-        #             schedule.new_cleaning_duties(prev_last_duty, new_last_duty, True)
-        #
-        # if self.moved_in != self.__last_moved_in:
-        #     prev_first_duty, new_first_duty = correct_dates_to_due_day([self.__last_moved_in, self.moved_in])
-        #     if prev_first_duty and prev_first_duty != new_first_duty:
-        #         for schedule in self.schedule_group.schedules.all():
-        #             schedule.new_cleaning_duties(prev_first_duty, new_first_duty, True)
 
-        # if self.schedule_group and self.schedule_group != self.__last_group:
-        #     if self.__last_group:
-        #         schedules_to_reassign = self.schedule_group.schedules.all() | self.__last_group.schedules.all()
-        #     else:
-        #         schedules_to_reassign = self.schedule_group.schedules.all()
-        #     for schedule in schedules_to_reassign:
-        #         schedule.new_cleaning_duties(correct_dates_to_due_day(self.moved_in),
-        #                                      correct_dates_to_due_day(self.moved_out))
+"""
+The Affiliation model tracks Cleaners' belonging to Schedules over time. 
 
-
+The Affiliation model meant to be a chain of time periods for each Cleaner with no two Affiliations of a Cleaner 
+overlapping in time. This constraint is enforced by the model. 
+"""
 class Affiliation(models.Model):
     class Meta:
         ordering=('-end',)
@@ -379,7 +397,7 @@ class Affiliation(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE)
 
-    beginning = models.DateField(null=True)
+    beginning = models.DateField()
     end = models.DateField(default=datetime.date.max)
 
     def __str__(self):
@@ -387,6 +405,63 @@ class Affiliation(models.Model):
             return self.cleaner.name + " in " + self.group.name + " from " + str(self.beginning) + " to " + str(self.end)
         else:
             return self.cleaner.name + " moved out from " + str(self.beginning) + " to " + str(self.end)
+
+    def __init__(self, *args, **kwargs):
+        super(Affiliation, self).__init__(*args, **kwargs)
+        self.__previous_beginning = self.beginning
+        self.__previous_end = self.end
+        self.__previous_cleaner = self.cleaner
+        self.__previous_group = self.group
+
+    def delete(self, using=None, keep_parents=False):
+        super().delete(using, keep_parents)
+        interval_start = min(self.beginning, self.end)
+        interval_end = max(self.beginning, self.end)
+        for schedule in self.group.schedules.all():
+            schedule.new_cleaning_duties(interval_start, interval_end, 3)
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+
+        if self.cleaner.affiliation_set.filter(beginning__gte=self.beginning).exclude(pk=self.pk).exists():
+            # The proposed Affiliation shall begin before an existing Affiliation begins -> Not allowed!
+            # Affiliations can only be chained behind each other in time
+            raise OperationalError("Affiliation with beginning before beginning of another Affiliation of "
+                                   "Cleaner {} cannot be created!".format(self.cleaner.name))
+
+        if self.__previous_cleaner != self.cleaner or self.__previous_group != self.group:
+            raise OperationalError("Claener or ScheduleGroup of an Affiliation cannot be changed!")
+
+        if self.beginning > self.end:
+            raise OperationalError("The end of an Affiliation cannot lie before its beginning!")
+
+        affns_ending_after_this_begins = self.cleaner.affiliation_set.filter(end__gt=self.beginning).exclude(pk=self.pk)
+        if affns_ending_after_this_begins.exists():
+            # Can only be one because we enforce non-overlapping chain structure at all times
+            affns_ending_after_this_begins.first().end = self.beginning
+            affns_ending_after_this_begins.first().save()
+
+        super().save(force_insert, force_update, using, update_fields)
+
+        reassigning_required = False
+        interval_start = datetime.date.min
+        interval_end = datetime.date.max
+        if self.__previous_beginning != self.beginning:
+            interval_start = min(self.__previous_beginning, self.beginning)
+            interval_end = max(self.__previous_beginning, self.beginning)
+            reassigning_required = True
+        if self.__previous_end != self.end:
+            if reassigning_required:
+                interval_start = min(self.__previous_end, self.end, interval_start)
+                interval_end = max(self.__previous_end, self.end, interval_end)
+            else:
+                interval_start = min(self.__previous_end, self.end)
+                interval_end = max(self.__previous_end, self.end)
+                reassigning_required = True
+        if reassigning_required:
+            for schedule in self.group.schedules.all():
+                schedule.new_cleaning_duties(interval_start, interval_end, 3)
+
+
 
 
 class CleaningDay(models.Model):
@@ -422,7 +497,6 @@ class Assignment(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     cleaners_comment = models.CharField(max_length=200)
     created = models.DateField(auto_now_add=timezone.now().date())
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
     # TODO Why do we need a FK to schedule if we have one to CleaningDay?
     cleaning_day = models.ForeignKey(CleaningDay, on_delete=models.CASCADE)
 
@@ -430,7 +504,7 @@ class Assignment(models.Model):
         ordering = ('cleaning_day__date',)
 
     def __str__(self):
-        return "{}: {}, {} ".format(self.schedule.name, self.cleaner.name, self.cleaning_day.date.strftime('%d-%b-%Y'))
+        return "{}: {}, {} ".format(self.cleaning_day.schedule.name, self.cleaner.name, self.cleaning_day.date.strftime('%d-%b-%Y'))
 
     def cleaners_on_date_for_schedule(self):
         return Cleaner.objects.filter(assignment__cleaning_day=self.cleaning_day)
@@ -462,6 +536,8 @@ class Task(models.Model):
     name = models.CharField(max_length=20)
     cleaned_by = models.ForeignKey(Assignment, null=True, on_delete=models.CASCADE)
     cleaning_day = models.ForeignKey(CleaningDay, null=True, on_delete=models.CASCADE)
+
+    # TODO Add more content to this model
 
     def __str__(self):
         return self.name

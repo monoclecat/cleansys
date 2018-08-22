@@ -304,16 +304,16 @@ class ResultsView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         if 'regenerate_all' in request.POST:
-            clear_existing = True
+            mode = 1
         else:
-            clear_existing = False
+            mode = 2
 
         time_start = timeit.default_timer()
         for schedule in Schedule.objects.all():
             schedule.new_cleaning_duties(
                 datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date(),
                 datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date(),
-                clear_existing)
+                mode)
         time_end = timeit.default_timer()
         logging.info("Assigning cleaning schedules took {}s".format(round(time_end-time_start, 2)))
 
@@ -365,6 +365,9 @@ class CleanerNewView(CreateView):
 
     def form_valid(self, form):
         self.object = form.save()
+        self.object.user.email = form.cleaned_data.get('email')
+        self.object.user.save()
+
         schedule_group = form.cleaned_data['schedule_group']
         beginning = form.cleaned_data['schedule_group__action_date']
         Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=beginning)
@@ -384,12 +387,17 @@ class CleanerUpdateView(UpdateView):
 
     def form_valid(self, form):
         self.object = form.save()
+        if self.object.user.email != form.cleaned_data.get('email'):
+            self.object.user.email = form.cleaned_data.get('email')
+            self.object.user.save()
+
         schedule_group = form.cleaned_data['schedule_group']
         action_date = form.cleaned_data['schedule_group__action_date']
         old_assoc = self.object.current_affiliation()
-        if old_assoc.group != schedule_group:
-            old_assoc.end = action_date
-            old_assoc.save()
+        if old_assoc is None or old_assoc.group != schedule_group:
+            if old_assoc is not None:
+                old_assoc.end = action_date
+                old_assoc.save()
             if schedule_group is not None:
                 Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=action_date)
         return HttpResponseRedirect(self.get_success_url())

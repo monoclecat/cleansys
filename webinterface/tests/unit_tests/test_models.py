@@ -201,7 +201,7 @@ class ScheduleTest(TestCase):
 
         with patch.object(Schedule, 'create_assignment') as mock_create_assignment:
             mock_create_assignment.return_value = False
-            self.schedule.new_cleaning_duties(date2, date1, False)
+            self.schedule.new_cleaning_duties(date2, date1, 2)
             self.assertIn(self.cd1_cl1_assignment, self.schedule.assignment_set.all())
             self.assertListEqual(mock_create_assignment.mock_calls,
                                  [call(datetime.date(2010, 1, 8)), call(datetime.date(2010, 1, 15)),
@@ -214,7 +214,7 @@ class ScheduleTest(TestCase):
 
         with patch.object(Schedule, 'create_assignment') as mock_create_assignment:
             mock_create_assignment.return_value = False
-            self.schedule.new_cleaning_duties(date2, date1, True)
+            self.schedule.new_cleaning_duties(date2, date1, 1)
             self.assertNotIn(self.cd1_cl1_assignment, self.schedule.assignment_set.all())
             self.assertListEqual(mock_create_assignment.mock_calls,
                                  [call(datetime.date(2010, 1, 8)), call(datetime.date(2010, 1, 15)),

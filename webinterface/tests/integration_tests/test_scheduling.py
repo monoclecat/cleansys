@@ -45,65 +45,66 @@ class SchedulingTest(TestCase):
         cls.group_c11_to_c15.schedules.add(
             cls.c11_to_c15, cls.c10_to_c15, cls.all, cls.all_even_weeks, cls.all_odd_weeks)
 
-        cls.cleaner1 = Cleaner.objects.create(
-            name="C1", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
-            preference=1)
+        cls.cleaner1 = Cleaner.objects.create(name="C1", preference=1)
+        cls.cl1_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner1, group=cls.group_c1_to_c5, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner2 = Cleaner.objects.create(
-            name="C2", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
-            preference=2)
+        cls.cleaner2 = Cleaner.objects.create(name="C2", preference=2)
+        cls.cl2_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner2, group=cls.group_c1_to_c5, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner3 = Cleaner.objects.create(
-            name="C3", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
-            preference=3)
+        cls.cleaner3 = Cleaner.objects.create(name="C3", preference=3)
+        cls.cl3_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner3, group=cls.group_c1_to_c5, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner4 = Cleaner.objects.create(
-            name="C4", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
-            preference=1)
+        cls.cleaner4 = Cleaner.objects.create(name="C4", preference=1)
+        cls.cl4_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner4, group=cls.group_c1_to_c5, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner5 = Cleaner.objects.create(
-            name="C5", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c1_to_c5,
-            preference=2)
+        cls.cleaner5 = Cleaner.objects.create(name="C5", preference=2)
+        cls.cl5_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner5, group=cls.group_c1_to_c5, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner6 = Cleaner.objects.create(
-            name="C6", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
-            preference=3)
+        cls.cleaner6 = Cleaner.objects.create(name="C6", preference=3)
+        cls.cl6_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner6, group=cls.group_c6_to_c9, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner7 = Cleaner.objects.create(
-            name="C7", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
-            preference=1)
+        cls.cleaner7 = Cleaner.objects.create(name="C7", preference=1)
+        cls.cl7_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner7, group=cls.group_c6_to_c9, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner8 = Cleaner.objects.create(
-            name="C8", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
-            preference=2)
 
-        cls.cleaner9 = Cleaner.objects.create(
-            name="C9", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c6_to_c9,
-            preference=3)
+        cls.cleaner8 = Cleaner.objects.create(name="C8", preference=2)
+        cls.cl8_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner8, group=cls.group_c6_to_c9, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner10 = Cleaner.objects.create(
-            name="C10", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c10,
-            preference=1)
+        cls.cleaner9 = Cleaner.objects.create(name="C9", preference=3)
+        cls.cl9_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner9, group=cls.group_c6_to_c9, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner11 = Cleaner.objects.create(
-            name="C11", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
-            preference=2)
+        cls.cleaner10 = Cleaner.objects.create(name="C10", preference=1)
+        cls.cl10_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner10, group=cls.group_c10, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner12 = Cleaner.objects.create(
-            name="C12", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
-            preference=3)
+        cls.cleaner11 = Cleaner.objects.create(name="C11", preference=2)
+        cls.cl11_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner11, group=cls.group_c11_to_c15, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner13 = Cleaner.objects.create(
-            name="C13", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
-            preference=1)
+        cls.cleaner12 = Cleaner.objects.create(name="C12", preference=3)
+        cls.cl12_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner12, group=cls.group_c11_to_c15, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner14 = Cleaner.objects.create(
-            name="C14", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
-            preference=2)
+        cls.cleaner13 = Cleaner.objects.create(name="C13", preference=1)
+        cls.cl13_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner13, group=cls.group_c11_to_c15, beginning=cls.start_date, end=cls.end_date)
 
-        cls.cleaner15 = Cleaner.objects.create(
-            name="C15", moved_in=cls.start_date, moved_out=cls.end_date, schedule_group=cls.group_c11_to_c15,
-            preference=3)
+        cls.cleaner14 = Cleaner.objects.create(name="C14", preference=2)
+        cls.cl14_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner14, group=cls.group_c11_to_c15, beginning=cls.start_date, end=cls.end_date)
+
+        cls.cleaner15 = Cleaner.objects.create(name="C15", preference=3)
+        cls.cl15_affiliation1 = Affiliation.objects.create(
+            cleaner=cls.cleaner15, group=cls.group_c11_to_c15, beginning=cls.start_date, end=cls.end_date)
 
     def print__timing_results(self, timing_results):
         print("")
