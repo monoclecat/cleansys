@@ -12,7 +12,7 @@ logging.disable(logging.DEBUG)
 class SchedulingTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.config = Config.objects.create(date_due=6)
+        cls.config = Config.objects.create()
 
         cls.start_date = correct_dates_to_due_day(datetime.date(2011, 1, 1))
         cls.mid_date = correct_dates_to_due_day(datetime.date(2012, 1, 1))

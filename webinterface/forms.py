@@ -11,101 +11,132 @@ import re
 
 pv_email = re.compile("(\S+)\.(\S+)@pvka\.de")
 
-class ConfigForm(forms.ModelForm):
+
+class ScheduleForm(forms.ModelForm):
     class Meta:
-        model = Config
-        fields = ('date_due', 'trust_in_users', 'starts_days_before_due', 'ends_days_after_due')
+        model = Schedule
+        exclude = ('slug',)
 
-    date_due = forms.ChoiceField(choices=Config.WEEKDAYS, initial=6,
-                                 label="Putztag: Wochentag, für den Putzdienste definiert sind.",
-                                 help_text="Dies ist nicht der Wochetag, bis den die Putzdienste gemacht sein müssen!")
-    trust_in_users = forms.BooleanField(required=False, label="Putzer können sich ohne Passwort einloggen.",
-                                        help_text="Eine Änderung dieses Feldes hat weitreichende Konsequenzen.")
+    name = forms.CharField(max_length=20, label="Putzplan Name", help_text="Der Name des Putzplans",
+                           required=True, widget=forms.TextInput)
 
-    starts_days_before_due = forms.IntegerField(
-        label="Putzdienste können so viele Tag vor dem Putztag gemacht werden.")
+    cleaners_per_date = forms.ChoiceField(choices=Schedule.CLEANERS_PER_DATE_CHOICES,
+                                          label="Anzahl der Putzer pro Woche",
+                                          help_text="Z.B. Bad braucht nur einen, Bar braucht zwei.",
+                                          required=True, initial=1)
 
-    ends_days_after_due = forms.IntegerField(
-        label="Putzdienste können so viele Tag nach dem Putztag gemacht werden.")
+    frequency = forms.ChoiceField(choices=Schedule.FREQUENCY_CHOICES, required=True, initial=1,
+                                  label="Häufigkeit der Putzdienste",
+                                  help_text="Wenn du zwei Putzdienste hast, die alle zwei Wochen dran sind, "
+                                            "aber nicht an gleichen Tagen, dann wähle bei einem 'Gerade Wochen' und "
+                                            "beim anderen 'Ungerade Wochen' aus.")
+
+    schedule_group = forms. \
+        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.enabled(),
+                                 widget=forms.CheckboxSelectMultiple,
+                                 label="Zugehörigkeit", required=False,
+                                 help_text="Wähle die Gruppe, zu der der Putzplan gehört.")
+
+    disabled = forms.BooleanField(label="Deaktivieren", required=False)
+
+    task_name = forms.CharField(max_length=20, label="Name der Aufgabe", required=False)
+
+    task_start_weekday = forms.ChoiceField(choices=Task.WEEKDAYS, required=False, initial=5,
+                                      label="Wochentag, an dem der Putzdienst angefangen werden kann.")
+    task_end_weekday = forms.ChoiceField(choices=Task.WEEKDAYS, required=False, initial=1,
+                                    label="Wochentag, bis dem der Putzdienst gemacht werden muss")
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        task_name = cleaned_data.get('task_name')
+        task_start_weekday = cleaned_data.get('task_start_weekday')
+        task_end_weekday = cleaned_data.get('task_end_weekday')
+
+        if task_name and not task_start_weekday or task_name and not task_end_weekday:
+            raise forms.ValidationError('Zu einer neuen Aufgabe muss ein Start- und ein Enddatum festgelegt sein!')
+
+        return cleaned_data
 
     def __init__(self, *args, **kwargs):
-        super(ConfigForm, self).__init__(*args, **kwargs)
+        initial = kwargs.get('initial', {})
+        if 'instance' in kwargs and kwargs['instance']:
+            initial['schedule_group'] = ScheduleGroup.objects.filter(schedules=kwargs['instance'])
+            kwargs['initial'] = initial
+
+        super().__init__(*args, **kwargs)
         self.helper = FormHelper()
+
         self.helper.layout = Layout(
-            'date_due', 'starts_days_before_due', 'ends_days_after_due',
-            Fieldset('Login-Verhalten', 'trust_in_users'),
+            'name',
+            'cleaners_per_date',
+            'frequency',
+            'schedule_group',
+            Accordion(
+                HTML('<h3>Aufgaben</h3>'),
+                AccordionGroup(
+                    '--- Neue Aufgabe erstellen ---',
+                    'task_name',
+                    'task_start_weekday',
+                    'task_end_weekday'
+                ),
+            ),
+            'disabled',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
+                 # TODO Add a save-and-keep-editing button or put it in Neue Aufgabe erstellen AccordionGroup
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
         )
 
-
-class AuthFormWithSubmit(AuthenticationForm):
-    def __init__(self, request=None, *args, **kwargs):
-        initial = kwargs.get('initial', {})
-        if 'username' in request.GET and request.GET['username']:
-            initial['username'] = request.GET['username']
-        kwargs['initial'] = initial
-        super().__init__(request, *args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'username',
-            'password',
-            Submit('login', 'Einloggen', css_class="btn btn-block"),
-        )
-
-        if 'username' in kwargs['initial']:
-            self.fields['username'].disabled = True
+        if 'instance' in kwargs and kwargs['instance']:
+            self.fields['frequency'].disabled = True
+            self.fields['cleaners_per_date'].disabled = True
+            for task in kwargs['instance'].task_set.all():
+                self.helper.layout.fields[4].append(
+                    AccordionGroup(
+                        task.name,
+                        HTML("<a class=\"btn btn-info\" href=\"{% url \'webinterface:task-edit\' "
+                             +str(task.pk)+" %}\" role=\"button\">"
+                             "<span class=\"glyphicon glyphicon-cog\"></span> Bearbeiten</a> "),
+                    ),
+                )
+        else:
+            self.helper.layout.fields[4][1] = HTML('Aufgaben können erst nach dem Speichern erstellt werden.')
 
 
-class AssignmentForm(forms.ModelForm):
+class ScheduleGroupForm(forms.ModelForm):
     class Meta:
-        model = Assignment
-        fields = ('cleaners_comment',)
+        model = ScheduleGroup
+        fields = '__all__'
 
-    cleaners_comment = forms.CharField(widget=forms.Textarea, max_length=200,
-                                       label="Kommentare, Auffälligkeiten, ... (speichern nicht vergessen)",
-                                       help_text="Max. 200 Zeichen",
-                                       required=False)
+    name = forms.CharField(max_length=30, label="Name der Putzplan-Gruppe",
+                           help_text="Dieser Name steht für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
+                                     "denen manche Bewohner angehören. Wenn du Putzer oder Pläne dieser Gruppe "
+                                     "hinzufügen möchtest, so tue dies in den entsprechenden Putzer- und "
+                                     "Putzplan-Änderungsformularen selbst. ",
+                           required=True, widget=forms.TextInput)
+
+    schedules = forms. \
+        ModelMultipleChoiceField(queryset=Schedule.objects.all(),
+                                 widget=forms.CheckboxSelectMultiple,
+                                 label="Putzpläne", required=False,
+                                 help_text="Wähle die Putzpläne, die dieser Gruppe angehören.")
+
+    disabled = forms.BooleanField(required=False, label="Deaktivieren")
 
     def __init__(self, *args, **kwargs):
-        super(AssignmentForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.helper = FormHelper()
 
         self.helper.layout = Layout(
-            Div('cleaners_comment'),
-            Submit('save_comment', 'Kommentar speichern', css_class="btn btn-block"),
-        )
-
-
-class ResultsForm(forms.Form):
-    start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Von TT.MM.YYYY")
-    end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Bis TT.MM.YYYY")
-
-    # show_deviations = forms.BooleanField(widget=forms.CheckboxInput, required=False,
-    #                                      label="Show average absolute deviations (not really important)")
-
-    def __init__(self, *args, **kwargs):
-        initial = kwargs.get('initial', {})
-
-        start_date = timezone.now().date() - datetime.timedelta(days=30)
-        end_date = start_date + datetime.timedelta(days=3*30)
-        initial['start_date'] = start_date.strftime('%d.%m.%Y')
-        initial['end_date'] = end_date.strftime('%d.%m.%Y')
-
-        kwargs['initial'] = initial
-
-        super(ResultsForm, self).__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'start_date',
-            'end_date',
-            HTML(
-                "<button class=\"btn btn-success\" type=\"submit\" name=\"save\" "
-                "style=\"margin:0.5em 0.5em 0.5em 1em\">"
-                "<span class=\"glyphicon glyphicon-chevron-right\"></span> Weiter</button> "),
-            HTML("<br>"),
+            'name',
+            'schedules',
+            'disabled',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> ")
         )
 
 
@@ -118,7 +149,7 @@ class CleanerForm(forms.ModelForm):
 
     email = forms.EmailField(label="Email des Putzers in der Form vorname.nachname@pvka.de")
 
-    schedule_group = forms.ModelChoiceField(queryset=ScheduleGroup.objects.active(),
+    schedule_group = forms.ModelChoiceField(queryset=ScheduleGroup.objects.enabled(),
                          label="Zugehörigkeit", help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
 
     schedule_group__action_date = forms.DateField(input_formats=['%d.%m.%Y'], required=True)
@@ -156,7 +187,7 @@ class CleanerForm(forms.ModelForm):
         if 'instance' in kwargs and kwargs['instance']:
             kwargs['initial'] = initial
 
-        super(CleanerForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.helper = FormHelper()
         self.helper.layout = Layout(
@@ -188,6 +219,7 @@ class CleanerForm(forms.ModelForm):
             self.fields['schedule_group__action_date'].label = "Der Putzer zieht zum TT.MM.YYYY um bzw. aus."
 
             for affiliation in kwargs['instance'].affiliation_set.all():
+                # TODO Mark each interval between Affiliations in warning color in which Cleaner was not living on the house
                 if affiliation.beginning < timezone.now().date() and affiliation.end < timezone.now().date():
                     edit_button = HTML(
                         '<a class=\"btn btn-info\" role=\"button\" disabled="disabled">'
@@ -241,7 +273,7 @@ class AffiliationForm(forms.ModelForm):
         return cleaned_data
 
     def __init__(self, *args, **kwargs):
-        super(AffiliationForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.helper = FormHelper()
         self.helper.layout = Layout(
@@ -254,112 +286,128 @@ class AffiliationForm(forms.ModelForm):
                  )
         )
 
+        # TODO to help prevent trying to set end after another's beginning, show max date that is allowed
+
         if 'instance' in kwargs and kwargs['instance']:
-            disable_group = False
             if kwargs['instance'].beginning < timezone.now().date():
                 self.fields['beginning'].disabled = True
-                disable_group = True
             if kwargs['instance'].end < timezone.now().date():
                 self.fields['end'].disabled = True
-                disable_group = True
 
             self.helper.layout.fields.insert(0, HTML("<h3>"+str(kwargs['instance'].group)+"</h3>"))
 
 
-
-
-class CleaningScheduleForm(forms.ModelForm):
+class TaskForm(forms.ModelForm):
     class Meta:
-        model = Schedule
-        exclude = ('slug',)
+        model = Task
+        exclude = ('schedule',)
 
-    name = forms.CharField(max_length=20, label="Putzplan Name", help_text="Der Name des Putzplans",
-                           required=True, widget=forms.TextInput)
+    name = forms.CharField(max_length=20, label="Name der Aufgabe")
 
-    cleaners_per_date = forms.ChoiceField(choices=Schedule.CLEANERS_PER_DATE_CHOICES,
-                                          label="Anzahl der Putzer pro Woche",
-                                          help_text="Z.B. Bad braucht nur einen, Bar braucht zwei.",
-                                          required=True, initial=1)
+    start_weekday = forms.ChoiceField(choices=Task.WEEKDAYS,
+                                      label="Wochentag, an dem der Putzdienst angefangen werden kann.")
+    end_weekday = forms.ChoiceField(choices=Task.WEEKDAYS,
+                                    label="Wochentag, bis dem der Putzdienst gemacht werden muss")
 
-    frequency = forms.ChoiceField(choices=Schedule.FREQUENCY_CHOICES, required=True, initial=1,
-                                  label="Häufigkeit der Putzdienste",
-                                  help_text="Wenn du zwei Putzdienste hast, die alle zwei Wochen dran sind, "
-                                            "aber nicht an gleichen Tagen, dann wähle bei einem 'Gerade Wochen' und "
-                                            "beim anderen 'Ungerade Wochen' aus.")
+    disabled = forms.BooleanField(label="Deaktiviert", required=False)
 
-    schedule_group = forms. \
-        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.active(),
-                                 widget=forms.CheckboxSelectMultiple,
-                                 label="Zugehörigkeit", required=False,
-                                 help_text="Wähle die Gruppe, zu der der Putzplan gehört.")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    tasks = forms.CharField(max_length=200, required=False, widget=forms.TextInput, label="Aufgaben des Putzdienstes",
-                            help_text="Trage hier die Aufgaben mit Komma getrennt ein. Aus Kosmetischen Gründen "
-                                      "empfehle ich dir, vor und nach dem Komma kein Leerzeichen zu lassen, also so: "
-                                      "Herd,Ofen,Oberflächen")
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'name',
+            'start_weekday',
+            'end_weekday',
+            'disabled',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:schedule-edit\' object.schedule.pk %}\" role=\"button\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
+                 )
+        )
 
-    disabled = forms.BooleanField(label="Deaktivieren", required=False)
+
+class AssignmentCleaningForm(forms.ModelForm):
+    class Meta:
+        model = Assignment
+        fields = ('cleaners_comment',)
+
+    cleaners_comment = forms.CharField(widget=forms.Textarea, max_length=200,
+                                       label="Kommentare, Auffälligkeiten, ... (speichern nicht vergessen)",
+                                       help_text="Max. 200 Zeichen",
+                                       required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+
+        self.helper.layout = Layout(
+            Div('cleaners_comment'),
+            Submit('save_comment', 'Kommentar speichern', css_class="btn btn-block"),
+        )
+
+
+class AuthFormWithSubmit(AuthenticationForm):
+    def __init__(self, request=None, *args, **kwargs):
+        initial = kwargs.get('initial', {})
+        if 'username' in request.GET and request.GET['username']:
+            initial['username'] = request.GET['username']
+        kwargs['initial'] = initial
+        super().__init__(request, *args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'username',
+            'password',
+            Submit('login', 'Einloggen', css_class="btn btn-block"),
+        )
+
+        if 'username' in kwargs['initial']:
+            self.fields['username'].disabled = True
+
+
+class ResultsForm(forms.Form):
+    start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Von TT.MM.YYYY")
+    end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Bis TT.MM.YYYY")
+
+    # show_deviations = forms.BooleanField(widget=forms.CheckboxInput, required=False,
+    #                                      label="Show average absolute deviations (not really important)")
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
-        if 'instance' in kwargs and kwargs['instance']:
-            initial['schedule_group'] = ScheduleGroup.objects.filter(schedules=kwargs['instance'])
-            kwargs['initial'] = initial
 
-        super(CleaningScheduleForm, self).__init__(*args, **kwargs)
+        start_date = timezone.now().date() - datetime.timedelta(days=30)
+        end_date = start_date + datetime.timedelta(days=3*30)
+        initial['start_date'] = start_date.strftime('%d.%m.%Y')
+        initial['end_date'] = end_date.strftime('%d.%m.%Y')
+
+        kwargs['initial'] = initial
+
+        super(ResultsForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
-
         self.helper.layout = Layout(
-            'name',
-            'cleaners_per_date',
-            'frequency',
-            'schedule_group',
-            'tasks',
-            'disabled',
-            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
-                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
+            'start_date',
+            'end_date',
+            HTML(
+                "<button class=\"btn btn-success\" type=\"submit\" name=\"save\" "
+                "style=\"margin:0.5em 0.5em 0.5em 1em\">"
+                "<span class=\"glyphicon glyphicon-chevron-right\"></span> Weiter</button> "),
+            HTML("<br>"),
         )
 
-        if 'instance' in kwargs and kwargs['instance']:
-            self.helper.layout.fields['frequency'].disabled = True
-            self.helper.layout.fields['cleaners_per_date'].disabled = True
 
 
-class CleaningScheduleGroupForm(forms.ModelForm):
-    class Meta:
-        model = ScheduleGroup
-        fields = '__all__'
 
-    name = forms.CharField(max_length=30, label="Name der Putzplan-Gruppe",
-                           help_text="Dieser Name steht für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
-                                     "denen manche Bewohner angehören. Wenn du Putzer oder Pläne dieser Gruppe "
-                                     "hinzufügen möchtest, so tue dies in den entsprechenden Putzer- und "
-                                     "Putzplan-Änderungsformularen selbst. ",
-                           required=True, widget=forms.TextInput)
 
-    schedules = forms. \
-        ModelMultipleChoiceField(queryset=Schedule.objects.all(),
-                                 widget=forms.CheckboxSelectMultiple,
-                                 label="Putzpläne", required=False,
-                                 help_text="Wähle die Putzpläne, die dieser Gruppe angehören.")
 
-    disabled = forms.BooleanField(required=False, label="Deaktivieren")
 
-    def __init__(self, *args, **kwargs):
-        super(CleaningScheduleGroupForm, self).__init__(*args, **kwargs)
-        self.helper = FormHelper()
 
-        self.helper.layout = Layout(
-            'name',
-            'schedules',
-            'disabled',
-            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
-                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> ")
-        )
+
+
+
+
+
+
 
 
 

@@ -96,14 +96,14 @@ Einstellungen
             </div>
             <div class="col-xs-12 col-sm-6">
                 <h2>Putzpläne
-                    <a class="btn btn-default" href="{% url 'webinterface:cleaning-schedule-new' %}" role="button">
+                    <a class="btn btn-default" href="{% url 'webinterface:schedule-new' %}" role="button">
                     <span class="glyphicon glyphicon-plus"></span> Neuer Putzplan</a></h2>
                 <div class="well">
                     <div class="row">
                         {% for schedule in active_schedule_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
                                 <a class="btn btn-primary btn-lg btn-block" role="button"
-                                   href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}">
+                                   href="{% url 'webinterface:schedule-edit' schedule.pk %}">
                                     <span class="glyphicon glyphicon-cog"></span> {{ schedule.name }}
                                 </a>
                             </div>
@@ -115,7 +115,7 @@ Einstellungen
                             {% for schedule in disabled_schedule_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
                                 <a class="btn btn-default btn-lg btn-block" role="button"
-                                   href="{% url 'webinterface:cleaning-schedule-edit' schedule.pk %}">
+                                   href="{% url 'webinterface:schedule-edit' schedule.pk %}">
                                     <span class="glyphicon glyphicon-cog"></span> {{ schedule.name }}
                                 </a>
                             </div>
@@ -125,7 +125,7 @@ Einstellungen
                 </div>
 
                 <h2>Putzplan-Gruppierungen
-                    <a class="btn btn-default" href="{% url 'webinterface:cleaning-schedule-group-new' %}"
+                    <a class="btn btn-default" href="{% url 'webinterface:schedule-group-new' %}"
                        role="button">
                     <span class="glyphicon glyphicon-plus"></span> Neue Putzplan-Gruppierung</a></h2>
                 <div class="well">
@@ -133,7 +133,7 @@ Einstellungen
                         {% for group in active_schedule_group_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
                                 <a class="btn btn-primary btn-lg btn-block" role="button" style="white-space: normal"
-                                   href="{% url 'webinterface:cleaning-schedule-group-edit' group.pk %}">
+                                   href="{% url 'webinterface:schedule-group-edit' group.pk %}">
                                     <span class="glyphicon glyphicon-cog"></span> {{ group.name }}
                                 </a>
                             </div>
@@ -145,7 +145,7 @@ Einstellungen
                             {% for group in disabled_schedule_group_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
                                 <a class="btn btn-default btn-lg btn-block" role="button"
-                                   href="{% url 'webinterface:cleaning-schedule-group-edit' group.pk %}">
+                                   href="{% url 'webinterface:schedule-group-edit' group.pk %}">
                                     <span class="glyphicon glyphicon-cog"></span> {{ group.name }}
                                 </a>
                             </div>
