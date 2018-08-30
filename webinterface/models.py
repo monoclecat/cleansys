@@ -85,7 +85,7 @@ class Schedule(models.Model):
     @param date1 First date of timeframe, will be corrected to the due-day
     @param date2 Second date of timeframe, will be corrected to the due-day
     @param mode Sets the mode of creation:
-    - 1: Delete existing Assignments in timeframe and create new Assignments throughout timeframe
+    - 1(default): Delete existing Assignments in timeframe and create new Assignments throughout timeframe
     - 2: Keep existing Assignments and only create new ones where there are none already
     - 3: Only reassign Assignments on existing CleaningDays, don't generate new CleaningDays
     """
@@ -120,35 +120,39 @@ class Schedule(models.Model):
         If the Schedule is not defined on date (see defined_on_date()), then this function fails silently."""
 
         corrected_date = correct_dates_to_due_day(date)
-        if self.defined_on_date(corrected_date):
-            cleaning_day, was_created = self.cleaningday_set.get_or_create(date=corrected_date)
-
-            ratios = self.deployment_ratios(corrected_date)
-
-            if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
-                logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'
-                              .format(self.name, corrected_date))
-                logging_text = "All cleaners' ratios: "
-                for cleaner, ratio in ratios:
-                    logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
-                logging.debug(logging_text)
-
-            if ratios and cleaning_day.assignment_set.count() < self.cleaners_per_date:
-                for cleaner, ratio in ratios:
-                    if cleaner.is_eligible_for_date(corrected_date) and cleaner not in cleaning_day.excluded.all():
-                        logging.debug("   {} inserted!".format(cleaner.name))
-                        return self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
-                    else:
-                        logging.debug("   {} already has {} duties today.".format(
-                            cleaner.name, cleaner.nr_assignments_on_day(corrected_date)))
-                else:
-                    logging.debug("   Cleaner's preferences result in no cleaner, we must choose {}"
-                                  .format(ratios[0][0]))
-                    return self.assignment_set.create(cleaner=ratios[0][0], cleaning_day=cleaning_day)
-            else:
-                return False
-        else:
+        if not self.defined_on_date(corrected_date):
+            logging.debug("Schedule is not defined for this day.")
             return False
+
+        cleaning_day, was_created = self.cleaningday_set.get_or_create(date=corrected_date)
+        if cleaning_day.assignment_set.count() >= self.cleaners_per_date:
+            logging.debug("All Cleaners for this date have already been found.")
+            return False
+
+        ratios = self.deployment_ratios(corrected_date)
+        if not ratios:
+            logging.debug("Ratios are not defined for this date.")
+            return False
+
+        if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
+            logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'
+                          .format(self.name, corrected_date))
+            logging_text = "All cleaners' ratios: "
+            for cleaner, ratio in ratios:
+                logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
+            logging.debug(logging_text)
+
+        for cleaner, ratio in ratios:
+            if cleaner.is_eligible_for_date(corrected_date) and cleaner not in cleaning_day.excluded.all():
+                logging.debug("   {} inserted!".format(cleaner.name))
+                return self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
+            else:
+                logging.debug("   {} already has {} duties today.".format(
+                    cleaner.name, cleaner.nr_assignments_on_day(corrected_date)))
+        else:
+            logging.debug("   Cleaner's preferences result in no cleaner, we must choose {}"
+                          .format(ratios[0][0]))
+            return self.assignment_set.create(cleaner=ratios[0][0], cleaning_day=cleaning_day)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
@@ -235,13 +239,11 @@ class Cleaner(models.Model):
             return None
 
     def all_assignments_during_affiliation_with_schedule(self, schedule):
-        affiliations_with_schedule = Affiliation.objects.filter(group__schedules=schedule)
         assignments_while_affiliated = Assignment.objects.none()
-        if affiliations_with_schedule.exists():
-            for affiliation in affiliations_with_schedule.all():
-                assignments_while_affiliated |= Assignment.objects.filter(
-                    cleaning_day__date__gte=affiliation.beginning, cleaning_day__date__lt=affiliation.end,
-                    cleaning_day__schedule=schedule)
+        for affiliation in self.affiliation_set.filter(group__schedules=schedule).all():
+            assignments_while_affiliated |= Assignment.objects.filter(
+                cleaning_day__date__gte=affiliation.beginning, cleaning_day__date__lt=affiliation.end,
+                cleaning_day__schedule=schedule)
         return assignments_while_affiliated
 
     def own_assignments_during_affiliation_with_schedule(self, schedule):
