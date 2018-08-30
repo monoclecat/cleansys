@@ -165,13 +165,13 @@ class CleanerView(TemplateView):
         today_corrected = correct_dates_to_due_day(timezone.now().date())
 
         assignments = Assignment.objects.filter(
-            cleaner=context['cleaner'], cleaning_day__date__gte=today_corrected - timezone.timedelta(days=7)).order_by('cleaning_day__date')
+            cleaner=context['cleaner'], cleaning_day__date__gte=today_corrected - timezone.timedelta(days=7))
 
         pagination = Paginator(assignments, 25)
         context['page'] = pagination.get_page(kwargs['page'])
 
         context['assignments_due_now'] = Assignment.objects.filter(
-            cleaner=context['cleaner'], cleaning_day__date=start_date)
+            cleaner=context['cleaner'], cleaning_day__date=today_corrected)
         if context['assignments_due_now']:
             context['can_start_assignments_due_now'] = \
                 datetime.date.today() >= context['assignments_due_now'].first().possible_start_date()
@@ -227,24 +227,11 @@ class DutySwitchView(DetailView):
 
 class LoginByClickView(LoginView):
     template_name = "webinterface/login_byclick.html"
-    extra_context = {'cleaner_list': Cleaner.objects.all()}
+    extra_context = {'cleaner_list': Cleaner.objects.active()}
 
     def post(self, request, *args, **kwargs):
-        form = self.get_form()
-        if form.is_valid():
-            if not Config.objects.first().trust_in_users:
-                url = HttpResponseRedirect(reverse("webinterface:login"))
-                get_vars = QueryDict(mutable=True)
-                if 'next' in request.GET and request.GET['next']:
-                    get_vars['next'] = request.GET['next']
-                if 'username' in request.POST and request.POST['username']:
-                    get_vars['username'] = request.POST['username']
-                url['Location'] += "?"+get_vars.urlencode(safe="/")
-                return url
-            else:
-                return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
+        print(request.POST)
+        return super().post(request, *args, **kwargs)
 
 
 class ResultsView(TemplateView):
@@ -270,8 +257,7 @@ class ResultsView(TemplateView):
         if 'options' in kwargs:
             results_kwargs['options'] = kwargs['options']
 
-        return HttpResponseRedirect(
-            reverse_lazy('webinterface:results', kwargs=results_kwargs))
+        return HttpResponseRedirect(reverse_lazy('webinterface:results', kwargs=results_kwargs))
 
     def get(self, request, *args, **kwargs):
         from_date = datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date()
@@ -279,7 +265,7 @@ class ResultsView(TemplateView):
 
         context = dict()
         context['assignments_by_schedule'] = list()
-        for schedule in Schedule.objects.all():
+        for schedule in Schedule.objects.enabled():
             context['assignments_by_schedule'].append(
                 schedule.assignment_set.filter(cleaning_day__date__range=(from_date, to_date)))
         return self.render_to_response(context)

@@ -192,11 +192,13 @@ class ScheduleGroup(models.Model):
 
 
 class CleanerQuerySet(models.QuerySet):
-    # def active(self):
-    #     return ???
-    #
-    # def inactive(self):
-    #     return ???
+    def active(self):
+        return self.filter(
+            affiliation__beginning__lte=timezone.now().date(), affiliation__end__gte=timezone.now().date())
+
+    def inactive(self):
+        return self.exclude(
+            affiliation__beginning__lte=timezone.now().date(), affiliation__end__gte=timezone.now().date())
 
     def no_slack_id(self):
         return self.filter(slack_id='')
@@ -213,7 +215,7 @@ class Cleaner(models.Model):
     """
     class Meta:
         ordering = ('name',)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=20, unique=True)
     slug = models.CharField(max_length=20, unique=True)
 
@@ -282,8 +284,8 @@ class Cleaner(models.Model):
             or self.preference == 3
 
     def delete(self, using=None, keep_parents=False):
-        self.user.delete()
         super().delete(using, keep_parents)
+        self.user.delete()
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
@@ -497,7 +499,7 @@ class Assignment(models.Model):
     tasks_cleaned = models.ManyToManyField(Task)
 
     class Meta:
-        ordering = ('cleaning_day__date',)
+        ordering = ('-cleaning_day__date',)
 
     def __str__(self):
         return "{}: {}, {} ".format(self.cleaning_day.schedule.name, self.cleaner.name,

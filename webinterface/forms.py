@@ -211,6 +211,7 @@ class CleanerForm(forms.ModelForm):
 
         if 'instance' in kwargs and kwargs['instance']:
             # We are in the UpdateView
+            self.fields['email'].initial = kwargs['instance'].user.email
             self.fields['schedule_group'].empty_label = "---Ausgezogen---"
             self.fields['schedule_group'].required = False
             if kwargs['instance'].is_active():
