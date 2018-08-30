@@ -8,8 +8,6 @@ logging.disable(logging.FATAL)
 
 
 class HelperFunctionsTest(TestCase):
-    # TODO Test that corrected days are still in same week
-
     def test__correct_dates_to_weekday__date_argument(self):
         self.assertEqual(correct_dates_to_weekday(datetime.date(2010, 2, 1), 3).weekday(), 3)
 
@@ -35,208 +33,39 @@ class HelperFunctionsTest(TestCase):
 class ScheduleTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        # Configuration
-        cls.reference_date = datetime.date(2010, 1, 8)
+        # Config
+        cls.reference_datetime = datetime.datetime(2010, 1, 8)
+        cls.reference_date = correct_dates_to_due_day(cls.reference_datetime.date())
+        cls.one_week = timezone.timedelta(days=7)
 
-        # Schedules
-        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=1)
-        # cls.even_week_schedule = Schedule.objects.create(name="even_week_schedule", cleaners_per_date=2, frequency=2)
-        cls.no_assignment_schedule = Schedule.objects.create(
-            name="no_assignment_schedule", cleaners_per_date=2, frequency=2)
+        # Schedule
+        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=3)
+        cls.no_assignment_schedule = Schedule.objects.create(name="no_assignment_sch", cleaners_per_date=2, frequency=2)
 
         # ScheduleGroup
         cls.group = ScheduleGroup.objects.create(name="group")
         cls.group.schedules.add(cls.schedule, cls.no_assignment_schedule)
 
-        # CleaningDays
-        start_date = correct_dates_to_due_day(datetime.date(2010, 1, 8))
-        one_week = timezone.timedelta(days=7)
-        cls.cleaning_day1 = CleaningDay.objects.create(date=start_date, schedule=cls.schedule)
-        cls.cleaning_day2 = CleaningDay.objects.create(date=start_date+one_week, schedule=cls.schedule)
-        cls.cleaning_day3 = CleaningDay.objects.create(date=start_date+2*one_week, schedule=cls.schedule)
-        cls.cleaning_day4 = CleaningDay.objects.create(date=start_date+3*one_week, schedule=cls.schedule)
-
         # Cleaners
         cls.cleaner1 = Cleaner.objects.create(name="cleaner1", preference=1)
         cls.cleaner2 = Cleaner.objects.create(name="cleaner2", preference=1)
-        cls.cleaner3 = Cleaner.objects.create(name="cleaner3", preference=1)
-
-        # Associations
-        cls.cl1_affiliation1 = Affiliation.objects.create(
-            cleaner=cls.cleaner1, group=cls.group, beginning=cls.cleaning_day1.date, end=cls.cleaning_day2.date)
-        cls.cl1_affiliation2 = Affiliation.objects.create(
-            cleaner=cls.cleaner1, group=cls.group, beginning=cls.cleaning_day3.date)
-
-        cls.cl2_affiliation1 = Affiliation.objects.create(
-            cleaner=cls.cleaner2, group=cls.group, beginning=cls.cleaning_day1.date)
-
-        cls.cl3_affiliation1 = Affiliation.objects.create(
-            cleaner=cls.cleaner3, group=cls.group, beginning=cls.cleaning_day1.date, end=cls.cleaning_day3.date)
-
-        # Assignments
-        cls.cd1_cl1_assignment = Assignment.objects.create(
-            cleaner=cls.cleaner1, schedule=cls.schedule, cleaning_day=cls.cleaning_day1)
-        cls.cd1_cl2_assignment = Assignment.objects.create(
-            cleaner=cls.cleaner2, schedule=cls.schedule, cleaning_day=cls.cleaning_day1)
-
-        cls.cd2_cl3_assignment = Assignment.objects.create(
-            cleaner=cls.cleaner3, schedule=cls.schedule, cleaning_day=cls.cleaning_day2)
-
-        cls.cd3_cl1_assignment = Assignment.objects.create(
-            cleaner=cls.cleaner1, schedule=cls.schedule, cleaning_day=cls.cleaning_day3)
-
-        cls.cd4_cl2_assignment = Assignment.objects.create(
-            cleaner=cls.cleaner2, schedule=cls.schedule, cleaning_day=cls.cleaning_day4)
-
-    def test__creation(self):
-        schedule = Schedule.objects.create()
-        self.assertIsInstance(schedule, Schedule)
-        self.assertEqual(schedule.slug, slugify(schedule.name))
-
-    def test__str(self):
-        self.assertEqual(self.schedule.__str__(), self.schedule.name)
-
-    def test__deployment_ratios__no_cleaners(self):
-        schedule = Schedule()
-        self.assertListEqual(schedule.deployment_ratios(self.reference_date), [])
-
-    def test__deployment_ratios__cleaners_have_no_assignments(self):
-        container = self.no_assignment_schedule.deployment_ratios(self.reference_date)
-
-        self.assertIn([self.cleaner1, 0], container)
-        self.assertIn([self.cleaner2, 0], container)
-        self.assertIn([self.cleaner3, 0], container)
-        self.assertEqual(len(container), 3)
-
-    def test__deployment_ratios(self):
-        self.assertListEqual(self.schedule.deployment_ratios(self.cleaning_day4.date),
-                             [[self.cleaner2, 2/5], [self.cleaner1, 2/4]])
-
-    def test__defined_on_date(self):
-        weekly_schedule = Schedule(frequency=1)
-        even_week_schedule = Schedule(frequency=2)
-        odd_week_schedule = Schedule(frequency=3)
-
-        even_week = datetime.date(2010, 2, 8)
-        odd_week = datetime.date(2010, 2, 1)
-
-        self.assertTrue(weekly_schedule.defined_on_date(even_week))
-        self.assertTrue(even_week_schedule.defined_on_date(even_week))
-        self.assertFalse(odd_week_schedule.defined_on_date(even_week))
-
-        self.assertFalse(even_week_schedule.defined_on_date(odd_week))
-        self.assertTrue(odd_week_schedule.defined_on_date(odd_week))
-
-    def test__new_cleaning_duties__keep_existing_assignments(self):
-        date1, date2 = correct_dates_to_due_day([datetime.date(2010, 1, 8), datetime.date(2010, 2, 8)])
-        one_week = timezone.timedelta(days=7)
-
-        with patch.object(Schedule, 'create_assignment') as mock_create_assignment:
-            mock_create_assignment.return_value = False
-            self.schedule.new_cleaning_duties(date2, date1, 2)
-            self.assertIn(self.cd1_cl1_assignment, self.schedule.assignment_set.all())
-            self.assertListEqual(mock_create_assignment.mock_calls,
-                                 [call(date1), call(date1+one_week), call(date1+2*one_week),
-                                  call(date1+3*one_week), call(date1+4*one_week)])
-
-    def test__new_cleaning_duties__clear_existing_assignments(self):
-        date1, date2 = correct_dates_to_due_day([datetime.date(2010, 1, 8), datetime.date(2010, 2, 8)])
-        one_week = timezone.timedelta(days=7)
-
-        with patch.object(Schedule, 'create_assignment') as mock_create_assignment:
-            mock_create_assignment.return_value = False
-            self.schedule.new_cleaning_duties(date2, date1, 1)
-            self.assertNotIn(self.cd1_cl1_assignment, self.schedule.assignment_set.all())
-            self.assertListEqual(mock_create_assignment.mock_calls,
-                                 [call(date1), call(date1 + one_week), call(date1 + 2 * one_week),
-                                  call(date1 + 3 * one_week), call(date1 + 4 * one_week)])
-
-    def test__create_assignment__not_defined_on_date(self):
-        even_week_schedule = Schedule(frequency=2)
-        odd_week = datetime.date(2010, 2, 15)
-        self.assertFalse(even_week_schedule.create_assignment(odd_week))
-
-    def test__create_assignment__no_ratios(self):
-        day = datetime.date(2010, 2, 15)
-        no_group_schedule = Schedule.objects.create(name="no_group_schedule", cleaners_per_date=1, frequency=1)
-        self.assertFalse(no_group_schedule.create_assignment(day))
-
-    def test__create_assignment__no_eligible_cleaner(self):
-        even_week = correct_dates_to_due_day(datetime.date(2010, 2, 22))
-        cleaning_day_to_assign = CleaningDay.objects.create(date=even_week, schedule=self.schedule)
-
-        # To test second part of eligibility check
-        cleaning_day_to_assign.excluded.add(self.cleaner2)
-
-        # To test first part of eligibility check
-        cleaner1_assignment = Assignment.objects.create(
-            cleaner=self.cleaner1, schedule=self.schedule, cleaning_day=cleaning_day_to_assign)
-
-        self.schedule.create_assignment(even_week)
-
-        assignment_set = self.schedule.assignment_set.\
-            filter(cleaning_day=cleaning_day_to_assign).exclude(pk=cleaner1_assignment.pk)
-        self.assertEqual(assignment_set.count(), 1)
-        self.assertEqual(assignment_set.first().cleaner, self.schedule.deployment_ratios(even_week)[0][0])
-        cleaning_day_to_assign.delete()
-
-    def test__create_assignment__eligible_cleaners(self):
-        even_week = correct_dates_to_due_day(datetime.date(2010, 2, 22))
-        cleaning_day_to_assign = CleaningDay.objects.create(date=even_week, schedule=self.schedule)
-
-        self.schedule.create_assignment(even_week)
-
-        self.assertEqual(cleaning_day_to_assign.assignment_set.count(), 1)
-        cleaning_day_to_assign.delete()
-
-
-class ScheduleGroupTest(TestCase):
-    def test__creation(self):
-        group = ScheduleGroup.objects.create()
-        self.assertIsInstance(group, ScheduleGroup)
-
-    def test__str(self):
-        group = ScheduleGroup(name="test")
-        self.assertEqual(group.__str__(), group.name)
-
-
-class CleanerManagerTest(TestCase):
-    def test__reset_passwords__users_are_trusted(self):
-        Cleaner.objects.create(name="bob")
-        with patch.object(Cleaner, "user") as mock_user:
-            Cleaner.objects.reset_passwords()
-            self.assertListEqual(mock_user.mock_calls, [call.set_password('bob')])
-
-
-class CleanerTest(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        # Config
-        cls.reference_date = correct_dates_to_due_day(datetime.date(2010, 1, 8))
-        cls.one_week = timezone.timedelta(days=7)
-
-        # Schedule
-        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=2)
-
-        # ScheduleGroup
-        cls.group = ScheduleGroup.objects.create(name="group")
-        cls.group.schedules.add(cls.schedule)
-
-        # Cleaners
-        cls.cleaner1 = Cleaner.objects.create(name="cleaner1")
-        cls.cleaner2 = Cleaner.objects.create(name="cleaner2")
+        cls.cleaner3 = Cleaner.objects.create(name="cleaner3")
 
         # CleaningDays
         cls.cleaning_day1 = CleaningDay.objects.create(
             date=correct_dates_to_due_day(cls.reference_date), schedule=cls.schedule)
         cls.cleaning_day2 = CleaningDay.objects.create(date=correct_dates_to_due_day(
-            cls.reference_date+cls.one_week), schedule=cls.schedule)
+            cls.reference_date + cls.one_week), schedule=cls.schedule)
+        cls.cleaning_day3 = CleaningDay.objects.create(date=correct_dates_to_due_day(
+            cls.reference_date + 2 * cls.one_week), schedule=cls.schedule)
 
         # Affiliations
         cls.cleaner1_affiliation = Affiliation.objects.create(
-            cleaner=cls.cleaner1, group=cls.group, beginning=cls.reference_date, end=cls.reference_date+2*cls.one_week)
+            cleaner=cls.cleaner1, group=cls.group, beginning=cls.reference_date,
+            end=cls.reference_date + 3 * cls.one_week)
         cls.cleaner2_affiliation = Affiliation.objects.create(
-            cleaner=cls.cleaner2, group=cls.group, beginning=cls.reference_date, end=cls.reference_date+2*cls.one_week)
+            cleaner=cls.cleaner2, group=cls.group, beginning=cls.reference_date,
+            end=cls.reference_date + 3 * cls.one_week)
 
         # Assignments
         cls.assignment1 = Assignment.objects.create(
@@ -255,6 +84,175 @@ class CleanerTest(TestCase):
         cls.pending_dutyswitch_request = DutySwitch.objects.create(status=1, source_assignment=cls.assignment1)
 
     def test__creation(self):
+        schedule = Schedule.objects.create()
+        self.assertIsInstance(schedule, Schedule)
+        self.assertEqual(schedule.slug, slugify(schedule.name))
+
+    def test__str(self):
+        self.assertEqual(self.schedule.__str__(), self.schedule.name)
+
+    def test__deployment_ratios__no_cleaners(self):
+        schedule = Schedule()
+        self.assertListEqual(schedule.deployment_ratios(self.reference_date), [])
+
+    def test__deployment_ratios__cleaners_have_no_assignments(self):
+        container = self.no_assignment_schedule.deployment_ratios(self.reference_date)
+
+        self.assertIn([self.cleaner1, 0], container)
+        self.assertIn([self.cleaner2, 0], container)
+        self.assertEqual(len(container), 2)
+
+    def test__deployment_ratios(self):
+        ratios = self.schedule.deployment_ratios(self.cleaning_day1.date)
+        self.assertIn([self.cleaner1, 1/4], ratios)
+        self.assertIn([self.cleaner2, 3/4], ratios)
+        self.assertEqual(len(ratios), 2)
+
+    def test__defined_on_date(self):
+        weekly_schedule = Schedule(frequency=1)
+        even_week_schedule = Schedule(frequency=2)
+        odd_week_schedule = Schedule(frequency=3)
+
+        even_week = datetime.date(2010, 2, 8)
+        odd_week = datetime.date(2010, 2, 1)
+
+        self.assertTrue(weekly_schedule.defined_on_date(even_week))
+        self.assertTrue(even_week_schedule.defined_on_date(even_week))
+        self.assertFalse(odd_week_schedule.defined_on_date(even_week))
+
+        self.assertFalse(even_week_schedule.defined_on_date(odd_week))
+        self.assertTrue(odd_week_schedule.defined_on_date(odd_week))
+
+    def test__new_cleaning_duties__keep_existing_assignments(self):
+        date1, date2 = [self.reference_date, self.reference_date + 4 * self.one_week]
+
+        with patch.object(Schedule, 'create_assignment', return_value=False) as mock_create_assignment:
+            self.schedule.new_cleaning_duties(date2, date1, 2)
+            new_assignment_set = self.schedule.assignment_set.all()
+            self.assertIn(self.assignment1, new_assignment_set)
+            self.assertIn(self.assignment2, new_assignment_set)
+            self.assertIn(self.assignment3, new_assignment_set)
+            self.assertIn(self.assignment4, new_assignment_set)
+
+            self.assertListEqual(mock_create_assignment.mock_calls,
+                                 [call(date1), call(date1 + self.one_week), call(date1 + 2 * self.one_week),
+                                  call(date1 + 3 * self.one_week), call(date1 + 4 * self.one_week)])
+
+    def test__new_cleaning_duties__clear_existing_assignments(self):
+        date1, date2 = [self.reference_date, self.reference_date + 4 * self.one_week]
+
+        with patch.object(Schedule, 'create_assignment', return_value=False) as mock_create_assignment:
+            self.schedule.new_cleaning_duties(date2, date1, 1)
+            new_assignment_set = self.schedule.assignment_set.all()
+            self.assertNotIn(self.assignment1, new_assignment_set)
+            self.assertNotIn(self.assignment2, new_assignment_set)
+            self.assertNotIn(self.assignment3, new_assignment_set)
+            self.assertNotIn(self.assignment4, new_assignment_set)
+            self.assertListEqual(mock_create_assignment.mock_calls,
+                                 [call(date1), call(date1 + self.one_week), call(date1 + 2 * self.one_week),
+                                  call(date1 + 3 * self.one_week), call(date1 + 4 * self.one_week)])
+
+    def test__new_cleaning_duties__only_reassign_existing(self):
+        date1, date2 = [self.reference_date, self.reference_date + 4 * self.one_week]
+
+        with patch.object(Schedule, 'create_assignment', return_value=False) as mock_create_assignment:
+            self.schedule.new_cleaning_duties(date2, date1, 3)
+            new_assignment_set = self.schedule.assignment_set.all()
+            self.assertNotIn(self.assignment1, new_assignment_set)
+            self.assertNotIn(self.assignment2, new_assignment_set)
+            self.assertNotIn(self.assignment3, new_assignment_set)
+            self.assertNotIn(self.assignment4, new_assignment_set)
+            self.assertListEqual(mock_create_assignment.mock_calls,
+                                 [call(date1), call(date1 + self.one_week)])
+
+    def test__create_assignment__not_defined_on_date(self):
+        even_week_schedule = Schedule(frequency=2)
+        odd_week = datetime.date(2010, 2, 15)
+        self.assertFalse(even_week_schedule.create_assignment(odd_week))
+
+    def test__create_assignment__no_ratios(self):
+        day = datetime.date(2010, 2, 15)
+        no_group_schedule = Schedule.objects.create(name="no_group_schedule", cleaners_per_date=1, frequency=1)
+        self.assertFalse(no_group_schedule.create_assignment(day))
+
+    def test__create_assignment__no_eligible_cleaner(self):
+        assignment = self.schedule.create_assignment(self.cleaning_day1.date)
+        self.assertEqual(assignment.cleaner, self.schedule.deployment_ratios(self.cleaning_day1.date)[0][0])
+
+    def test__create_assignment__all_cleaners_excluded(self):
+        self.cleaning_day1.excluded.add(self.cleaner1, self.cleaner2)
+        assignment = self.schedule.create_assignment(self.cleaning_day1.date)
+        self.assertEqual(assignment.cleaner, self.schedule.deployment_ratios(self.cleaning_day1.date)[0][0])
+
+    def test__create_assignment__eligible_cleaners(self):
+        assignment = self.schedule.create_assignment(self.cleaning_day2.date)
+        self.assertEqual(assignment.cleaner, self.cleaner1)
+        self.assertEqual(assignment.cleaning_day, self.cleaning_day2)
+
+
+class ScheduleGroupTest(TestCase):
+    def test__creation(self):
+        group = ScheduleGroup.objects.create()
+        self.assertIsInstance(group, ScheduleGroup)
+
+    def test__str(self):
+        group = ScheduleGroup(name="test")
+        self.assertEqual(group.__str__(), group.name)
+
+
+class CleanerTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Config
+        cls.reference_datetime = datetime.datetime(2010, 1, 8)
+        cls.reference_date = correct_dates_to_due_day(cls.reference_datetime.date())
+        cls.one_week = timezone.timedelta(days=7)
+
+        # Schedule
+        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=2)
+
+        # ScheduleGroup
+        cls.group = ScheduleGroup.objects.create(name="group")
+        cls.group.schedules.add(cls.schedule)
+
+        # Cleaners
+        cls.cleaner1 = Cleaner.objects.create(name="cleaner1", preference=1)
+        cls.cleaner2 = Cleaner.objects.create(name="cleaner2", preference=2)
+        cls.cleaner3 = Cleaner.objects.create(name="cleaner3")
+
+        # CleaningDays
+        cls.cleaning_day1 = CleaningDay.objects.create(
+            date=correct_dates_to_due_day(cls.reference_date), schedule=cls.schedule)
+        cls.cleaning_day2 = CleaningDay.objects.create(date=correct_dates_to_due_day(
+            cls.reference_date + cls.one_week), schedule=cls.schedule)
+        cls.cleaning_day3 = CleaningDay.objects.create(date=correct_dates_to_due_day(
+            cls.reference_date - cls.one_week), schedule=cls.schedule)
+
+        # Affiliations
+        cls.cleaner1_affiliation = Affiliation.objects.create(
+            cleaner=cls.cleaner1, group=cls.group, beginning=cls.reference_date, end=cls.reference_date+2*cls.one_week)
+        cls.cleaner2_affiliation = Affiliation.objects.create(
+            cleaner=cls.cleaner2, group=cls.group, beginning=cls.reference_date, end=cls.reference_date+2*cls.one_week)
+
+        # Assignments
+        cls.assignment1 = Assignment.objects.create(
+            cleaner=cls.cleaner1, schedule=cls.schedule, cleaning_day=cls.cleaning_day1)
+        cls.assignment2 = Assignment.objects.create(
+            cleaner=cls.cleaner2, schedule=cls.schedule, cleaning_day=cls.cleaning_day1)
+        cls.assignment3 = Assignment.objects.create(
+            cleaner=cls.cleaner2, schedule=cls.schedule, cleaning_day=cls.cleaning_day2)
+        cls.assignment4 = Assignment.objects.create(
+            cleaner=cls.cleaner2, schedule=cls.schedule, cleaning_day=cls.cleaning_day2)
+        cls.assignment_outside_of_affiliation = Assignment.objects.create(
+            cleaner=cls.cleaner2, schedule=cls.schedule, cleaning_day=cls.cleaning_day3)
+
+        # DutySwitch Requests
+        cls.rejected_dutyswitch = DutySwitch.objects.create(status=2, source_assignment=cls.assignment1)
+        cls.dutyswitch_request_received = DutySwitch.objects.create(source_assignment=cls.assignment2,
+                                                                    selected_assignment=cls.assignment1)
+        cls.pending_dutyswitch_request = DutySwitch.objects.create(status=1, source_assignment=cls.assignment1)
+
+    def test__creation(self):
         cleaner = Cleaner.objects.create(name="bob")
         self.assertIsInstance(cleaner, Cleaner)
         self.assertEqual(cleaner.slug, slugify(cleaner.name))
@@ -264,27 +262,50 @@ class CleanerTest(TestCase):
         self.assertEqual(cleaner.__str__(), cleaner.name)
 
     def test__current_affiliation__exists(self):
-        with patch.object(timezone, 'now') as mock_now:
-            mock_now.date = self.reference_date
-            print(timezone.now().date())
+        with patch.object(timezone, 'now', return_value=self.reference_datetime + self.one_week) as mock_now:
             self.assertEqual(self.cleaner1.current_affiliation(), self.cleaner1_affiliation)
 
     def test__current_affiliation__none(self):
-        with patch.object(timezone, "now") as mock_now:
-            mock_now.date().return_value = self.cleaner1_affiliation.end+self.one_week
+        with patch.object(timezone, 'now', return_value=self.reference_datetime - self.one_week) as mock_now:
             self.assertIsNone(self.cleaner1.current_affiliation())
 
     def test__all_assignments_during_affiliation_with_schedule(self):
-        pass
+        all_assignments = self.cleaner1.all_assignments_during_affiliation_with_schedule(self.schedule)
+
+        self.assertIn(self.assignment1, all_assignments)
+        self.assertIn(self.assignment2, all_assignments)
+        self.assertIn(self.assignment3, all_assignments)
+        self.assertIn(self.assignment4, all_assignments)
+        self.assertNotIn(self.assignment_outside_of_affiliation, all_assignments)
 
     def test__own_assignments_during_affiliation_with_schedule(self):
-        pass
+        assignments_cleaner1 = self.cleaner1.own_assignments_during_affiliation_with_schedule(self.schedule)
+        assignments_cleaner2 = self.cleaner2.own_assignments_during_affiliation_with_schedule(self.schedule)
+
+        self.assertIn(self.assignment1, assignments_cleaner1)
+        self.assertNotIn(self.assignment2, assignments_cleaner1)
+        self.assertNotIn(self.assignment3, assignments_cleaner1)
+        self.assertNotIn(self.assignment4, assignments_cleaner1)
+        self.assertNotIn(self.assignment_outside_of_affiliation, assignments_cleaner1)
+
+        self.assertNotIn(self.assignment1, assignments_cleaner2)
+        self.assertIn(self.assignment2, assignments_cleaner2)
+        self.assertIn(self.assignment3, assignments_cleaner2)
+        self.assertIn(self.assignment4, assignments_cleaner2)
+        self.assertNotIn(self.assignment_outside_of_affiliation, assignments_cleaner2)
 
     def test__deployment_ratio_for_schedule(self):
-        pass
+        cleaner1_ratio = self.cleaner1.deployment_ratio_for_schedule(self.schedule)
+        cleaner2_ratio = self.cleaner2.deployment_ratio_for_schedule(self.schedule)
+
+        self.assertEqual(cleaner1_ratio, 1/4)
+        self.assertEqual(cleaner2_ratio, 3/4)
 
     def test__is_active(self):
-        pass
+        with patch.object(timezone, 'now', return_value=self.reference_datetime + self.one_week) as mock_now:
+            self.assertTrue(self.cleaner1.is_active())
+        with patch.object(timezone, 'now', return_value=self.reference_datetime - self.one_week) as mock_now:
+            self.assertFalse(self.cleaner1.is_active())
 
     def test__rejected_dutyswitch_requests(self):
         rejected_dutyswitch_requests = self.cleaner1.rejected_dutyswitch_requests()
@@ -306,13 +327,18 @@ class CleanerTest(TestCase):
 
     def test__has_pending_requests(self):
         self.assertTrue(self.cleaner1.has_pending_requests())
-
-    def test__is_eligible_for_date(self):
-        pass
+        self.assertFalse(self.cleaner3.has_pending_requests())
 
     def test__nr_assignments_on_day(self):
-        self.assertEqual(self.cleaner1.nr_assignments_on_day(correct_dates_to_due_day(datetime.date(2010, 1, 8))), 1)
-        self.assertEqual(self.cleaner1.nr_assignments_on_day(correct_dates_to_due_day(datetime.date(2010, 1, 15))), 0)
+        self.assertEqual(self.cleaner1.nr_assignments_on_day(self.cleaning_day1.date), 1)
+        self.assertEqual(self.cleaner1.nr_assignments_on_day(self.cleaning_day2.date), 0)
+
+    def test__is_eligible_for_date(self):
+        self.assertFalse(self.cleaner1.is_eligible_for_date(self.cleaning_day1.date))
+        self.assertTrue(self.cleaner1.is_eligible_for_date(self.cleaning_day2.date))
+
+        self.assertTrue(self.cleaner2.is_eligible_for_date(self.cleaning_day1.date))
+        self.assertFalse(self.cleaner2.is_eligible_for_date(self.cleaning_day2.date))
 
     def test__delete(self):
         cleaner_to_delete = Cleaner.objects.create(name="cleaner_to_delete")
@@ -322,13 +348,17 @@ class CleanerTest(TestCase):
 
     def test__save__slug_changes(self):
         cleaner = Cleaner.objects.create(name="cleaner_original_slug")
-        Affiliation.objects.create(
-            cleaner=cleaner, group=self.group, beginning=datetime.date(2010, 1, 1), end=datetime.date(2010, 3, 1))
         cleaner.name = "cleaner_new_slug"
         with patch.object(User, "set_password") as mock_user_set_pw:
             cleaner.save()
             self.assertEqual(cleaner.user.username, cleaner.slug)
-            self.assertListEqual(mock_user_set_pw.mock_calls, [call('cleaner_new_slug')])
+            self.assertListEqual(mock_user_set_pw.mock_calls, [call(cleaner.slug)])
+
+    def test__save__new_slug(self):
+        cleaner = Cleaner.objects.create(name="new_cleaner")
+        self.assertTrue(User.objects.filter(username=cleaner.slug).exists())
+        user = User.objects.get(username=cleaner.slug)
+        self.assertTrue(User.objects.filter(username=cleaner.slug).first().check_password(cleaner.slug))
 
 
 class AffiliationTest(TestCase):
@@ -593,6 +623,7 @@ class DutySwitchTest(TestCase):
     def setUpTestData(cls):
         # Config
         cls.reference_date = correct_dates_to_due_day(datetime.date(2010, 1, 8))
+        cls.one_week = datetime.timedelta(days=7)
 
         # Schedule
         cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=2)
@@ -607,19 +638,21 @@ class DutySwitchTest(TestCase):
         cls.cleaner3 = Cleaner.objects.create(name="cleaner3", preference=1)
 
         # Affiliations
-        cls.cl1_assoc = Affiliation.objects.create(
-            cleaner=cls.cleaner1, group=cls.group, beginning=datetime.date(2010, 1, 1), end=datetime.date(2010, 3, 1))
-        cls.cl2_assoc = Affiliation.objects.create(
-            cleaner=cls.cleaner2, group=cls.group, beginning=datetime.date(2010, 1, 1), end=datetime.date(2010, 3, 1))
-        cls.cl3_assoc = Affiliation.objects.create(
-            cleaner=cls.cleaner3, group=cls.group, beginning=datetime.date(2010, 1, 1), end=datetime.date(2010, 3, 1))
+        cls.cl1_affil = Affiliation.objects.create(
+            cleaner=cls.cleaner1, group=cls.group, beginning=cls.reference_date,
+            end=cls.reference_date + 4 * cls.one_week)
+        cls.cl2_affil = Affiliation.objects.create(
+            cleaner=cls.cleaner2, group=cls.group, beginning=cls.reference_date,
+            end=cls.reference_date + 4 * cls.one_week)
+        cls.cl3_affil = Affiliation.objects.create(
+            cleaner=cls.cleaner3, group=cls.group, beginning=cls.reference_date,
+            end=cls.reference_date + 4 * cls.one_week)
 
         # CleaningDays
         cls.cleaning_day1 = CleaningDay.objects.create(date=cls.reference_date, schedule=cls.schedule)
-        cls.cleaning_day2 = CleaningDay.objects.create(
-            date=cls.reference_date + datetime.timedelta(days=7), schedule=cls.schedule)
+        cls.cleaning_day2 = CleaningDay.objects.create(date=cls.reference_date + cls.one_week, schedule=cls.schedule)
         cls.cleaning_day3 = CleaningDay.objects.create(
-            date=cls.reference_date + datetime.timedelta(days=14), schedule=cls.schedule)
+            date=cls.reference_date + 2 * cls.one_week, schedule=cls.schedule)
 
         # Assignments
         cls.assignment1 = Assignment.objects.create(
@@ -652,75 +685,62 @@ class DutySwitchTest(TestCase):
         self.assertIn(self.assignment1.cleaning_day.date.strftime('%d-%b-%Y'), string)
         self.assertIn(str(self.switch_1.status), string)
 
-    def test__filtered_destinations(self):
-        duty_switch = DutySwitch.objects.create(
-            source_assignment=self.assignment1, selected_assignment=self.assignment2)
-        duty_switch.destinations.add(self.assignment1, self.assignment2, self.assignment3)
-        self.assertListEqual(list(duty_switch.filtered_destinations()), [self.assignment3])
+    def test__destinations_without_source_and_selected(self):
+        self.switch_1_with_2.destinations.add(self.assignment1, self.assignment2, self.assignment3)
+        destinations = self.switch_1_with_2.destinations_without_source_and_selected()
+        self.assertNotIn(self.assignment1, destinations)
+        self.assertNotIn(self.assignment2, destinations)
+        self.assertIn(self.assignment3, destinations)
 
     def test__set_selected(self):
-        duty_switch = DutySwitch.objects.create(source_assignment=self.assignment1)
-        duty_switch.set_selected(self.assignment2)
-        self.assertEqual(duty_switch.selected_assignment, self.assignment2)
-        self.assertEqual(duty_switch.status, 1)
-
-    def test__selected_was_cancelled(self):
-        duty_switch = DutySwitch.objects.create(
-            source_assignment=self.assignment1, selected_assignment=self.assignment2, status=1)
-        duty_switch.selected_was_cancelled()
-        self.assertIsNone(duty_switch.selected_assignment)
-        self.assertEqual(duty_switch.status, 0)
-
-    def test__selected_was_rejected(self):
-        duty_switch = DutySwitch.objects.create(
-            source_assignment=self.assignment1, selected_assignment=self.assignment2, status=1)
-        duty_switch.selected_was_rejected()
-        self.assertIsNone(duty_switch.selected_assignment)
-        self.assertEqual(duty_switch.status, 2)
+        self.switch_1.set_selected(self.assignment2)
+        self.assertEqual(self.switch_1.selected_assignment, self.assignment2)
+        self.assertEqual(self.switch_1.status, 1)
 
     def test__selected_was_accepted(self):
-        reference_date = correct_dates_to_due_day(datetime.date(2010, 4, 1))
-        assignment1_date = reference_date
-        assignment2_date = reference_date + datetime.timedelta(days=7)
-        assignment3_date = reference_date + datetime.timedelta(days=14)
-
-        cleaning_day1 = CleaningDay.objects.create(date=assignment1_date, schedule=self.schedule)
-        cleaning_day2 = CleaningDay.objects.create(date=assignment2_date, schedule=self.schedule)
-        cleaning_day3 = CleaningDay.objects.create(date=assignment3_date, schedule=self.schedule)
-
-        assignment1 = Assignment.objects.create(
-            cleaner=self.cleaner1, schedule=self.schedule, cleaning_day=cleaning_day1)
-        assignment2 = Assignment.objects.create(
-            cleaner=self.cleaner2, schedule=self.schedule, cleaning_day=cleaning_day2)
-        assignment3 = Assignment.objects.create(
-            cleaner=self.cleaner3, schedule=self.schedule, cleaning_day=cleaning_day3)
-
         # On these the function selected_was_rejected() will be called
         assignment1__is__selected_assignment = DutySwitch.objects.create(
-            source_assignment=assignment3, selected_assignment=assignment1, status=1)
+            source_assignment=self.assignment3, selected_assignment=self.assignment1, status=1)
         assignment2__is__selected_assignment = DutySwitch.objects.create(
-            source_assignment=assignment3, selected_assignment=assignment2, status=1)
+            source_assignment=self.assignment3, selected_assignment=self.assignment2, status=1)
 
         # These will be deleted
-        assignment1__is__source_assignment = DutySwitch.objects.create(source_assignment=assignment1, status=0)
-        assignment2__is__source_assignment = DutySwitch.objects.create(source_assignment=assignment2, status=0)
+        assignment1__is__source_assignment = DutySwitch.objects.create(source_assignment=self.assignment1, status=0)
+        assignment2__is__source_assignment = DutySwitch.objects.create(source_assignment=self.assignment2, status=0)
 
-        duty_switch = DutySwitch.objects.create(source_assignment=assignment1, selected_assignment=assignment2)
+        old_assignment_1_date = self.assignment1.cleaning_day.date
+        old_assignment_2_date = self.assignment2.cleaning_day.date
 
-        duty_switch.selected_was_accepted()
+        dutyswitch = DutySwitch.objects.create(
+            source_assignment=self.assignment1, selected_assignment=self.assignment2, status=1)
+        dutyswitch.selected_was_accepted()
 
-        self.assertIn(assignment1.cleaner, cleaning_day1.excluded.all())
-        self.assertNotIn(assignment2.cleaner, cleaning_day1.excluded.all())
+        self.assertIn(self.assignment1.cleaner, self.cleaning_day1.excluded.all())
+        self.assertNotIn(self.assignment2.cleaner, self.cleaning_day1.excluded.all())
 
-        self.assertEqual(assignment1.cleaning_day.date, assignment2_date)
-        self.assertEqual(assignment2.cleaning_day.date, assignment1_date)
+        self.assertEqual(self.assignment1.cleaning_day.date, old_assignment_2_date)
+        self.assertEqual(self.assignment2.cleaning_day.date, old_assignment_1_date)
 
         self.assertEqual(DutySwitch.objects.get(pk=assignment1__is__selected_assignment.pk).status, 2)
         self.assertEqual(DutySwitch.objects.get(pk=assignment2__is__selected_assignment.pk).status, 2)
 
         self.assertFalse(DutySwitch.objects.filter(pk=assignment1__is__source_assignment.pk).exists())
         self.assertFalse(DutySwitch.objects.filter(pk=assignment2__is__source_assignment.pk).exists())
-        self.assertFalse(DutySwitch.objects.filter(pk=duty_switch.pk).exists())
+        self.assertFalse(DutySwitch.objects.filter(pk=self.switch_1_with_2.pk).exists())
+
+    def test__selected_was_cancelled(self):
+        dutyswitch = DutySwitch.objects.create(
+            source_assignment=self.assignment1, selected_assignment=self.assignment2, status=1)
+        dutyswitch.selected_was_cancelled()
+        self.assertIsNone(dutyswitch.selected_assignment)
+        self.assertEqual(dutyswitch.status, 0)
+
+    def test__selected_was_rejected(self):
+        dutyswitch = DutySwitch.objects.create(
+            source_assignment=self.assignment1, selected_assignment=self.assignment2, status=1)
+        dutyswitch.selected_was_rejected()
+        self.assertIsNone(dutyswitch.selected_assignment)
+        self.assertEqual(dutyswitch.status, 2)
 
     def test__look_for_destinations(self):
         # The reason cleaner1 can't switch with cleaner2 on cleaning_day2
@@ -737,10 +757,7 @@ class DutySwitchTest(TestCase):
 
         duty_switch = DutySwitch.objects.create(source_assignment=self.assignment1)
 
-        with patch.object(timezone, 'now') as mock_now:
-            mock_date = Mock()
-            mock_date.date.return_value = datetime.date(2010, 1, 1)
-            mock_now.return_value = mock_date
+        with patch.object(timezone, 'now', return_value=datetime.datetime(2010, 1, 1)) as mock_now:
             duty_switch.look_for_destinations()
 
         self.assertListEqual(list(duty_switch.destinations.all()), [destination])
