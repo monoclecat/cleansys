@@ -21,11 +21,15 @@ def correct_dates_to_weekday(days, weekday):
     if isinstance(days, list):
         corrected_days = []
         for day in days:
-            if day:
+            if isinstance(day, datetime.date):
+                # To prevent overflow of day over datetime.date.max
+                day = datetime.date(9999, 12, 26) if day > datetime.date(9999, 12, 26) else day
                 day += timezone.timedelta(days=weekday - day.weekday())
             corrected_days.append(day)
         return corrected_days
     elif isinstance(days, datetime.date):
+        # To prevent overflow of day over datetime.date.max
+        days = datetime.date(9999, 12, 26) if days > datetime.date(9999, 12, 26) else days
         return days + timezone.timedelta(days=weekday - days.weekday())
     return None
 
