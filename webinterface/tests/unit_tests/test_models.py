@@ -30,6 +30,24 @@ class HelperFunctionsTest(TestCase):
         self.assertIsNone(correct_dates_to_weekday("thisisnotadate", 6))
 
 
+class ScheduleQuerySetTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Schedule
+        cls.enabled = Schedule.objects.create(name="enabled", disabled=False)
+        cls.disabled = Schedule.objects.create(name="disabled", disabled=True)
+
+    def test__enabled(self):
+        enabled_schedules = Schedule.objects.enabled()
+        self.assertIn(self.enabled, enabled_schedules)
+        self.assertNotIn(self.disabled, enabled_schedules)
+
+    def test__disabled(self):
+        disabled_schedules = Schedule.objects.disabled()
+        self.assertIn(self.disabled, disabled_schedules)
+        self.assertNotIn(self.enabled, disabled_schedules)
+
+
 class ScheduleTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -165,10 +183,19 @@ class ScheduleTest(TestCase):
             self.assertListEqual(mock_create_assignment.mock_calls,
                                  [call(date1), call(date1 + self.one_week)])
 
+    def test__new_cleaning_duties__invalid_mode(self):
+        date1, date2 = [self.reference_date, self.reference_date + 4 * self.one_week]
+        with self.assertRaises(OperationalError):
+            self.schedule.new_cleaning_duties(date1, date2, mode=4)
+
     def test__create_assignment__not_defined_on_date(self):
         even_week_schedule = Schedule(frequency=2)
         odd_week = datetime.date(2010, 2, 15)
         self.assertFalse(even_week_schedule.create_assignment(odd_week))
+
+    def test__create_assignment__no_positions_to_fill(self):
+        Assignment.objects.create(cleaner=self.cleaner2, schedule=self.schedule, cleaning_day=self.cleaning_day1)
+        self.assertFalse(self.schedule.create_assignment(self.cleaning_day1.date))
 
     def test__create_assignment__no_ratios(self):
         day = datetime.date(2010, 2, 15)
@@ -188,6 +215,34 @@ class ScheduleTest(TestCase):
         assignment = self.schedule.create_assignment(self.cleaning_day2.date)
         self.assertEqual(assignment.cleaner, self.cleaner1)
         self.assertEqual(assignment.cleaning_day, self.cleaning_day2)
+
+    def test__save__cleaners_per_date__changes(self):
+        self.schedule.cleaners_per_date = 10
+        with self.assertRaises(OperationalError):
+            self.schedule.save()
+
+    def test__save__frequency__changes(self):
+        self.schedule.frequency = 10
+        with self.assertRaises(OperationalError):
+            self.schedule.save()
+
+
+class ScheduleGroupQuerySetTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # ScheduleGroup
+        cls.enabled = ScheduleGroup.objects.create(name="enabled", disabled=False)
+        cls.disabled = ScheduleGroup.objects.create(name="disabled", disabled=True)
+
+    def test__enabled(self):
+        enabled_groups = ScheduleGroup.objects.enabled()
+        self.assertIn(self.enabled, enabled_groups)
+        self.assertNotIn(self.disabled, enabled_groups)
+
+    def test__disabled(self):
+        disabled_groups = ScheduleGroup.objects.disabled()
+        self.assertNotIn(self.enabled, disabled_groups)
+        self.assertIn(self.disabled, disabled_groups)
 
 
 class ScheduleGroupTest(TestCase):
@@ -494,12 +549,13 @@ class CleaningDayTest(TestCase):
         cls.reference_date = correct_dates_to_due_day(datetime.date(2010, 1, 8))
         cls.schedule = Schedule.objects.create(name="schedule")
         cls.cleaning_day = CleaningDay.objects.create(date=cls.reference_date, schedule=cls.schedule)
-        cls.task1 = Task.objects.create(name="task1", schedule=cls.schedule, start_weekday=4, end_weekday=2)
-        cls.task2 = Task.objects.create(name="task2", schedule=cls.schedule)
+        cls.task1 = TaskTemplate.objects.create(
+            name="tasktemplate1", schedule=cls.schedule, start_days_before=1, end_days_after=2)
+        cls.task2 = TaskTemplate.objects.create(
+            name="tasktemplate2", schedule=cls.schedule, start_days_before=1, end_days_after=2)
         cls.cleaner = Cleaner.objects.create(name="cleaner")
         cls.assignment = Assignment.objects.create(
             cleaner=cls.cleaner, schedule=cls.schedule, cleaning_day=cls.cleaning_day)
-        cls.assignment.tasks_cleaned.add(cls.task1)
 
     def test__creation(self):
         cleaning_day = CleaningDay.objects.create(date=datetime.date(2010, 2, 8), schedule=self.schedule)
@@ -509,40 +565,25 @@ class CleaningDayTest(TestCase):
         self.assertIn(self.schedule.name, self.cleaning_day.__str__())
         self.assertIn(self.cleaning_day.date.strftime('%d-%b-%Y'), self.cleaning_day.__str__())
 
-    def test__cleaning_start_date(self):
-        self.assertEqual(self.cleaning_day.cleaning_start_date(),
-                         self.reference_date - datetime.timedelta(days=6-self.task1.start_weekday))
 
-    def test__cleaning_end_date(self):
-        self.assertEqual(self.cleaning_day.cleaning_end_date(),
-                         self.reference_date - datetime.timedelta(days=1 + self.task1.end_weekday))
-
-    def test__task_list(self):
-        with patch.object(timezone, 'now') as mock_now:
-            mock_date = Mock()
-            mock_date.date.return_value = self.reference_date - datetime.timedelta(days=2)
-            mock_now.return_value = mock_date
-            task_list = self.cleaning_day.task_list()
-            self.assertIn([self.task1, self.assignment, True], task_list)
-            self.assertIn([self.task2, None, False], task_list)
-
-
-class TaskQuerySetTest(TestCase):
+class TaskTemplateQuerySetTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.schedule = Schedule.objects.create(name="schedule")
-        cls.enabled_task = Task.objects.create(name="enabledtask", disabled=False, schedule=cls.schedule)
-        cls.disabled_task = Task.objects.create(name="disabledtask", disabled=True, schedule=cls.schedule)
+        cls.enabled_tasktemplate = TaskTemplate.objects.create(
+            name="enabled_tasktemplate", disabled=False, schedule=cls.schedule)
+        cls.disabled_tasktemplate = TaskTemplate.objects.create(
+            name="disabled_tasktemplate", disabled=True, schedule=cls.schedule)
 
     def test__enabled(self):
-        enabled_queryset = Task.objects.enabled()
-        self.assertIn(self.enabled_task, enabled_queryset)
-        self.assertNotIn(self.disabled_task, enabled_queryset)
+        enabled_queryset = TaskTemplate.objects.enabled()
+        self.assertIn(self.enabled_tasktemplate, enabled_queryset)
+        self.assertNotIn(self.disabled_tasktemplate, enabled_queryset)
 
     def test__disabled(self):
-        disabled_queryset = Task.objects.disabled()
-        self.assertNotIn(self.enabled_task, disabled_queryset)
-        self.assertIn(self.disabled_task, disabled_queryset)
+        disabled_queryset = TaskTemplate.objects.disabled()
+        self.assertNotIn(self.enabled_tasktemplate, disabled_queryset)
+        self.assertIn(self.disabled_tasktemplate, disabled_queryset)
 
 
 class TaskTest(TestCase):
@@ -553,12 +594,9 @@ class TaskTest(TestCase):
         cls.cleaning_day = CleaningDay.objects.create(date=cls.reference_date, schedule=cls.schedule)
 
     def test__creation(self):
-        task = Task.objects.create(name="task1", schedule=self.schedule)
+        task = Task.objects.create(name="task1", cleaning_day=self.cleaning_day, start_date=self.reference_date,
+                                   end_date=self.reference_date)
         self.assertIsInstance(task, Task)
-
-    def test__str(self):
-        task = Task(name="task1")
-        self.assertEqual(task.name, task.__str__())
 
 
 class AssignmentTest(TestCase):

@@ -41,20 +41,26 @@ class ScheduleForm(forms.ModelForm):
 
     task_name = forms.CharField(max_length=20, label="Name der Aufgabe", required=False)
 
-    task_start_weekday = forms.ChoiceField(choices=Task.WEEKDAYS, required=False, initial=5,
-                                      label="Wochentag, an dem der Putzdienst angefangen werden kann.")
-    task_end_weekday = forms.ChoiceField(choices=Task.WEEKDAYS, required=False, initial=1,
-                                    label="Wochentag, bis dem der Putzdienst gemacht werden muss")
+    task_start_days_before = forms.IntegerField(
+        required=False, initial=1, label="Kann bis so viele Tage vor dem gelisteten Tag gamacht werden.",
+        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 1 bedeuten, "
+                  "dass der Putzdienst ab Samstag gemacht werden kann")
+    task_end_days_after = forms.IntegerField(
+        required=False, initial=2, label="Kann bis so viele Tage nach dem gelisteten Tag gamacht werden.",
+        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 2 bedeuten, "
+                  "dass der Putzdienst bis Dienstag gemacht werden kann")
+    # TODO sum of both can't be more than 6
 
     def clean(self):
         cleaned_data = super().clean()
 
         task_name = cleaned_data.get('task_name')
-        task_start_weekday = cleaned_data.get('task_start_weekday')
-        task_end_weekday = cleaned_data.get('task_end_weekday')
+        task_start_days_before = cleaned_data.get('task_start_days_before')
+        task_end_days_after = cleaned_data.get('task_end_days_after')
 
-        if task_name and not task_start_weekday or task_name and not task_end_weekday:
-            raise forms.ValidationError('Zu einer neuen Aufgabe muss ein Start- und ein Enddatum festgelegt sein!')
+        if task_name and not task_start_days_before or task_name and not task_end_days_after:
+            raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
+                                        'die Aufgabe erledigt werden kann!')
 
         return cleaned_data
 
@@ -77,8 +83,8 @@ class ScheduleForm(forms.ModelForm):
                 AccordionGroup(
                     '--- Neue Aufgabe erstellen ---',
                     'task_name',
-                    'task_start_weekday',
-                    'task_end_weekday'
+                    'task_start_days_before',
+                    'task_end_days_after'
                 ),
             ),
             'disabled',
@@ -298,17 +304,24 @@ class AffiliationForm(forms.ModelForm):
             self.helper.layout.fields.insert(0, HTML("<h3>"+str(kwargs['instance'].group)+"</h3>"))
 
 
-class TaskForm(forms.ModelForm):
+class TaskTemplateForm(forms.ModelForm):
     class Meta:
-        model = Task
+        model = TaskTemplate
         exclude = ('schedule',)
 
     name = forms.CharField(max_length=20, label="Name der Aufgabe")
 
-    start_weekday = forms.ChoiceField(choices=Task.WEEKDAYS,
-                                      label="Wochentag, an dem der Putzdienst angefangen werden kann.")
-    end_weekday = forms.ChoiceField(choices=Task.WEEKDAYS,
-                                    label="Wochentag, bis dem der Putzdienst gemacht werden muss")
+    start_days_before = forms.IntegerField(required=False,
+                                           label="Kann bis so viele Tage vor dem gelisteten Tag gamacht werden.",
+                                           help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde "
+                                                     "eine 1 bedeuten, dass der Putzdienst ab Samstag gemacht "
+                                                     "werden kann")
+    end_days_after = forms.IntegerField(required=False, initial=1,
+                                        label="Kann bis so viele Tage nach dem gelisteten Tag gamacht werden.",
+                                        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde "
+                                                  "eine 2 bedeuten, dass der Putzdienst bis Dienstag gemacht "
+                                                  "werden kann")
+    # TODO sum of both can't be more than 6
 
     disabled = forms.BooleanField(label="Deaktiviert", required=False)
 
@@ -318,8 +331,8 @@ class TaskForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             'name',
-            'start_weekday',
-            'end_weekday',
+            'start_days_before',
+            'end_days_after',
             'disabled',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "

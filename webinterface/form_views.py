@@ -165,9 +165,9 @@ class AffiliationUpdateView(UpdateView):
         return HttpResponseRedirect(reverse_lazy('webinterface:cleaner-edit',kwargs={'pk': self.object.cleaner.pk}))
 
 
-class TaskUpdateView(UpdateView):
-    form_class = TaskForm
-    model = Task
+class TaskTemplateUpdateView(UpdateView):
+    form_class = TaskTemplateForm
+    model = TaskTemplate
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -212,7 +212,7 @@ class AssignmentCleaningView(UpdateView):
         if 'cleaned' in request.POST:
             try:
                 assignment = Assignment.objects.get(pk=kwargs['assignment_pk'])
-                task = Task.objects.get(pk=request.POST['task_pk'])
+                task = TaskTemplate.objects.get(pk=request.POST['task_pk'])
 
                 if task.cleaned_by:
                     if task.cleaned_by == assignment:
@@ -227,8 +227,8 @@ class AssignmentCleaningView(UpdateView):
                 task.save()
                 return HttpResponseRedirect(self.get_success_url())
 
-            except (Task.DoesNotExist, Assignment.DoesNotExist):
-                raise SuspiciousOperation("Task or Assignment does not exist.")
+            except (TaskTemplate.DoesNotExist, Assignment.DoesNotExist):
+                raise SuspiciousOperation("TaskTemplate or Assignment does not exist.")
         else:
             return super().post(args, kwargs)
 

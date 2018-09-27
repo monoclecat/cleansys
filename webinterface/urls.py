@@ -20,8 +20,7 @@ urlpatterns = [
     # path('putzer/<slug:slug>/seite<int:page>/', CleanerView.as_view(), name='cleaner'),
     path('du/seite<int:page>/', login_required(CleanerView.as_view()), name='cleaner'),
 
-    path('putzplaene/', login_required(ScheduleList.as_view()),
-         name='schedule-list'),
+    path('putzplaene/', login_required(ScheduleList.as_view()), name='schedule-list'),
 
     #path('putzplan/<slug:slug>/seite<int:page>/<slug:cleaner_slug>/', ScheduleView.as_view(),
     #     name='schedule-view-highlight'),
@@ -34,7 +33,6 @@ urlpatterns = [
                             'to_date': (timezone.now().date() + timezone.timedelta(days=3*30)).strftime('%d-%m-%Y')}))),
          name='results-now'),
 
-    path('results/<from_date>/<to_date>/<options>/', staff_member_required(ResultsView.as_view()), name='results'),
     path('results/<from_date>/<to_date>/', staff_member_required(ResultsView.as_view()), name='results'),
 
     path('schedule-new/', staff_member_required(ScheduleNewView.as_view()), name='schedule-new'),
@@ -53,7 +51,7 @@ urlpatterns = [
 
     path('affiliation-edit/<int:pk>/', staff_member_required(AffiliationUpdateView.as_view()), name='affiliation-edit'),
 
-    path('task-edit/<int:pk>/', staff_member_required(TaskUpdateView.as_view()), name='task-edit'),
+    path('task-edit/<int:pk>/', staff_member_required(TaskTemplateUpdateView.as_view()), name='task-edit'),
 
 
     path('login/', LoginView.as_view(template_name="webinterface/generic_form.html", extra_context={'title': "Login"},

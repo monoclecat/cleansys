@@ -147,7 +147,10 @@ class Schedule(models.Model):
             logging.debug(logging_text)
 
         for cleaner, ratio in ratios:
-            if cleaner.is_eligible_for_date(corrected_date) and cleaner not in cleaning_day.excluded.all():
+            if cleaner in cleaning_day.excluded.all():
+                logging.debug("   {} is excluded for this date".format(cleaner.name))
+                continue
+            if cleaner.is_eligible_for_date(corrected_date):
                 logging.debug("   {} inserted!".format(cleaner.name))
                 return self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
             else:
@@ -434,63 +437,18 @@ class CleaningDay(models.Model):
     def __str__(self):
         return "{}: {}".format(self.schedule.name, self.date.strftime('%d-%b-%Y'))
 
-    def cleaning_start_date(self):
-        can_start__days__prior = 6 - min(self.schedule.task_set.enabled().values_list('start_weekday', flat=True))
-        return self.date - datetime.timedelta(days=can_start__days__prior)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__previous_date = self.date
 
-    def cleaning_end_date(self):
-        can_end__days__after = 1 + max(self.schedule.task_set.enabled().values_list('end_weekday', flat=True))
-        return self.date - datetime.timedelta(days=can_end__days__after)
-
-    def task_list(self):
-        """
-        Returns a list of: [Task object, cleaned by Assignment, cleanable]
-        cleanable: today lies in the time window in which the Task can be cleaned
-        """
-        task_list = list()
-        for task in self.schedule.task_set.enabled():
-            temp_list = [task]
-
-            task_cleaned_by = self.assignment_set.filter(tasks_cleaned=task)
-            if task_cleaned_by.exists():
-                temp_list.append(task_cleaned_by.first())
-            else:
-                temp_list.append(None)
-
-            can_start__days__prior = 6 - task.start_weekday
-            can_start__days__after = 1 + task.end_weekday
-            start_date = self.date - timezone.timedelta(days=can_start__days__prior)
-            end_date = self.date + timezone.timedelta(days=can_start__days__after)
-            temp_list.append(start_date <= timezone.now().date() <= end_date)
-
-            task_list.append(temp_list)
-        return task_list
-
-
-class TaskQuerySet(models.QuerySet):
-    def enabled(self):
-        return self.filter(disabled=False)
-
-    def disabled(self):
-        return self.filter(disabled=True)
-
-
-class Task(models.Model):
-    WEEKDAYS = ((0, 'Montag'), (1, 'Dienstag'), (2, 'Mittwoch'), (3, 'Donnerstag'), (4, 'Freitag'),
-                (5, 'Samstag'), (6, 'Sonntag'))
-    name = models.CharField(max_length=20)
-
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
-
-    start_weekday = models.IntegerField(choices=WEEKDAYS, default=5)
-    end_weekday = models.IntegerField(choices=WEEKDAYS, default=1)
-
-    disabled = models.BooleanField(default=False)
-
-    objects = TaskQuerySet.as_manager()
-
-    def __str__(self):
-        return self.name
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        if self.date != self.__previous_date:
+            date_difference = self.__previous_date - self.date
+            for task in self.task_set.all():
+                task.start_date -= date_difference
+                task.end_date -= date_difference
+                task.save()
+        super().save(force_insert, force_update, using, update_fields)
 
 
 class Assignment(models.Model):
@@ -500,7 +458,6 @@ class Assignment(models.Model):
 
     cleaning_day = models.ForeignKey(CleaningDay, on_delete=models.CASCADE)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
-    tasks_cleaned = models.ManyToManyField(Task)
 
     class Meta:
         ordering = ('-cleaning_day__date',)
@@ -521,6 +478,69 @@ class Assignment(models.Model):
             return duty_switch.first()
         else:
             return None
+
+
+class TaskBase(models.Model):
+    name = models.CharField(max_length=20)
+    help_text = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.name
+
+
+class TaskTemplateQuerySet(models.QuerySet):
+    def enabled(self):
+        return self.filter(disabled=False)
+
+    def disabled(self):
+        return self.filter(disabled=True)
+
+
+class TaskTemplate(TaskBase):
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+    disabled = models.BooleanField(default=False)
+
+    objects = TaskTemplateQuerySet.as_manager()
+
+    start_days_before = models.IntegerField(default=1)
+    end_days_after = models.IntegerField(default=2)
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        if self.start_days_before + self.end_days_after > 6:
+            raise OperationalError("The sum of start_days_before and end_days_after cannot be greater 6!")
+        super().save(force_insert, force_update, using, update_fields)
+
+
+class TaskQuerySet(models.QuerySet):
+    def expired_tasks(self):
+        self.filter(end_date__lte=timezone.now().date())
+
+    def expired_uncleaned_tasks(self):
+        self.expired_tasks().filter(cleaned_by__isnull=True)
+
+    def active_tasks(self):
+        self.filter(start_date__lte=timezone.now().date(), end_date__gte=timezone.now().date())
+
+
+class TaskManager(models.Manager):
+    def create_from_template(self, template, **kwargs):
+        if 'name' not in kwargs:
+            kwargs['name'] = template.name
+        if 'help_text' not in kwargs:
+            kwargs['help_text'] = template.help_text
+        kwargs['start_date'] = kwargs['cleaning_day'] - timezone.timedelta(days=template.start_days_before)
+        kwargs['end_date'] = kwargs['cleaning_day'] + timezone.timedelta(days=template.end_days_after)
+        self.create(**kwargs)
+
+
+class Task(TaskBase):
+    cleaning_day = models.ForeignKey(CleaningDay, on_delete=models.CASCADE)
+    cleaned_by = models.ForeignKey(Assignment, null=True, on_delete=models.SET_NULL)
+
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    objects = TaskManager.from_queryset(TaskQuerySet)()
 
 
 class DutySwitch(models.Model):

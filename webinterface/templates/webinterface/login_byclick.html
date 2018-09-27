@@ -8,7 +8,7 @@ Login
     <h3>Hallo Fremder, wer bist du?</h3>
     <div class="row">
         {% for cleaner in cleaner_list %}
-            <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
+            <div class="col-xs-6 col-sm-4" style="padding: 5px">
                 <form method="POST">
                     {% csrf_token %}
                     <input type="hidden" name="username" value="{{ cleaner.slug }}">

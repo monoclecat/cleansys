@@ -98,11 +98,13 @@ class ScheduleList(ListView):
     model = Schedule
 
     def get(self, request, *args, **kwargs):
-        try:
-            self.queryset = Cleaner.objects.get(user=request.user).schedule_group.schedules.all()
-        except Cleaner.DoesNotExist:
-            logging.error("A logged in User, which is not an admin, is not associated to a Cleaner!")
-            return Http404("Putzer existiert nicht")
+        if request.user.is_superuser:
+            self.queryset = Schedule.objects.enabled()
+        else:
+            try:
+                self.queryset = Cleaner.objects.get(user=request.user).schedule_group.schedules.enabled()
+            except Cleaner.DoesNotExist:
+                return Http404("Putzer existiert nicht")
         return super().get(request, *args, **kwargs)
 
 
@@ -143,13 +145,11 @@ class CleanerView(TemplateView):
             kwargs={'slug': kwargs['slug'], 'page': kwargs['page']}))
 
     def get(self, request, *args, **kwargs):
+        if request.user.is_superuser:
+            return HttpResponseRedirect(reverse_lazy('webinterface:config'))
         try:
             cleaner = Cleaner.objects.get(user=request.user)
         except Cleaner.DoesNotExist:
-            if request.user.is_superuser:
-                return HttpResponseRedirect(reverse_lazy(
-                    'webinterface:config'))
-            logging.error("A logged in User, which is not an admin, is not associated to a Cleaner!")
             return Http404("Putzer existiert nicht")
 
         if 'page' not in kwargs or int(kwargs['page']) <= 0:
@@ -165,16 +165,11 @@ class CleanerView(TemplateView):
         today_corrected = correct_dates_to_due_day(timezone.now().date())
 
         assignments = Assignment.objects.filter(
-            cleaner=context['cleaner'], cleaning_day__date__gte=today_corrected - timezone.timedelta(days=7))
+            cleaner=context['cleaner'], cleaning_day__date__gte=today_corrected - timezone.timedelta(days=7)).\
+            order_by('cleaning_day__date')
 
         pagination = Paginator(assignments, 25)
         context['page'] = pagination.get_page(kwargs['page'])
-
-        context['assignments_due_now'] = Assignment.objects.filter(
-            cleaner=context['cleaner'], cleaning_day__date=today_corrected)
-        if context['assignments_due_now']:
-            context['can_start_assignments_due_now'] = \
-                datetime.date.today() >= context['assignments_due_now'].first().possible_start_date()
 
         return self.render_to_response(context)
 
@@ -244,7 +239,7 @@ class ResultsView(TemplateView):
             mode = 2
 
         time_start = timeit.default_timer()
-        for schedule in Schedule.objects.all():
+        for schedule in Schedule.objects.enabled():
             schedule.new_cleaning_duties(
                 datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date(),
                 datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date(),
