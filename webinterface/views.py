@@ -81,14 +81,17 @@ class ScheduleView(TemplateView):
         except Schedule.DoesNotExist:
             Http404("Putzplan existiert nicht.")
 
-        last_date = context['schedule'].assignment_set.filter(cleaning_day__date__lte=timezone.now().date())
-        next_dates = context['schedule'].assignment_set.filter(
-            cleaning_day__date__gte=timezone.now().date())
+        four_weeks = timezone.timedelta(days=21)
+        cleaning_dates = context['schedule'].cleaningday_set.with_assignments().filter(
+            date__gte=timezone.now().date() - four_weeks).order_by('date')
 
-        assignments = list(last_date)[-1:] + list(next_dates)
-
-        pagination = Paginator(assignments, 30*context['schedule'].cleaners_per_date)
+        pagination = Paginator(cleaning_dates, 30)
         context['page'] = pagination.get_page(kwargs['page'])
+
+        try:
+            context['highlighted_cleaner'] = Cleaner.objects.get(user=request.user)
+        except Cleaner.DoesNotExist:
+            pass
 
         return self.render_to_response(context)
 
@@ -102,9 +105,13 @@ class ScheduleList(ListView):
             self.queryset = Schedule.objects.enabled()
         else:
             try:
-                self.queryset = Cleaner.objects.get(user=request.user).schedule_group.schedules.enabled()
+                current_affiliation = Cleaner.objects.get(user=request.user).current_affiliation()
+                if current_affiliation:
+                    self.queryset = current_affiliation.group.schedules.enabled()
+                else:
+                    return Http404("Putzer ist nicht aktiv.")
             except Cleaner.DoesNotExist:
-                return Http404("Putzer existiert nicht")
+                return Http404("Putzer existiert nicht!")
         return super().get(request, *args, **kwargs)
 
 

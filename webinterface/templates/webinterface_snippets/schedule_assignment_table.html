@@ -1,29 +1,53 @@
 <table class="table table-striped" style="margin-bottom: 0">
     <tr>
+        <td><span class="glyphicon glyphicon-info-sign"></span></td>
         <td><span class="glyphicon glyphicon-calendar"></span> Datum</td>
         <td><span class="glyphicon glyphicon-user"></span> Putzer</td>
-        {% if page and page.0.schedule.cleaners_per_date > 1 %}
-            <td></td>
-        {% endif %}
     </tr>
-    {% for assignment in page %}
-        {% ifchanged assignment.cleaning_day.date %}
-            {% if not forloop.first %}
-                </tr>
-            {% endif %}
-            <tr>
-            <td>{{ assignment.cleaning_day.date }}</td>
-        {% endifchanged %}
-        <td {% if highlighted_cleaner in assignment.cleaners_on_date_for_schedule.all %}
-                class="success" {% endif %}>
-            {% if request.user.is_superuser %}
-                <a href="#">{{ assignment.cleaner.name }}</a>
-            {% else %}
-                {{ assignment.cleaner.name }}
-            {% endif %}
-        </td>
-        {% if forloop.last %}
-            </tr>
-        {% endif %}
+
+    {% for cleaning_day in page %}
+        {% if cleaning_day. %}
+        <tr>
+            <td>
+                <div class="dropdown">
+                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                    <span class="glyphicon glyphicon-info-sign"></span></button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                    <style>
+                        .dropdown ul li {
+                            margin: 0 0.5em
+                        }
+                    </style>
+                        <li>Geputzt</li>
+                        {% for task in cleaning_day.task_set.cleaned %}
+
+                        {% empty %}
+                            <li><i>Noch nichts.</i></li>
+                        {% endfor %}
+
+                        <li role="separator" class="divider"></li>
+
+                        <li>Offene Aufgaben</li>
+                        {% for task in cleaning_day.task_set.cleaned %}
+                        {% empty %}
+                            <li><i>Noch nichts.</i></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </td>
+
+            <td>{{ cleaning_day.date }}</td>
+            <td>
+                {% for assignment in cleaning_day.assignment_set.all %}
+                    {% if request.user.is_superuser %}
+                        <a href="#">{{ assignment.cleaner.name }}</a>
+                    {% else %}
+                        {{ assignment.cleaner.name }}
+                    {% endif %}
+                    {% if not forloop.last %}& {% endif %}
+                {% endfor %}
+            </td>
+        </tr>
     {% endfor %}
 </table>

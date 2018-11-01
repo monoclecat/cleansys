@@ -98,7 +98,7 @@ class ScheduleForm(forms.ModelForm):
         if 'instance' in kwargs and kwargs['instance']:
             self.fields['frequency'].disabled = True
             self.fields['cleaners_per_date'].disabled = True
-            for task in kwargs['instance'].task_set.all():
+            for task in kwargs['instance'].tasktemplate_set.all():
                 self.helper.layout.fields[4].append(
                     AccordionGroup(
                         task.name,
@@ -266,7 +266,7 @@ class CleanerForm(forms.ModelForm):
 class AffiliationForm(forms.ModelForm):
     class Meta:
         model = Affiliation
-        exclude = ('cleaner','group')
+        exclude = ('cleaner', 'group')
 
     beginning = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Beginn der Zugehörigkeit")
     end = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Ende der Zugehörigkeit")
@@ -321,9 +321,28 @@ class TaskTemplateForm(forms.ModelForm):
                                         help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde "
                                                   "eine 2 bedeuten, dass der Putzdienst bis Dienstag gemacht "
                                                   "werden kann")
-    # TODO sum of both can't be more than 6
+
+    help_text = forms.CharField(required=False, widget=forms.Textarea, max_length=100,
+                                label="Hilfetext", help_text="Gib dem Putzer Tipps, um die Aufgabe schnell und "
+                                                             "effektiv machen zu können.")
 
     disabled = forms.BooleanField(label="Deaktiviert", required=False)
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        name = cleaned_data.get('name')
+        start_days_before = cleaned_data.get('start_days_before')
+        end_days_after = cleaned_data.get('end_days_after')
+
+        if name and not start_days_before or name and not end_days_after:
+            raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
+                                        'die Aufgabe erledigt werden kann!', code='incomplete_inputs')
+        if start_days_before + end_days_after > 6:
+            raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
+                                        'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
+
+        return cleaned_data
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -333,6 +352,7 @@ class TaskTemplateForm(forms.ModelForm):
             'name',
             'start_days_before',
             'end_days_after',
+            'help_text',
             'disabled',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "

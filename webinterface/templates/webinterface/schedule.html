@@ -13,32 +13,6 @@
         </div>
     </div>
 
-    <div class="panel panel-info">
-        <div class="panel-heading">
-            <h3 class="panel-title">Putzdienst vom {{ schedule.get_active_assignments.first.cleaning_day.date }}</h3>
-        </div>
-        <div class="panel-body">
-            Schon geputzt:
-            <ul style="list-style: none;">
-            {% for task in schedule.get_current_cleaning_day.done_tasks %}
-               <li><span class="glyphicon glyphicon-check"></span> {{ task.name }}
-                   <span class="glyphicon glyphicon-resize-horizontal"></span>
-                   <span class="glyphicon glyphicon-user"></span>
-                   {{ task.cleaned_by.cleaner.name }}</li>
-            {% endfor %}
-            </ul>
-            Noch nicht geputzt:
-            <ul style="list-style: none;">
-            {% for task in schedule.get_current_cleaning_day.open_tasks %}
-                <li><span class="glyphicon glyphicon-unchecked"></span> {{ task.name }}</li>
-            {% endfor %}
-            </ul>
-        </div>
-        <div class="panel-footer">
-            <p><i>Kontaktiere den XXX im Beschwerdefall direkt.</i></p>
-        </div>
-    </div>
-
     <div class="row">
         <div class="panel panel-primary" style="margin-bottom: 0">
             <div class="panel-heading">

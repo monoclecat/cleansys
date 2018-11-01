@@ -165,7 +165,7 @@ class Schedule(models.Model):
         self.slug = slugify(self.name)
         super(Schedule, self).save(force_insert, force_update, using, update_fields)
 
-        if self.cleaners_per_date != self.__last_cleaners_per_date or self.frequency != self.__last_frequency:
+        if self.pk and (self.cleaners_per_date != self.__last_cleaners_per_date or self.frequency != self.__last_frequency):
             raise OperationalError("cleaners_per_date and frequency cannot be changed!")
 
 
@@ -244,7 +244,7 @@ class Cleaner(models.Model):
             current_affiliation = self.affiliation_set.get(
                 beginning__lte=timezone.now().date(), end__gt=timezone.now().date())
             return current_affiliation
-        except:
+        except Affiliation.DoesNotExist:
             return None
 
     def all_assignments_during_affiliation_with_schedule(self, schedule):
@@ -335,7 +335,7 @@ class Affiliation(models.Model):
     class Meta:
         ordering = ('-end',)
         unique_together = ('beginning', 'cleaner')
-    # TODO Make sure affiliations for a cleaner do NOT overlap in time!
+
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE)
 
@@ -426,6 +426,16 @@ class Affiliation(models.Model):
                 schedule.new_cleaning_duties(interval_start, interval_end, 3)
 
 
+class CleaningDayQuerySet(models.QuerySet):
+    def with_assignments(self):
+        # We MUST use exclude here because filtering for __isnull=False will cause each CleaningDay to be as often
+        # in the QuerySet as it has Assignments in its assignment_set
+        return self.exclude(assignment__isnull=True)
+
+    def no_assignments(self):
+        return self.filter(assignment__isnull=True)
+
+
 class CleaningDay(models.Model):
     class Meta:
         ordering = ('-date',)
@@ -434,6 +444,8 @@ class CleaningDay(models.Model):
     excluded = models.ManyToManyField(Cleaner)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
 
+    objects = CleaningDayQuerySet.as_manager()
+
     def __str__(self):
         return "{}: {}".format(self.schedule.name, self.date.strftime('%d-%b-%Y'))
 
@@ -441,7 +453,21 @@ class CleaningDay(models.Model):
         super().__init__(*args, **kwargs)
         self.__previous_date = self.date
 
+    def has_tasks(self):
+        return self.task_set.exists()
+
+    def is_active(self):
+        return self.task_set.active().exists()
+
+    def is_passed(self):
+        return self.has_tasks() and not self.task_set.in_future().exists() and not self.is_active()
+
+    def is_in_future(self):
+        return self.task_set.in_future().exists() and not self.is_active()
+
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        # TODO When created, populate task_set
+
         if self.date != self.__previous_date:
             date_difference = self.__previous_date - self.date
             for task in self.task_set.all():
@@ -510,16 +536,36 @@ class TaskTemplate(TaskBase):
             raise OperationalError("The sum of start_days_before and end_days_after cannot be greater 6!")
         super().save(force_insert, force_update, using, update_fields)
 
+        # TODO when newly created or changed, update tasks of upcoming CleaningDays
+
 
 class TaskQuerySet(models.QuerySet):
-    def expired_tasks(self):
-        self.filter(end_date__lte=timezone.now().date())
+    def cleaned(self):
+        return self.filter(cleaned_by__isnull=True)
 
-    def expired_uncleaned_tasks(self):
-        self.expired_tasks().filter(cleaned_by__isnull=True)
+    def uncleaned(self):
+        return self.exclude(cleaned_by__isnull=True)
 
-    def active_tasks(self):
-        self.filter(start_date__lte=timezone.now().date(), end_date__gte=timezone.now().date())
+    def expired(self):
+        return self.filter(end_date__lte=timezone.now().date())
+
+    def expired_uncleaned(self):
+        return self.expired().filter(cleaned_by__isnull=True)
+
+    def expired_cleaned(self):
+        return self.expired().exclude(cleaned_by__isnull=True)
+
+    def active(self):
+        return self.filter(start_date__lte=timezone.now().date(), end_date__gte=timezone.now().date())
+
+    def active_uncleaned(self):
+        return self.active().filter(cleaned_by__isnull=True)
+
+    def active_cleaned(self):
+        return self.active().exclude(cleaned_by__isnull=True)
+
+    def in_future(self):
+        return self.filter(start_date__gt=timezone.now().date())
 
 
 class TaskManager(models.Manager):

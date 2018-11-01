@@ -2,24 +2,16 @@
     <div class="col-xs-6" style="padding: 5px">
         {% if page.has_previous %}
             <a class="btn btn-default btn-block btn-sm" role="button"
-                {% if highlighted_cleaner %}
-                    href="{% url 'webinterface:schedule-view-highlight' schedule.slug page.previous_page_number highlighted_cleaner.slug %}"
-                {% else %}
-                    href="{% url 'webinterface:schedule-view' schedule.slug page.previous_page_number %}"
-                {% endif %}>
-                 <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
+                href="{% url 'webinterface:schedule-view' schedule.slug page.previous_page_number %}">
+                        <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
             </a>
         {% endif %}
     </div>
     <div class="col-xs-6" style="padding: 5px">
         {% if page.has_next %}
             <a class="btn btn-default btn-block btn-sm" role="button"
-                {% if highlighted_cleaner %}
-                    href="{% url 'webinterface:schedule-view-highlight' schedule.slug page.next_page_number highlighted_cleaner.slug %}"
-                {% else %}
-                    href="{% url 'webinterface:schedule-view' schedule.slug page.next_page_number %}"
-                {% endif %}>
-                <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
+               href="{% url 'webinterface:schedule-view' schedule.slug page.next_page_number %}">
+                        <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
             </a>
         {% endif %}
     </div>

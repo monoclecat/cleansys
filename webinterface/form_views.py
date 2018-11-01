@@ -43,12 +43,12 @@ class ScheduleUpdateView(UpdateView):
             group.schedules.add(self.object)
 
         task_name = form.cleaned_data['task_name']
-        task_start_weekday = form.cleaned_data['task_start_weekday']
-        task_end_weekday = form.cleaned_data['task_end_weekday']
+        task_start_days_before = form.cleaned_data['task_start_days_before']
+        task_end_days_after = form.cleaned_data['task_end_days_after']
         if task_name:
-            if task_start_weekday and task_end_weekday:
-                self.object.task_set.create(
-                    name=task_name, start_weekday=task_start_weekday, end_weekday=task_end_weekday)
+            if task_start_days_before and task_end_days_after:
+                self.object.tasktemplate_set.create(
+                    name=task_name, start_days_before=task_start_days_before, end_days_after=task_end_days_after)
         return HttpResponseRedirect(self.get_success_url())
 
 

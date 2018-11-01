@@ -20,7 +20,7 @@ urlpatterns = [
     # path('putzer/<slug:slug>/seite<int:page>/', CleanerView.as_view(), name='cleaner'),
     path('du/seite<int:page>/', login_required(CleanerView.as_view()), name='cleaner'),
 
-    path('putzplaene/', login_required(ScheduleList.as_view()), name='schedule-list'),
+    path('putzplan-liste/', login_required(ScheduleList.as_view()), name='schedule-list'),
 
     #path('putzplan/<slug:slug>/seite<int:page>/<slug:cleaner_slug>/', ScheduleView.as_view(),
     #     name='schedule-view-highlight'),
