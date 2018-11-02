@@ -43,13 +43,6 @@ class ScheduleUpdateView(UpdateView):
         for group in schedule_group:
             group.schedules.add(self.object)
 
-        task_name = form.cleaned_data['task_name']
-        start_days_before = form.cleaned_data['start_days_before']
-        end_days_after = form.cleaned_data['end_days_after']
-        task_help_text = form.cleaned_data['task_help_text']
-        if task_name:
-            self.object.tasktemplate_set.create(task_name=task_name, start_days_before=start_days_before,
-                                                end_days_after=end_days_after, task_help_text=task_help_text)
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -75,15 +68,6 @@ class ScheduleGroupUpdateView(UpdateView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Ändere eine Putzplan-Gruppierung"
         return context
-
-    def form_valid(self, form):
-        # TODO put the following funtionality in ScheduleGroup
-        if form.cleaned_data.get('disabled'):
-            for affiliation in self.object.affiliation_set.all():
-                if affiliation.end > timezone.now().date():
-                    affiliation.end = timezone.now().date()
-                    affiliation.save()
-        return super().form_valid(form)
 
 
 class CleanerNewView(CreateView):
@@ -129,7 +113,6 @@ class CleanerUpdateView(UpdateView):
         action_date = form.cleaned_data['schedule_group__action_date']
         old_assoc = self.object.current_affiliation()
 
-        # TODO can we do this with less comparisons?
         if old_assoc is None or old_assoc.group != schedule_group:
             if old_assoc is not None:
                 old_assoc.end = action_date

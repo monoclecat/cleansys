@@ -194,8 +194,20 @@ class ScheduleGroup(models.Model):
 
     objects = ScheduleGroupQuerySet.as_manager()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__disabled = self.disabled
+
     def __str__(self):
         return self.name
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        super().save(force_insert, force_update, using, update_fields)
+        if self.pk and self.__disabled != self.disabled:
+            for affiliation in self.affiliation_set.all():
+                if affiliation.end > timezone.now().date():
+                    affiliation.end = timezone.now().date()
+                    affiliation.save()
 
 
 class CleanerQuerySet(models.QuerySet):

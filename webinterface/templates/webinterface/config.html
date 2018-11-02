@@ -98,10 +98,24 @@ Einstellungen
                     <div class="row">
                         {% for schedule in active_schedule_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
-                                <a class="btn btn-primary btn-lg btn-block" role="button"
-                                   href="{% url 'webinterface:schedule-edit' schedule.pk %}">
-                                    <span class="glyphicon glyphicon-cog"></span> {{ schedule.name }}
-                                </a>
+                                <div class="btn-group btn-group-lg">
+                                    <a class="btn btn-primary" role="button"
+                                        href="#">
+                                        <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
+                                    </a>
+                                    <button type="button" class="btn btn-primary dropdown-toggle"
+                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <span class="caret"></span>
+                                        <span class="sr-only">Toggle Dropdown</span>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a href="{% url 'webinterface:schedule-edit' schedule.pk %}">
+                                            <span class="glyphicon glyphicon-cog"></span> Bearbeiten</a></li>
+                                        <li role="separator" class="divider"></li>
+                                        <li><a href="{% url 'webinterface:schedule-task-list' schedule.pk %}">
+                                            <span class="glyphicon glyphicon-tags"></span> Aufgaben</a></li>
+                                    </ul>
+                                </div>
                             </div>
                         {% empty %}
                             <p>Keine Putzpläne zu Zeigen...</p>

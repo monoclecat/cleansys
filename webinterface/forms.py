@@ -107,7 +107,6 @@ class ScheduleForm(forms.ModelForm):
 
     disabled = forms.BooleanField(label="Deaktivieren", required=False)
 
-
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
         if 'instance' in kwargs and kwargs['instance']:
@@ -122,11 +121,8 @@ class ScheduleForm(forms.ModelForm):
             'cleaners_per_date',
             'frequency',
             'schedule_group',
-            HTML('<h3>Aufgaben</h3>'),
-            HTML("Platzhalter"),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
-                 # TODO Add a save-and-keep-editing button or put it in Neue Aufgabe erstellen AccordionGroup
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
             'disabled',
@@ -135,13 +131,6 @@ class ScheduleForm(forms.ModelForm):
         if 'instance' in kwargs and kwargs['instance']:
             self.fields['frequency'].disabled = True
             self.fields['cleaners_per_date'].disabled = True
-            self.helper.layout.fields[5] = \
-                HTML("<p><a class=\"btn btn-info\" href=\"{% url \'webinterface:schedule-task-list\' "
-                     "" + str(kwargs['instance'].pk) + " %}\" role=\"button\"> " 
-                     "<span class=\"glyphicon glyphicon-arrow-right\"></span>Ansehen und bearbeiten"
-                     "</a></p><br>")
-        else:
-            self.helper.layout.fields[5] = HTML('Aufgaben können erst nach dem Speichern erstellt werden.')
 
 
 class ScheduleGroupForm(forms.ModelForm):
@@ -269,11 +258,18 @@ class CleanerForm(forms.ModelForm):
                         '<a class=\"btn btn-info\" href=\"{% url \'webinterface:affiliation-edit\' '
                         +str(affiliation.pk)+' %}\" role=\"button\">'
                         '<span class=\"glyphicon glyphicon-cog\"></span> Bearbeiten</a>')
+
                 group_name = str(affiliation.group) if affiliation.group else "Keine Gruppe"
+
+                if affiliation.end.year == 9999:
+                    end_date = "auf weiteres"
+                else:
+                    end_date = str(affiliation.end.strftime('%d-%b-%Y'))
+
                 self.helper.layout.fields[3].append(
                     AccordionGroup(
-                        group_name+' - '+str(affiliation.beginning.strftime('%d-%b-%Y'))+
-                        ' bis '+str(affiliation.end.strftime('%d-%b-%Y')), edit_button)
+                        '{} - {} bis {}'.format(group_name, str(affiliation.beginning.strftime('%d-%b-%Y')), end_date),
+                        edit_button)
                 )
         else:
             # We are in the CreateView
