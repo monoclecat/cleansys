@@ -507,11 +507,11 @@ class Assignment(models.Model):
 
 
 class TaskBase(models.Model):
-    name = models.CharField(max_length=20)
-    help_text = models.CharField(max_length=200)
+    task_name = models.CharField(max_length=20)
+    task_help_text = models.CharField(max_length=200)
 
     def __str__(self):
-        return self.name
+        return self.task_name
 
 
 class TaskTemplateQuerySet(models.QuerySet):
@@ -524,12 +524,22 @@ class TaskTemplateQuerySet(models.QuerySet):
 
 class TaskTemplate(TaskBase):
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
-    disabled = models.BooleanField(default=False)
+    task_disabled = models.BooleanField(default=False)
 
     objects = TaskTemplateQuerySet.as_manager()
 
     start_days_before = models.IntegerField(default=1)
     end_days_after = models.IntegerField(default=2)
+
+    WEEKDAYS = ((0, 'Montag'), (1, 'Dienstag'), (2, 'Mittwoch'), (3, 'Donnerstag'), (4, 'Freitag'), (5, 'Samstag'),
+                (6, 'Sonntag'), (7, 'Montag'), (8, 'Dienstag'), (9, 'Mittwoch'), (10, 'Donnerstag'), (11, 'Freitag'),
+                (12, 'Samstag'))
+
+    def start_day_to_weekday(self):
+        return self.WEEKDAYS[6-self.start_days_before][1]
+
+    def end_day_to_weekday(self):
+        return self.WEEKDAYS[6+self.start_days_before][1]
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         if self.start_days_before + self.end_days_after > 6:

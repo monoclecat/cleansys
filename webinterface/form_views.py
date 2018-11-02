@@ -1,8 +1,9 @@
 from .forms import *
 from django.urls import reverse_lazy
-from django.views.generic.edit import FormView, CreateView, DeleteView, UpdateView
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.http import HttpResponseRedirect
 from django.core.exceptions import SuspiciousOperation
+from django.http import Http404
 
 
 class ScheduleNewView(CreateView):
@@ -43,12 +44,12 @@ class ScheduleUpdateView(UpdateView):
             group.schedules.add(self.object)
 
         task_name = form.cleaned_data['task_name']
-        task_start_days_before = form.cleaned_data['task_start_days_before']
-        task_end_days_after = form.cleaned_data['task_end_days_after']
+        start_days_before = form.cleaned_data['start_days_before']
+        end_days_after = form.cleaned_data['end_days_after']
+        task_help_text = form.cleaned_data['task_help_text']
         if task_name:
-            if task_start_days_before and task_end_days_after:
-                self.object.tasktemplate_set.create(
-                    name=task_name, start_days_before=task_start_days_before, end_days_after=task_end_days_after)
+            self.object.tasktemplate_set.create(task_name=task_name, start_days_before=start_days_before,
+                                                end_days_after=end_days_after, task_help_text=task_help_text)
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -128,7 +129,7 @@ class CleanerUpdateView(UpdateView):
         action_date = form.cleaned_data['schedule_group__action_date']
         old_assoc = self.object.current_affiliation()
 
-        # TODO can we do this with less comarisons?
+        # TODO can we do this with less comparisons?
         if old_assoc is None or old_assoc.group != schedule_group:
             if old_assoc is not None:
                 old_assoc.end = action_date
@@ -162,7 +163,51 @@ class AffiliationUpdateView(UpdateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        return HttpResponseRedirect(reverse_lazy('webinterface:cleaner-edit',kwargs={'pk': self.object.cleaner.pk}))
+        return HttpResponseRedirect(reverse_lazy('webinterface:cleaner-edit', kwargs={'pk': self.object.cleaner.pk}))
+
+
+class TaskTemplateNewView(CreateView):
+    form_class = TaskTemplateForm
+    model = TaskTemplate
+    template_name = 'webinterface/generic_form.html'
+
+    def __init__(self):
+        self.schedule = None
+        self.object = None
+        super().__init__()
+
+    def get(self, request, *args, **kwargs):
+        try:
+            self.schedule = Schedule.objects.get(pk=kwargs['pk'])
+            self.object = TaskTemplate(schedule=self.schedule)
+        except Schedule.DoesNotExist:
+            Http404('Putzplan, für den die Aufgabe erstellt werden soll, existiert nicht!')
+        self.success_url = reverse_lazy('webinterface:schedule-task-list', kwargs={'pk': self.schedule.pk})
+        return super().get(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['schedule'] = self.schedule
+        print(self.schedule)
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Erstelle Aufgabe"
+        return context
+
+    def form_valid(self, form):
+        if 'pk' not in self.kwargs:
+            raise OperationalError('No pk is supplied in TaskTemplateNewView!')
+        try:
+            schedule = Schedule.objects.get(pk=self.kwargs['pk'])
+        except Schedule.DoesNotExist:
+            raise OperationalError('PK provided in URL does not belong to any Schedule!')
+        self.object = form.save(commit=False)
+        self.object.schedule = schedule
+        self.object.save()
+        return HttpResponseRedirect(
+            reverse_lazy('webinterface:schedule-task-list', kwargs={'pk': self.kwargs['pk']}))
 
 
 class TaskTemplateUpdateView(UpdateView):
@@ -178,7 +223,7 @@ class TaskTemplateUpdateView(UpdateView):
     def form_valid(self, form):
         self.object = form.save()
         return HttpResponseRedirect(
-            reverse_lazy('webinterface:schedule-edit', kwargs={'pk': self.object.schedule.pk}))
+            reverse_lazy('webinterface:schedule-task-list', kwargs={'pk': self.object.schedule.pk}))
 
 
 class AssignmentCleaningView(UpdateView):

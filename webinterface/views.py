@@ -115,6 +115,28 @@ class ScheduleList(ListView):
         return super().get(request, *args, **kwargs)
 
 
+class ScheduleTaskList(ListView):
+    template_name = "webinterface/schedule_task_list.html"
+    model = Task
+
+    def __init__(self, *args, **kwargs):
+        self.schedule = None
+        super().__init__(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        if 'pk' in kwargs:
+            try:
+                self.schedule = Schedule.objects.get(pk=kwargs['pk'])
+                self.queryset = self.schedule.tasktemplate_set
+            except Schedule.DoesNotExist:
+                return Http404('Putzplan existiert nicht!')
+        return super().get(request, *args, **kwargs)
+
+    def render_to_response(self, context, **response_kwargs):
+        context['schedule'] = self.schedule
+        return super().render_to_response(context, **response_kwargs)
+
+
 class CleanerView(TemplateView):
     template_name = "webinterface/cleaner.html"
 

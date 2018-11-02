@@ -38,6 +38,10 @@ urlpatterns = [
     path('schedule-new/', staff_member_required(ScheduleNewView.as_view()), name='schedule-new'),
     path('schedule-edit/<int:pk>/', staff_member_required(ScheduleUpdateView.as_view()),
          name='schedule-edit'),
+    path('schedule/<int:pk>/tasks/', staff_member_required(ScheduleTaskList.as_view()),
+         name='schedule-task-list'),
+    path('schedule/<int:pk>/tasks/new/', staff_member_required(TaskTemplateNewView.as_view()),
+         name='schedule-task-new'),
 
     path('schedule-group-new/', staff_member_required(ScheduleGroupNewView.as_view()),
          name='schedule-group-new'),

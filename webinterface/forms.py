@@ -12,6 +12,74 @@ import re
 pv_email = re.compile("(\S+)\.(\S+)@pvka\.de")
 
 
+class TaskTemplateForm(forms.ModelForm):
+    class Meta:
+        model = TaskTemplate
+        exclude = ('schedule',)
+
+    task_name = forms.CharField(label="Name der Aufgabe")
+
+    start_days_before = forms.IntegerField(
+        required=False, initial=2,
+        label="Kann bis so viele Tage vor dem gelisteten Tag gamacht werden.",
+        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 1 bedeuten, "
+                  "dass der Putzdienst ab Samstag gemacht werden kann"
+    )
+
+    end_days_after = forms.IntegerField(
+        required=False, initial=1,
+        label="Kann bis so viele Tage nach dem gelisteten Tag gamacht werden.",
+        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 2 bedeuten, "
+                  "dass der Putzdienst bis Dienstag gemacht werden kann"
+    )
+
+    task_help_text = forms.CharField(
+        required=False, widget=forms.Textarea,
+        label="Hilfetext", help_text="Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können."
+    )
+
+    task_disabled = forms.BooleanField(label="Deaktiviert", required=False)
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        task_name = cleaned_data.get('task_name')
+        start_days_before = cleaned_data.get('start_days_before')
+        end_days_after = cleaned_data.get('end_days_after')
+
+        if task_name and not start_days_before or task_name and not end_days_after:
+            raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
+                                        'die Aufgabe erledigt werden kann!', code='incomplete_inputs')
+        if start_days_before + end_days_after > 6:
+            raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
+                                        'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
+
+        return cleaned_data
+
+    def __init__(self, schedule=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if not schedule and 'instance' in kwargs and kwargs['instance']:
+            schedule = kwargs['instance'].schedule
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'task_name',
+            'start_days_before',
+            'end_days_after',
+            'task_help_text',
+            'task_disabled',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
+        )
+
+        if schedule:
+            self.helper.layout.fields.append(
+                HTML("<a class=\"btn btn-warning\" "
+                     "href=\"{% url \'webinterface:schedule-task-list\' +"+str(schedule.pk)+" %}\" role=\"button\">"
+                     "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "))
+
+
 class ScheduleForm(forms.ModelForm):
     class Meta:
         model = Schedule
@@ -35,34 +103,10 @@ class ScheduleForm(forms.ModelForm):
         ModelMultipleChoiceField(queryset=ScheduleGroup.objects.enabled(),
                                  widget=forms.CheckboxSelectMultiple,
                                  label="Zugehörigkeit", required=False,
-                                 help_text="Wähle die Gruppe, zu der der Putzplan gehört.")
+                                 help_text="Wähle die Gruppe(n), zu der/denen der Putzplan gehört.")
 
     disabled = forms.BooleanField(label="Deaktivieren", required=False)
 
-    task_name = forms.CharField(max_length=20, label="Name der Aufgabe", required=False)
-
-    task_start_days_before = forms.IntegerField(
-        required=False, initial=1, label="Kann bis so viele Tage vor dem gelisteten Tag gamacht werden.",
-        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 1 bedeuten, "
-                  "dass der Putzdienst ab Samstag gemacht werden kann")
-    task_end_days_after = forms.IntegerField(
-        required=False, initial=2, label="Kann bis so viele Tage nach dem gelisteten Tag gamacht werden.",
-        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 2 bedeuten, "
-                  "dass der Putzdienst bis Dienstag gemacht werden kann")
-    # TODO sum of both can't be more than 6
-
-    def clean(self):
-        cleaned_data = super().clean()
-
-        task_name = cleaned_data.get('task_name')
-        task_start_days_before = cleaned_data.get('task_start_days_before')
-        task_end_days_after = cleaned_data.get('task_end_days_after')
-
-        if task_name and not task_start_days_before or task_name and not task_end_days_after:
-            raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
-                                        'die Aufgabe erledigt werden kann!')
-
-        return cleaned_data
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
@@ -78,37 +122,26 @@ class ScheduleForm(forms.ModelForm):
             'cleaners_per_date',
             'frequency',
             'schedule_group',
-            Accordion(
-                HTML('<h3>Aufgaben</h3>'),
-                AccordionGroup(
-                    '--- Neue Aufgabe erstellen ---',
-                    'task_name',
-                    'task_start_days_before',
-                    'task_end_days_after'
-                ),
-            ),
-            'disabled',
+            HTML('<h3>Aufgaben</h3>'),
+            HTML("Platzhalter"),
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  # TODO Add a save-and-keep-editing button or put it in Neue Aufgabe erstellen AccordionGroup
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
+            'disabled',
         )
 
         if 'instance' in kwargs and kwargs['instance']:
             self.fields['frequency'].disabled = True
             self.fields['cleaners_per_date'].disabled = True
-            for task in kwargs['instance'].tasktemplate_set.all():
-                self.helper.layout.fields[4].append(
-                    AccordionGroup(
-                        task.name,
-                        HTML("<a class=\"btn btn-info\" href=\"{% url \'webinterface:task-edit\' "
-                             +str(task.pk)+" %}\" role=\"button\">"
-                             "<span class=\"glyphicon glyphicon-cog\"></span> Bearbeiten</a> "),
-                    ),
-                )
+            self.helper.layout.fields[5] = \
+                HTML("<p><a class=\"btn btn-info\" href=\"{% url \'webinterface:schedule-task-list\' "
+                     "" + str(kwargs['instance'].pk) + " %}\" role=\"button\"> " 
+                     "<span class=\"glyphicon glyphicon-arrow-right\"></span>Ansehen und bearbeiten"
+                     "</a></p><br>")
         else:
-            self.helper.layout.fields[4][1] = HTML('Aufgaben können erst nach dem Speichern erstellt werden.')
+            self.helper.layout.fields[5] = HTML('Aufgaben können erst nach dem Speichern erstellt werden.')
 
 
 class ScheduleGroupForm(forms.ModelForm):
@@ -302,64 +335,6 @@ class AffiliationForm(forms.ModelForm):
                 self.fields['end'].disabled = True
 
             self.helper.layout.fields.insert(0, HTML("<h3>"+str(kwargs['instance'].group)+"</h3>"))
-
-
-class TaskTemplateForm(forms.ModelForm):
-    class Meta:
-        model = TaskTemplate
-        exclude = ('schedule',)
-
-    name = forms.CharField(max_length=20, label="Name der Aufgabe")
-
-    start_days_before = forms.IntegerField(required=False,
-                                           label="Kann bis so viele Tage vor dem gelisteten Tag gamacht werden.",
-                                           help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde "
-                                                     "eine 1 bedeuten, dass der Putzdienst ab Samstag gemacht "
-                                                     "werden kann")
-    end_days_after = forms.IntegerField(required=False, initial=1,
-                                        label="Kann bis so viele Tage nach dem gelisteten Tag gamacht werden.",
-                                        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde "
-                                                  "eine 2 bedeuten, dass der Putzdienst bis Dienstag gemacht "
-                                                  "werden kann")
-
-    help_text = forms.CharField(required=False, widget=forms.Textarea, max_length=100,
-                                label="Hilfetext", help_text="Gib dem Putzer Tipps, um die Aufgabe schnell und "
-                                                             "effektiv machen zu können.")
-
-    disabled = forms.BooleanField(label="Deaktiviert", required=False)
-
-    def clean(self):
-        cleaned_data = super().clean()
-
-        name = cleaned_data.get('name')
-        start_days_before = cleaned_data.get('start_days_before')
-        end_days_after = cleaned_data.get('end_days_after')
-
-        if name and not start_days_before or name and not end_days_after:
-            raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
-                                        'die Aufgabe erledigt werden kann!', code='incomplete_inputs')
-        if start_days_before + end_days_after > 6:
-            raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
-                                        'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
-
-        return cleaned_data
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'name',
-            'start_days_before',
-            'end_days_after',
-            'help_text',
-            'disabled',
-            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
-                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:schedule-edit\' object.schedule.pk %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
-                 )
-        )
 
 
 class AssignmentCleaningForm(forms.ModelForm):
