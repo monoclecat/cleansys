@@ -29,17 +29,7 @@ class ConfigView(FormView):
         context['active_schedule_list'] = Schedule.objects.enabled()
         context['disabled_schedule_list'] = Schedule.objects.disabled()
 
-        context['cleaner_list'] = list()
-        context['no_slack_cleaner_list'] = list()
-        context['deactivated_cleaner_list'] = list()
-        for cleaner in Cleaner.objects.all():
-            if cleaner.is_active():
-                if cleaner.slack_id:
-                    context['cleaner_list'].append(cleaner)
-                else:
-                    context['no_slack_cleaner_list'].append(cleaner)
-            else:
-                context['deactivated_cleaner_list'].append(cleaner)
+        context['cleaner_list'] = Cleaner.objects.all()
 
         context['active_schedule_group_list'] = ScheduleGroup.objects.enabled()
         context['disabled_schedule_group_list'] = ScheduleGroup.objects.disabled()

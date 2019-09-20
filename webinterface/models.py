@@ -302,6 +302,9 @@ class Cleaner(models.Model):
         return nr_assignments_on_day == 0 or nr_assignments_on_day == 1 and self.preference == 2 \
             or self.preference == 3
 
+    def has_slack_id(self):
+        return self.slack_id is not ''
+
     def delete(self, using=None, keep_parents=False):
         super().delete(using, keep_parents)
         self.user.delete()
@@ -352,7 +355,7 @@ class Affiliation(models.Model):
     group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE)
 
     beginning = models.DateField()
-    end = models.DateField(default=datetime.date.max)
+    end = models.DateField()
 
     objects = AffiliationQuerySet.as_manager()
 
@@ -361,11 +364,16 @@ class Affiliation(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(Affiliation, self).__init__(*args, **kwargs)
-        # TODO are these empty for newly created objects?
+
         self.__previous_beginning = self.beginning
         self.__previous_end = self.end
-        self.__previous_cleaner = self.cleaner
-        self.__previous_group = self.group
+
+        if self.pk:
+            self.__previous_cleaner = self.cleaner
+            self.__previous_group = self.group
+        else:
+            self.__previous_cleaner = None
+            self.__previous_group = None
 
     def delete(self, using=None, keep_parents=False):
         super().delete(using, keep_parents)
@@ -375,9 +383,11 @@ class Affiliation(models.Model):
             schedule.new_cleaning_duties(interval_start, interval_end, 3)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        if self.__previous_cleaner != self.cleaner or self.__previous_group != self.group:
-            raise OperationalError("Cleaner or ScheduleGroup of an Affiliation cannot be changed!")
+        if self.__previous_cleaner and self.__previous_group:
+            if self.__previous_cleaner != self.cleaner or self.__previous_group != self.group:
+                raise OperationalError("Cleaner or ScheduleGroup of an Affiliation cannot be changed!")
 
+        # TODO write validator(pk, current_beginning, proposed_beginning, ...) that can be used by form as well
         if self.beginning > self.end:
             raise OperationalError("The end of an Affiliation cannot lie before its beginning!")
 
@@ -397,6 +407,8 @@ class Affiliation(models.Model):
                 raise OperationalError("Affiliation with beginning before beginning of another Affiliation of "
                                        "a Cleaner cannot be created!")
 
+        super().save(force_insert, force_update, using, update_fields)
+
         try:
             overlap = self.cleaner.affiliation_set.exclude(pk=self.pk).get(
                 end__gt=self.beginning, beginning__lt=self.beginning)
@@ -409,33 +421,21 @@ class Affiliation(models.Model):
         except Affiliation.DoesNotExist:
             interval_already_reassigned = list()
 
-        super().save(force_insert, force_update, using, update_fields)
-
         # TODO only do this for Assignments in future!
-        reassigning_required = False
-        interval_start = datetime.date.min
-        interval_end = datetime.date.max
-        if self.__previous_beginning != self.beginning:
-            if interval_already_reassigned:
-                # If an overlap has been fixed (see above), we can assume that the beginning has been moved ahead
-                # Thus, the upper limit of the overlap is the lower bound of the interval left to reassign
-                # The upper bound of the interval left to reassign must be the old beginning
-                interval_start = interval_already_reassigned[1]
-                interval_end = self.__previous_beginning
-            else:
-                interval_start = min(self.__previous_beginning, self.beginning)
-                interval_end = max(self.__previous_beginning, self.beginning)
-            reassigning_required = True
-        if self.__previous_end != self.end:
-            if reassigning_required:
-                interval_end = max(self.__previous_end, self.end, interval_end)
-            else:
-                interval_start = min(self.__previous_end, self.end)
-                interval_end = max(self.__previous_end, self.end)
-                reassigning_required = True
-        if reassigning_required and interval_start != interval_end:
+        if interval_already_reassigned:
+            interval_start = interval_already_reassigned[1]
+            interval_end = max(self.end, self.__previous_end)
+        elif self.__previous_beginning and self.__previous_end:
+            interval_start = min(self.beginning, self.__previous_beginning)
+            interval_end = max(self.end, self.__previous_end)
+        else:
+            interval_start = self.beginning
+            interval_end = self.end
+
+        if interval_start != interval_end:
             for schedule in self.group.schedules.all():
                 schedule.new_cleaning_duties(interval_start, interval_end, 3)
+        return
 
 
 class CleaningDayQuerySet(models.QuerySet):

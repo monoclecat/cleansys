@@ -12,74 +12,6 @@ import re
 pv_email = re.compile("(\S+)\.(\S+)@pvka\.de")
 
 
-class TaskTemplateForm(forms.ModelForm):
-    class Meta:
-        model = TaskTemplate
-        exclude = ('schedule',)
-
-    task_name = forms.CharField(label="Name der Aufgabe")
-
-    start_days_before = forms.IntegerField(
-        required=False, initial=2,
-        label="Kann bis so viele Tage vor dem gelisteten Tag gamacht werden.",
-        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 1 bedeuten, "
-                  "dass der Putzdienst ab Samstag gemacht werden kann"
-    )
-
-    end_days_after = forms.IntegerField(
-        required=False, initial=1,
-        label="Kann bis so viele Tage nach dem gelisteten Tag gamacht werden.",
-        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 2 bedeuten, "
-                  "dass der Putzdienst bis Dienstag gemacht werden kann"
-    )
-
-    task_help_text = forms.CharField(
-        required=False, widget=forms.Textarea,
-        label="Hilfetext", help_text="Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können."
-    )
-
-    task_disabled = forms.BooleanField(label="Deaktiviert", required=False)
-
-    def clean(self):
-        cleaned_data = super().clean()
-
-        task_name = cleaned_data.get('task_name')
-        start_days_before = cleaned_data.get('start_days_before')
-        end_days_after = cleaned_data.get('end_days_after')
-
-        if task_name and not start_days_before or task_name and not end_days_after:
-            raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
-                                        'die Aufgabe erledigt werden kann!', code='incomplete_inputs')
-        if start_days_before + end_days_after > 6:
-            raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
-                                        'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
-
-        return cleaned_data
-
-    def __init__(self, schedule=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        if not schedule and 'instance' in kwargs and kwargs['instance']:
-            schedule = kwargs['instance'].schedule
-
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'task_name',
-            'start_days_before',
-            'end_days_after',
-            'task_help_text',
-            'task_disabled',
-            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
-        )
-
-        if schedule:
-            self.helper.layout.fields.append(
-                HTML("<a class=\"btn btn-warning\" "
-                     "href=\"{% url \'webinterface:schedule-task-list\' +"+str(schedule.pk)+" %}\" role=\"button\">"
-                     "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "))
-
-
 class ScheduleForm(forms.ModelForm):
     class Meta:
         model = Schedule
@@ -177,11 +109,6 @@ class CleanerForm(forms.ModelForm):
 
     email = forms.EmailField(label="Email des Putzers in der Form vorname.nachname@pvka.de")
 
-    schedule_group = forms.ModelChoiceField(queryset=ScheduleGroup.objects.enabled(),
-                         label="Zugehörigkeit", help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
-
-    schedule_group__action_date = forms.DateField(input_formats=['%d.%m.%Y'], required=True)
-
     preference = forms.ChoiceField(choices=Cleaner.PREFERENCE, initial=2, label="Putzvorlieben")
 
     slack_id = forms.ChoiceField(choices=(None, "--------------------"), label="Wähle des Putzers Slackprofil aus.",
@@ -193,21 +120,6 @@ class CleanerForm(forms.ModelForm):
         if pv_email.match(cleaned_data.get('email')) is None:
             raise forms.ValidationError("Ungültige Email! Sie muss wie folgt aussehen: vorname.nachname@pvka.de")
 
-        schedule_group__action_date = cleaned_data.get('schedule_group__action_date')
-        schedule_group = cleaned_data.get('schedule_group')
-        queryset = Cleaner.objects.filter(name=cleaned_data['name'])
-        if queryset.exists():
-            # We are in the UpdateView
-            cleaner = queryset.first()
-
-            if cleaner.is_active() and cleaner.current_affiliation().group != schedule_group:
-                if not schedule_group__action_date:
-                    raise forms.ValidationError("Zur neuen Zugehörigkeit muss auch ein Datum angegeben werden!",
-                                                code='new_aff_no_date')
-                if schedule_group__action_date < cleaner.current_affiliation().beginning:
-                    raise forms.ValidationError("Der Beginn der neuen Zugehörigkeit kann nicht vor dem "
-                                                "Beginn der alten Zugehörigkeit liegen!",
-                                                code='new_aff_before_old_aff')
         return cleaned_data
 
     def __init__(self, *args, **kwargs):
@@ -222,15 +134,7 @@ class CleanerForm(forms.ModelForm):
             'name',
             'email',
             'preference',
-            Accordion(
-                AccordionGroup(
-                    'Zugehörigkeit',
-                    HTML('<p class="bg-warning">Wenn sich nichts ändert, '
-                         'bitte auch hier nichts ändern oder eingeben.</p>'),
-                    'schedule_group',
-                    'schedule_group__action_date'
-                ),
-            ),
+
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
@@ -240,42 +144,6 @@ class CleanerForm(forms.ModelForm):
         if 'instance' in kwargs and kwargs['instance']:
             # We are in the UpdateView
             self.fields['email'].initial = kwargs['instance'].user.email
-            self.fields['schedule_group'].empty_label = "---Ausgezogen---"
-            self.fields['schedule_group'].required = False
-            if kwargs['instance'].is_active():
-                self.fields['schedule_group'].initial = kwargs['instance'].current_affiliation().group
-            self.fields['schedule_group__action_date'].required = False
-            self.fields['schedule_group__action_date'].label = "Der Putzer zieht zum TT.MM.YYYY um bzw. aus."
-
-            for affiliation in kwargs['instance'].affiliation_set.all():
-                # TODO Mark each interval between Affiliations in warning color in which Cleaner was not living on the house
-                if affiliation.beginning < timezone.now().date() and affiliation.end < timezone.now().date():
-                    edit_button = HTML(
-                        '<a class=\"btn btn-info\" role=\"button\" disabled="disabled">'
-                        '<span class=\"glyphicon glyphicon-cog\"></span> Bearbeiten</a>')
-                else:
-                    edit_button = HTML(
-                        '<a class=\"btn btn-info\" href=\"{% url \'webinterface:affiliation-edit\' '
-                        +str(affiliation.pk)+' %}\" role=\"button\">'
-                        '<span class=\"glyphicon glyphicon-cog\"></span> Bearbeiten</a>')
-
-                group_name = str(affiliation.group) if affiliation.group else "Keine Gruppe"
-
-                if affiliation.end.year == 9999:
-                    end_date = "auf weiteres"
-                else:
-                    end_date = str(affiliation.end.strftime('%d-%b-%Y'))
-
-                self.helper.layout.fields[3].append(
-                    AccordionGroup(
-                        '{} - {} bis {}'.format(group_name, str(affiliation.beginning.strftime('%d-%b-%Y')), end_date),
-                        edit_button)
-                )
-        else:
-            # We are in the CreateView
-            self.fields['schedule_group'].empty_label = None
-            self.fields['schedule_group__action_date'].label = "Der Putzer zieht zum TT.MM.YYYY ein."
-
 
         if slack_running():
             self.fields['slack_id'].choices = get_slack_users()
@@ -295,42 +163,144 @@ class CleanerForm(forms.ModelForm):
 class AffiliationForm(forms.ModelForm):
     class Meta:
         model = Affiliation
-        exclude = ('cleaner', 'group')
+        exclude = ('cleaner',)
 
-    beginning = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Beginn der Zugehörigkeit")
-    end = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Ende der Zugehörigkeit")
+    group = forms.ModelChoiceField(
+        queryset=ScheduleGroup.objects.enabled(), label="Zugehörigkeit", empty_label="---Ausgezogen---",
+        required=False,
+        help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
+    beginning = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Beginn der Zugehörigkeit TT.MM.YYYY")
+    end = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Ende der Zugehörigkeit",
+                          initial=timezone.datetime.max,
+                          help_text="Wenn kein genaues Datum bekannt ist, bitte 31.12.9999 eingeben")
 
     def clean(self):
         cleaned_data = super().clean()
-        beginning = cleaned_data['beginning']
-        end = cleaned_data['end']
-        if beginning > end:
+        beginning = cleaned_data.get('beginning')
+        end = cleaned_data.get('end')
+        group = cleaned_data.get('group')
+
+        if beginning and beginning > end:
             raise forms.ValidationError("Das Ende darf nicht vor dem Beginn liegen!", code='end_before_beginning')
+
+        if self.cleaner and self.cleaner.is_active() and self.cleaner.current_affiliation().group != group:
+            if not beginning:
+                raise forms.ValidationError("Zur neuen Zugehörigkeit muss auch ein Datum angegeben werden!",
+                                            code='new_aff_no_date')
+
+        if self.cleaner.affiliation_set.filter(beginning__gte=beginning).exclude(pk=self.cleaner.pk).exists():
+            raise forms.ValidationError(
+                "Der Beginn der neuen Zugehörigkeit kann nicht vor dem Beginn einer alten Zugehörigkeit liegen!",
+                code='new_aff_before_old_aff')
         return cleaned_data
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, cleaner=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.cleaner = cleaner
+        if not self.cleaner and 'instance' in kwargs and kwargs['instance']:
+            self.cleaner = kwargs['instance'].cleaner
 
         self.helper = FormHelper()
         self.helper.layout = Layout(
             'beginning',
-            'end',
+            'group',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
-                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:cleaner-edit\' object.cleaner.pk %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "
-                 )
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> ")
         )
+
+        if self.cleaner and self.cleaner.is_active():
+            self.fields['group'].initial = self.cleaner.current_affiliation().group
 
         # TODO to help prevent trying to set end after another's beginning, show max date that is allowed
 
         if 'instance' in kwargs and kwargs['instance']:
+            # We are in UpdateView
+            self.helper.layout.fields.insert(1, 'end')
+
             if kwargs['instance'].beginning < timezone.now().date():
                 self.fields['beginning'].disabled = True
             if kwargs['instance'].end < timezone.now().date():
                 self.fields['end'].disabled = True
 
             self.helper.layout.fields.insert(0, HTML("<h3>"+str(kwargs['instance'].group)+"</h3>"))
+            if self.cleaner:
+                self.helper.layout.fields.append(
+                    HTML("<a class=\"btn btn-warning\" href=\"{% url \'webinterface:affiliation-list\' "
+                         + str(self.cleaner.pk) + " %}\" "
+                         "role=\"button\"><span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a>"))
+        else:
+            # We are in CreateView
+            self.fields['end'].initial = timezone.datetime.max.date
+            self.fields['end'].disabled = True
+
+
+
+class TaskTemplateForm(forms.ModelForm):
+    class Meta:
+        model = TaskTemplate
+        exclude = ('schedule',)
+
+    task_name = forms.CharField(label="Name der Aufgabe")
+
+    start_days_before = forms.IntegerField(
+        required=False, initial=2,
+        label="Kann bis so viele Tage vor dem gelisteten Tag gamacht werden.",
+        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 1 bedeuten, "
+                  "dass der Putzdienst ab Samstag gemacht werden kann"
+    )
+
+    end_days_after = forms.IntegerField(
+        required=False, initial=1,
+        label="Kann bis so viele Tage nach dem gelisteten Tag gamacht werden.",
+        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 2 bedeuten, "
+                  "dass der Putzdienst bis Dienstag gemacht werden kann"
+    )
+
+    task_help_text = forms.CharField(
+        required=False, widget=forms.Textarea,
+        label="Hilfetext", help_text="Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können."
+    )
+
+    task_disabled = forms.BooleanField(label="Deaktiviert", required=False)
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        task_name = cleaned_data.get('task_name')
+        start_days_before = cleaned_data.get('start_days_before')
+        end_days_after = cleaned_data.get('end_days_after')
+
+        if task_name and not start_days_before or task_name and not end_days_after:
+            raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
+                                        'die Aufgabe erledigt werden kann!', code='incomplete_inputs')
+        if start_days_before + end_days_after > 6:
+            raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
+                                        'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
+
+        return cleaned_data
+
+    def __init__(self, schedule=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if not schedule and 'instance' in kwargs and kwargs['instance']:
+            schedule = kwargs['instance'].schedule
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'task_name',
+            'start_days_before',
+            'end_days_after',
+            'task_help_text',
+            'task_disabled',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
+        )
+
+        if schedule:
+            self.helper.layout.fields.append(
+                HTML("<a class=\"btn btn-warning\" "
+                     "href=\"{% url \'webinterface:schedule-task-list\' +"+str(schedule.pk)+" %}\" role=\"button\">"
+                     "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "))
 
 
 class AssignmentCleaningForm(forms.ModelForm):

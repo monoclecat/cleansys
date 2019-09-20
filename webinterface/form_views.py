@@ -109,16 +109,6 @@ class CleanerUpdateView(UpdateView):
             self.object.user.email = form.cleaned_data.get('email')
             self.object.user.save()
 
-        schedule_group = form.cleaned_data['schedule_group']
-        action_date = form.cleaned_data['schedule_group__action_date']
-        old_assoc = self.object.current_affiliation()
-
-        if old_assoc is None or old_assoc.group != schedule_group:
-            if old_assoc is not None:
-                old_assoc.end = action_date
-                old_assoc.save()
-            if schedule_group is not None:
-                Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=action_date)
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -131,6 +121,46 @@ class CleanerDeleteView(DeleteView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Putzer"
         return context
+
+
+class AffiliationNewView(CreateView):
+    form_class = AffiliationForm
+    model = Affiliation
+    template_name = 'webinterface/affiliation_list.html'
+
+    def __init__(self):
+        self.cleaner = None
+        super().__init__()
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            self.cleaner = Cleaner.objects.get(pk=kwargs['pk'])
+        except Cleaner.DoesNotExist:
+            Http404('Putzer, für den Zugehörigkeit geändert werden soll, existiert nicht!')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['cleaner'] = self.cleaner
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Zugehörigkeiten von {}".format(self.cleaner.name)
+        context['cleaner'] = self.cleaner
+        return context
+
+    def form_valid(self, form):
+        if 'pk' not in self.kwargs:
+            raise OperationalError('No pk is supplied in AffiliationNewView!')
+        try:
+            cleaner = Cleaner.objects.get(pk=self.kwargs['pk'])
+        except Cleaner.DoesNotExist:
+            raise OperationalError('PK provided in URL does not belong to any Cleaner!')
+        self.object = form.save(commit=False)
+        self.object.cleaner = cleaner
+        self.object.save()
+        return HttpResponseRedirect(reverse_lazy('webinterface:cleaner-edit', kwargs={'pk': cleaner.pk}))
 
 
 class AffiliationUpdateView(UpdateView):
@@ -162,7 +192,6 @@ class TaskTemplateNewView(CreateView):
     def get(self, request, *args, **kwargs):
         try:
             self.schedule = Schedule.objects.get(pk=kwargs['pk'])
-            self.object = TaskTemplate(schedule=self.schedule)
         except Schedule.DoesNotExist:
             Http404('Putzplan, für den die Aufgabe erstellt werden soll, existiert nicht!')
         self.success_url = reverse_lazy('webinterface:schedule-task-list', kwargs={'pk': self.schedule.pk})
@@ -171,7 +200,6 @@ class TaskTemplateNewView(CreateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['schedule'] = self.schedule
-        print(self.schedule)
         return kwargs
 
     def get_context_data(self, **kwargs):

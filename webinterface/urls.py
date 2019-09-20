@@ -48,9 +48,13 @@ urlpatterns = [
     path('schedule-group-edit/<int:pk>/', staff_member_required(ScheduleGroupUpdateView.as_view()),
          name='schedule-group-edit'),
 
-    path('cleaner-new/', staff_member_required(CleanerNewView.as_view()), name='cleaner-new'),
-    path('cleaner-edit/<int:pk>/', staff_member_required(CleanerUpdateView.as_view()),
+    path('putzer/neu/', staff_member_required(CleanerNewView.as_view()), name='cleaner-new'),
+    path('putzer/<int:pk>/', staff_member_required(CleanerUpdateView.as_view()),
          name='cleaner-edit'),
+    path('putzer/<int:pk>/zugehoerigkeiten/', staff_member_required(AffiliationNewView.as_view()),
+         name='affiliation-list'),
+
+
     path('cleaner-delete/<int:pk>/', staff_member_required(CleanerDeleteView.as_view()), name='cleaner-delete'),
 
     path('affiliation-edit/<int:pk>/', staff_member_required(AffiliationUpdateView.as_view()), name='affiliation-edit'),

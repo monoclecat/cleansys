@@ -1,0 +1,38 @@
+{% extends "webinterface/mobile_first_body.html" %}
+{% load crispy_forms_tags %}
+{% load tz %}
+
+{% block title %}
+Zugehörigkeiten von {{ cleaner }}
+{% endblock %}
+
+{% block main %}
+    <h2>Zugehörigkeiten von <b>{{ cleaner }}</b></h2>
+
+    <p><a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:config' %}">
+        <span class="glyphicon glyphicon-home"></span> Zur Admin-Übersicht
+    </a></p>
+
+    <div class="well">
+        <h3>Neue Zugehörigkeit eintragen</h3>
+        <form method="POST" class="form">
+            {% crispy form %}
+        </form>
+    </div>
+
+    <table class="table">
+        {% for affiliation in cleaner.affiliation_set.all %}
+            <tr>
+                <td class="info"><b>{{ affiliation.group }}</b></td>
+                <td>{{ affiliation.beginning }} bis {{ affiliation.end }}</td>
+                <td><a class="btn btn-default btn-sm" href="{% url 'webinterface:affiliation-edit' affiliation.pk %}"
+                   role="button">
+                    <span class="glyphicon glyphicon-cog"></span> Bearbeiten</a></td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td>Keine Zugehörigkeiten definiert.</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}
