@@ -100,7 +100,7 @@ Einstellungen
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
                                 <div class="btn-group btn-group-lg">
                                     <a class="btn btn-primary" role="button"
-                                        href="#">
+                                        href="{% url 'webinterface:schedule-view' schedule.slug 1 %}">
                                         <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
                                     </a>
                                     <button type="button" class="btn btn-primary dropdown-toggle"

@@ -15,6 +15,9 @@ Aufgaben für {{ schedule }}
     <p><a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:schedule-task-new' schedule.pk %}">
         <span class="glyphicon glyphicon-send"></span> Neue Aufgabe erstellen
     </a></p>
+
+
+
     {% for task in object_list.all %}
         {% if task.task_disabled %}
             <div class="panel panel-default">

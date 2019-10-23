@@ -230,12 +230,12 @@ class AffiliationForm(forms.ModelForm):
             if kwargs['instance'].end < timezone.now().date():
                 self.fields['end'].disabled = True
 
-            self.helper.layout.fields.insert(0, HTML("<h3>"+str(kwargs['instance'].group)+"</h3>"))
+            self.helper.layout.fields.insert(0, HTML("<h3>" + str(kwargs['instance'].group) + "</h3>"))
             if self.cleaner:
                 self.helper.layout.fields.append(
                     HTML("<a class=\"btn btn-warning\" href=\"{% url \'webinterface:affiliation-list\' "
                          + str(self.cleaner.pk) + " %}\" "
-                         "role=\"button\"><span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a>"))
+                                                  "role=\"button\"><span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a>"))
         else:
             # We are in CreateView
             self.fields['end'].initial = timezone.datetime.max.date
@@ -283,7 +283,7 @@ class TaskTemplateForm(forms.ModelForm):
     def __init__(self, schedule=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if not schedule and 'instance' in kwargs and kwargs['instance']:
+        if 'instance' in kwargs and kwargs['instance']:
             schedule = kwargs['instance'].schedule
 
         self.helper = FormHelper()
@@ -291,8 +291,8 @@ class TaskTemplateForm(forms.ModelForm):
             'task_name',
             HTML("<div class=\"alert alert-info\" role=\"alert\">Diese Aufgabe gehört zum Putzplan "
                  "<b>{}</b>, welcher sich jeden <b>{}</b> wiederholt</div>".format(
-                schedule.name,
-                Schedule.WEEKDAYS[schedule.weekday][1])),
+                    schedule.name,
+                    Schedule.WEEKDAYS[schedule.weekday][1])),
             'start_days_before',
             'end_days_after',
             'task_help_text',
@@ -301,23 +301,20 @@ class TaskTemplateForm(forms.ModelForm):
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
         )
 
-        if schedule:
-            self.fields['start_days_before'].initial = 0
-            self.fields['end_days_after'].initial = 0
+        self.fields['start_days_before'].initial = 0
+        self.fields['end_days_after'].initial = 0
 
-            days_before = [(i, "{} - {} Tage davor".format(Schedule.WEEKDAYS[(i+schedule.weekday) % 7][1], i))
-                           for i in range(6, -1, -1)]
-            days_after = [(i, "{} - {} Tage danach".format(Schedule.WEEKDAYS[(i+schedule.weekday) % 7][1], i))
-                          for i in range(0, 7)]
+        days_before = [(i, "{} - {} Tage davor".format(Schedule.WEEKDAYS[(i + schedule.weekday) % 7][1], i))
+                       for i in range(6, -1, -1)]
+        days_after = [(i, "{} - {} Tage danach".format(Schedule.WEEKDAYS[(i + schedule.weekday) % 7][1], i))
+                      for i in range(0, 7)]
 
-            self.fields['start_days_before'].choices = days_before
-            self.fields['end_days_after'].choices = days_after
-            self.helper.layout.fields.append(
-                HTML("<a class=\"btn btn-warning\" "
-                     "href=\"{% url \'webinterface:schedule-task-list\' +"+str(schedule.pk)+" %}\" role=\"button\">"
-                     "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "))
-
-
+        self.fields['start_days_before'].choices = days_before
+        self.fields['end_days_after'].choices = days_after
+        self.helper.layout.fields.append(
+            HTML("<a class=\"btn btn-warning\" "
+                 "href=\"{% url \'webinterface:schedule-task-list\' +" + str(schedule.pk) + " %}\" role=\"button\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "))
 
 
 class AssignmentCleaningForm(forms.ModelForm):
@@ -369,7 +366,7 @@ class ResultsForm(forms.Form):
         initial = kwargs.get('initial', {})
 
         start_date = timezone.now().date() - datetime.timedelta(days=30)
-        end_date = start_date + datetime.timedelta(days=3*30)
+        end_date = start_date + datetime.timedelta(days=3 * 30)
         initial['start_date'] = start_date.strftime('%d.%m.%Y')
         initial['end_date'] = end_date.strftime('%d.%m.%Y')
 
@@ -386,22 +383,3 @@ class ResultsForm(forms.Form):
                 "<span class=\"glyphicon glyphicon-chevron-right\"></span> Weiter</button> "),
             HTML("<br>"),
         )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

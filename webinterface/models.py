@@ -552,10 +552,10 @@ class TaskTemplate(TaskBase):
                 (12, 'Samstag'))
 
     def start_day_to_weekday(self):
-        return self.WEEKDAYS[6-self.start_days_before][1]
+        return self.WEEKDAYS[self.schedule.weekday-self.start_days_before][1]
 
     def end_day_to_weekday(self):
-        return self.WEEKDAYS[6+self.start_days_before][1]
+        return self.WEEKDAYS[self.schedule.weekday+self.start_days_before][1]
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         if self.start_days_before + self.end_days_after > 6:
