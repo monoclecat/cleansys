@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'slackbot.apps.SlackbotConfig',
     'bootstrap3',
     'crispy_forms',
-    'slackclient',
+    'slack',
     'django_celery_beat',
     'django_celery_results'
 ]

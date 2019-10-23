@@ -1,12 +1,12 @@
 import os
 from celery import shared_task
 import re
-from slackclient import SlackClient
+import slack
 import logging
 
 
 # instantiate Slack client
-slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
+slack_client = slack.WebClient(os.environ.get('SLACK_BOT_TOKEN'))
 # starterbot's user ID in Slack: value is assigned after the bot starts up
 starterbot_id = None
 SLACK_BOT_START_INITIATED = False

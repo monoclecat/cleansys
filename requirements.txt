@@ -1,8 +1,8 @@
-pip==19.2.3
-Django==2.2.5
-Celery==4.3
-django-bootstrap3==11.1.0
-django-crispy-forms==1.7.2
-slackclient==2.1.0
-django_celery_beat==1.5.0
-django_celery_results==1.1.2
+pip>=19.3.1
+Django>=2.2.5
+Celery>=4.3
+django-bootstrap3>=11.1.0
+django-crispy-forms>=1.7.2
+slackclient>=2.2.1
+django_celery_beat>=1.5.0
+django_celery_results>=1.1.2

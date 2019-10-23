@@ -51,6 +51,10 @@ class Schedule(models.Model):
     CLEANERS_PER_DATE_CHOICES = ((1, 'Einen'), (2, 'Zwei'))
     cleaners_per_date = models.IntegerField(default=1, choices=CLEANERS_PER_DATE_CHOICES)
 
+    WEEKDAYS = ((0, 'Montag'), (1, 'Dienstag'), (2, 'Mittwoch'), (3, 'Donnerstag'),
+                (4, 'Freitag'), (5, 'Samstag'), (6, 'Sonntag'))
+    weekday = models.IntegerField(default=6, choices=WEEKDAYS)
+
     FREQUENCY_CHOICES = ((1, 'Jede Woche'), (2, 'Gerade Wochen'), (3, 'Ungerade Wochen'))
     frequency = models.IntegerField(default=1, choices=FREQUENCY_CHOICES)
 

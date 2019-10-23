@@ -30,8 +30,8 @@ Aufgaben für {{ schedule }}
 
             <!-- List group -->
             <ul class="list-group">
-                <li class="list-group-item">Kann immer <b>{{ task.start_day_to_weekday }}</b> angefangen werden</li>
-                <li class="list-group-item">Muss bis <b>{{ task.end_day_to_weekday }}</b> erledigt sein.</li>
+                <li class="list-group-item">Muss zwischen <b>{{ task.start_day_to_weekday }}</b> und
+                    <b>{{ task.end_day_to_weekday }}</b> erledigt sein.</li>
                 <li class="list-group-item">
                     <a class="btn btn-info" role="button" href="{% url 'webinterface:task-edit' task.pk %}">
                         <span class="glyphicon glyphicon-cog"></span> Bearbeiten</a>

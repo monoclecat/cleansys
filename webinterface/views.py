@@ -11,7 +11,6 @@ from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
 from django.views.generic.list import ListView
 from slackbot.slackbot import start_slack, slack_running
-
 from .forms import *
 from .models import *
 

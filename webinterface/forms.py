@@ -25,6 +25,12 @@ class ScheduleForm(forms.ModelForm):
                                           help_text="Z.B. Bad braucht nur einen, Bar braucht zwei.",
                                           required=True, initial=1)
 
+    weekday = forms.ChoiceField(choices=Schedule.WEEKDAYS, required=True, initial=6,
+                                label="Wochentag, an dem sich der Dienst wiederholen soll.",
+                                help_text="Normale Putzdienste wiederholen sich immer Sonntags, Mülldienste sind "
+                                          "i.d.R. unter der Woche. Dieser Wochentag sagt noch nichts darüber aus, "
+                                          "wie viel Zeit die Putzer zum Erledigen des Dienstes haben.")
+
     frequency = forms.ChoiceField(choices=Schedule.FREQUENCY_CHOICES, required=True, initial=1,
                                   label="Häufigkeit der Putzdienste",
                                   help_text="Wenn du zwei Putzdienste hast, die alle zwei Wochen dran sind, "
@@ -50,6 +56,7 @@ class ScheduleForm(forms.ModelForm):
 
         self.helper.layout = Layout(
             'name',
+            'weekday',
             'cleaners_per_date',
             'frequency',
             'schedule_group',
@@ -63,6 +70,7 @@ class ScheduleForm(forms.ModelForm):
         if 'instance' in kwargs and kwargs['instance']:
             self.fields['frequency'].disabled = True
             self.fields['cleaners_per_date'].disabled = True
+            self.fields['weekday'].disabled = True
 
 
 class ScheduleGroupForm(forms.ModelForm):
@@ -234,7 +242,6 @@ class AffiliationForm(forms.ModelForm):
             self.fields['end'].disabled = True
 
 
-
 class TaskTemplateForm(forms.ModelForm):
     class Meta:
         model = TaskTemplate
@@ -244,7 +251,7 @@ class TaskTemplateForm(forms.ModelForm):
 
     start_days_before = forms.IntegerField(
         required=False, initial=2,
-        label="Kann bis so viele Tage vor dem gelisteten Tag gamacht werden.",
+        label="Kann an diesem Wochentag angefangen werden",
         help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 1 bedeuten, "
                   "dass der Putzdienst ab Samstag gemacht werden kann"
     )
@@ -276,6 +283,8 @@ class TaskTemplateForm(forms.ModelForm):
         if start_days_before + end_days_after > 6:
             raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
                                         'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
+
+        # TODO check if task ends before it starts
 
         return cleaned_data
 
