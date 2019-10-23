@@ -249,22 +249,16 @@ class TaskTemplateForm(forms.ModelForm):
 
     task_name = forms.CharField(label="Name der Aufgabe")
 
-    start_days_before = forms.IntegerField(
-        required=False, initial=2,
-        label="Kann an diesem Wochentag angefangen werden",
-        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 1 bedeuten, "
-                  "dass der Putzdienst ab Samstag gemacht werden kann"
+    start_days_before = forms.ChoiceField(
+        label="Kann ab diesem Wochentag angefangen werden",
     )
 
-    end_days_after = forms.IntegerField(
-        required=False, initial=1,
-        label="Kann bis so viele Tage nach dem gelisteten Tag gamacht werden.",
-        help_text="Bei Putzdiensten, die immer für Sonntag gelistet sind, würde eine 2 bedeuten, "
-                  "dass der Putzdienst bis Dienstag gemacht werden kann"
+    end_days_after = forms.ChoiceField(
+        label="Darf bis zu diesem Wochentag gemacht werden",
     )
 
     task_help_text = forms.CharField(
-        required=False, widget=forms.Textarea,
+        widget=forms.Textarea,
         label="Hilfetext", help_text="Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können."
     )
 
@@ -284,8 +278,6 @@ class TaskTemplateForm(forms.ModelForm):
             raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
                                         'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
 
-        # TODO check if task ends before it starts
-
         return cleaned_data
 
     def __init__(self, schedule=None, *args, **kwargs):
@@ -297,6 +289,10 @@ class TaskTemplateForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             'task_name',
+            HTML("<div class=\"alert alert-info\" role=\"alert\">Diese Aufgabe gehört zum Putzplan "
+                 "<b>{}</b>, welcher sich jeden <b>{}</b> wiederholt</div>".format(
+                schedule.name,
+                Schedule.WEEKDAYS[schedule.weekday][1])),
             'start_days_before',
             'end_days_after',
             'task_help_text',
@@ -306,10 +302,22 @@ class TaskTemplateForm(forms.ModelForm):
         )
 
         if schedule:
+            self.fields['start_days_before'].initial = 0
+            self.fields['end_days_after'].initial = 0
+
+            days_before = [(i, "{} - {} Tage davor".format(Schedule.WEEKDAYS[(i+schedule.weekday) % 7][1], i))
+                           for i in range(6, -1, -1)]
+            days_after = [(i, "{} - {} Tage danach".format(Schedule.WEEKDAYS[(i+schedule.weekday) % 7][1], i))
+                          for i in range(0, 7)]
+
+            self.fields['start_days_before'].choices = days_before
+            self.fields['end_days_after'].choices = days_after
             self.helper.layout.fields.append(
                 HTML("<a class=\"btn btn-warning\" "
                      "href=\"{% url \'webinterface:schedule-task-list\' +"+str(schedule.pk)+" %}\" role=\"button\">"
                      "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "))
+
+
 
 
 class AssignmentCleaningForm(forms.ModelForm):
