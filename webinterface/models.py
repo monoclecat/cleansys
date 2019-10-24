@@ -359,7 +359,7 @@ class Affiliation(models.Model):
     group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE)
 
     beginning = models.DateField()
-    end = models.DateField()
+    end = models.DateField(default=datetime.date.max)
 
     objects = AffiliationQuerySet.as_manager()
 
@@ -446,10 +446,10 @@ class CleaningDayQuerySet(models.QuerySet):
     def with_assignments(self):
         # We MUST use exclude here because filtering for __isnull=False will cause each CleaningDay to be as often
         # in the QuerySet as it has Assignments in its assignment_set
-        return self.exclude(assignment__isnull=True)
+        return self.exclude(assignment__isnull=True).filter(disabled=False)
 
     def no_assignments(self):
-        return self.filter(assignment__isnull=True)
+        return self.filter(assignment__isnull=True).filter(disabled=False)
 
 
 class CleaningDay(models.Model):
@@ -459,6 +459,7 @@ class CleaningDay(models.Model):
     date = models.DateField()
     excluded = models.ManyToManyField(Cleaner)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+    disabled = models.BooleanField()
 
     objects = CleaningDayQuerySet.as_manager()
 
@@ -547,15 +548,11 @@ class TaskTemplate(TaskBase):
     start_days_before = models.IntegerField(default=1)
     end_days_after = models.IntegerField(default=2)
 
-    WEEKDAYS = ((0, 'Montag'), (1, 'Dienstag'), (2, 'Mittwoch'), (3, 'Donnerstag'), (4, 'Freitag'), (5, 'Samstag'),
-                (6, 'Sonntag'), (7, 'Montag'), (8, 'Dienstag'), (9, 'Mittwoch'), (10, 'Donnerstag'), (11, 'Freitag'),
-                (12, 'Samstag'))
-
     def start_day_to_weekday(self):
-        return self.WEEKDAYS[self.schedule.weekday-self.start_days_before][1]
+        return Schedule.WEEKDAYS[(self.schedule.weekday-self.start_days_before) % 7][1]
 
     def end_day_to_weekday(self):
-        return self.WEEKDAYS[self.schedule.weekday+self.start_days_before][1]
+        return Schedule.WEEKDAYS[(self.schedule.weekday+self.start_days_before) % 7][1]
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         if self.start_days_before + self.end_days_after > 6:
