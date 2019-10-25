@@ -242,6 +242,40 @@ class AffiliationForm(forms.ModelForm):
             self.fields['end'].disabled = True
 
 
+class CleaningDayForm(forms.ModelForm):
+    class Meta:
+        model = CleaningDay
+        fields = ['disabled', 'date']
+
+    disabled = forms.BooleanField(label="Putzdienst für diese Woche deaktivieren", required=False)
+
+    date = forms.ChoiceField(label="Datum")
+
+    def __init__(self, cleaning_day=None, schedule=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if 'instance' in kwargs and kwargs['instance']:
+            cleaning_day = kwargs['instance']
+            schedule = cleaning_day.schedule
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            HTML("<div class=\"alert alert-info\" role=\"alert\">Du bearbeitest den Putzdienst "
+                 "für <b>{}</b> am <b>{}</b></div>".format(schedule.name, cleaning_day.date)),
+            'disabled',
+            'date',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
+        )
+
+        possible_dates = [cleaning_day.date + datetime.timedelta(days=x) for x in
+                          range(-1*cleaning_day.date.weekday(), -1*cleaning_day.date.weekday() + 7)]
+
+        self.fields['date'].choices = [(date, "{} - {}".format(Schedule.WEEKDAYS[date.weekday()][1], date))
+                                       for date in possible_dates]
+        self.fields['date'].initial = cleaning_day.date
+
+
 class TaskTemplateForm(forms.ModelForm):
     class Meta:
         model = TaskTemplate

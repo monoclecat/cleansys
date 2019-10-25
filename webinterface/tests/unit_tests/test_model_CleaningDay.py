@@ -5,6 +5,26 @@ import logging
 from unittest.mock import *
 
 
+class CleaningDayQuerySetTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.reference_date1 = correct_dates_to_due_day(datetime.date(2010, 1, 8))
+        cls.reference_date2 = correct_dates_to_due_day(datetime.date(2010, 1, 14))
+        cls.schedule = Schedule.objects.create(name="schedule")
+        cls.enabled = CleaningDay.objects.create(date=cls.reference_date1, schedule=cls.schedule, disabled=False)
+        cls.disabled = CleaningDay.objects.create(date=cls.reference_date2, schedule=cls.schedule, disabled=True)
+
+    def test__enabled(self):
+        enabled_schedules = CleaningDay.objects.enabled()
+        self.assertIn(self.enabled, enabled_schedules)
+        self.assertNotIn(self.disabled, enabled_schedules)
+
+    def test__disabled(self):
+        disabled_schedules = CleaningDay.objects.disabled()
+        self.assertIn(self.disabled, disabled_schedules)
+        self.assertNotIn(self.enabled, disabled_schedules)
+
+
 class CleaningDayTest(TestCase):
     @classmethod
     def setUpTestData(cls):

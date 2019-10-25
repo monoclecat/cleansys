@@ -93,58 +93,46 @@ class Schedule(models.Model):
     @param date1 First date of timeframe, will be corrected to the due-day
     @param date2 Second date of timeframe, will be corrected to the due-day
     @param mode Sets the mode of creation:
-    - 1(default): Delete existing Assignments in timeframe and create new Assignments throughout timeframe
+    - 1(default): Delete existing Assignments and CleaningDays and regenerate them throughout timeframe
     - 2: Keep existing Assignments and only create new ones where there are none already
     - 3: Only reassign Assignments on existing CleaningDays, don't generate new CleaningDays
     """
     def new_cleaning_duties(self, date1, date2, mode=1):
         """Generates new cleaning duties between date1 and date2."""
-        start_date, end_date = correct_dates_to_due_day([min(date1, date2), max(date1, date2)])
-        one_week = timezone.timedelta(days=7)
+        # start_date, end_date = correct_dates_to_due_day([min(date1, date2), max(date1, date2)])
+        start_date, end_date = correct_dates_to_weekday([min(date1, date2), max(date1, date2)], self.weekday)
+        cleaning_days = CleaningDay.objects.enabled().filter(date__range=[start_date, end_date])
+
+        if mode == 1:
+            cleaning_days.delete()
+        elif mode == 3:
+            Assignment.objects.filter(cleaning_day__in=cleaning_days).delete()
 
         date_iterator = start_date
         while date_iterator <= end_date:
-            if mode == 1:
-                self.assignment_set.filter(cleaning_day__date=date_iterator).delete()
-            elif mode == 2:
-                pass
-            elif mode == 3:
-                assignments_on_date = self.assignment_set.filter(cleaning_day__date=date_iterator)
-                if assignments_on_date.exists():
-                    assignments_on_date.delete()
-                else:
-                    date_iterator += one_week
-                    continue
-            else:
-                raise OperationalError("Invalid mode!")
             while self.create_assignment(date_iterator):
                 # This loop enables Schedules with cleaners_per_date > 1 to be handled correctly, as each
                 # call to create_assignment only assigns one Cleaner
                 pass
-            date_iterator += one_week
+            date_iterator += timezone.timedelta(days=7)
 
     def create_assignment(self, date):
-        """Generates a new Duty and assigns Cleaners to it.
-        If the Schedule is not defined on date (see defined_on_date()), then this function fails silently."""
+        """A CleaningDay is created if not existing yet on date.
+        Then, Assignments are generated until cleaners_per_date is satisfied"""
 
-        corrected_date = correct_dates_to_due_day(date)
-        if not self.defined_on_date(corrected_date):
-            logging.debug("Schedule is not defined for this day.")
-            return False
-
-        cleaning_day, was_created = self.cleaningday_set.get_or_create(date=corrected_date)
+        cleaning_day, was_created = self.cleaningday_set.get_or_create(date=date)
         if cleaning_day.assignment_set.count() >= self.cleaners_per_date:
             logging.debug("All Cleaners for this date have already been found.")
             return False
 
-        ratios = self.deployment_ratios(corrected_date)
+        ratios = self.deployment_ratios(date)
         if not ratios:
             logging.debug("Ratios are not defined for this date.")
             return False
 
         if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
             logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'
-                          .format(self.name, corrected_date))
+                          .format(self.name, date))
             logging_text = "All cleaners' ratios: "
             for cleaner, ratio in ratios:
                 logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
@@ -154,12 +142,12 @@ class Schedule(models.Model):
             if cleaner in cleaning_day.excluded.all():
                 logging.debug("   {} is excluded for this date".format(cleaner.name))
                 continue
-            if cleaner.is_eligible_for_date(corrected_date):
+            if cleaner.is_eligible_for_date(date):
                 logging.debug("   {} inserted!".format(cleaner.name))
                 return self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
             else:
                 logging.debug("   {} already has {} duties today.".format(
-                    cleaner.name, cleaner.nr_assignments_on_day(corrected_date)))
+                    cleaner.name, cleaner.nr_assignments_on_day(date)))
         else:
             logging.debug("   Cleaner's preferences result in no cleaner, we must choose {}"
                           .format(ratios[0][0]))
@@ -299,7 +287,8 @@ class Cleaner(models.Model):
                self.rejected_dutyswitch_requests().exists()
 
     def nr_assignments_on_day(self, date):
-        return self.assignment_set.filter(cleaning_day__date=date).count()
+        return self.assignment_set.filter(
+            cleaning_day__date__range=[date - timezone.timedelta(days=3), date + timezone.timedelta(days=3)]).count()
 
     def is_eligible_for_date(self, date):
         nr_assignments_on_day = self.nr_assignments_on_day(date)
@@ -359,7 +348,7 @@ class Affiliation(models.Model):
     group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE)
 
     beginning = models.DateField()
-    end = models.DateField(default=datetime.date.max)
+    end = models.DateField()
 
     objects = AffiliationQuerySet.as_manager()
 
@@ -414,42 +403,45 @@ class Affiliation(models.Model):
         super().save(force_insert, force_update, using, update_fields)
 
         try:
-            overlap = self.cleaner.affiliation_set.exclude(pk=self.pk).get(
+            overlapping_affiliation = self.cleaner.affiliation_set.exclude(pk=self.pk).get(
                 end__gt=self.beginning, beginning__lt=self.beginning)
 
             # In overlap.save(), the Assignments in the overlapping dates are re-assigned.
             # For that reason we don't need to reassign those again
-            interval_already_reassigned = [self.beginning, overlap.end]
-            overlap.end = self.beginning
-            overlap.save()
+            overlapping_affiliation.end = self.beginning
+            overlapping_affiliation.save()
         except Affiliation.DoesNotExist:
-            interval_already_reassigned = list()
+            pass
 
-        # TODO only do this for Assignments in future!
-        if interval_already_reassigned:
-            interval_start = interval_already_reassigned[1]
-            interval_end = max(self.end, self.__previous_end)
-        elif self.__previous_beginning and self.__previous_end:
-            interval_start = min(self.beginning, self.__previous_beginning)
-            interval_end = max(self.end, self.__previous_end)
-        else:
-            interval_start = self.beginning
-            interval_end = self.end
-
-        if interval_start != interval_end:
+        for (prev, curr) in [(self.__previous_beginning, self.beginning), (self.__previous_end, self.end)]:
+            if not prev or prev == curr:
+                continue
+            interval_start = min(prev, curr)
+            interval_end = max(prev, curr)
+            Assignment.objects. \
+                filter(cleaning_day__date__gte=interval_start). \
+                filter(cleaning_day__date__lte=interval_end). \
+                delete()
             for schedule in self.group.schedules.all():
                 schedule.new_cleaning_duties(interval_start, interval_end, 3)
+
         return
 
 
 class CleaningDayQuerySet(models.QuerySet):
+    def enabled(self):
+        return self.filter(disabled=False)
+
+    def disabled(self):
+        return self.filter(disabled=True)
+
     def with_assignments(self):
         # We MUST use exclude here because filtering for __isnull=False will cause each CleaningDay to be as often
         # in the QuerySet as it has Assignments in its assignment_set
-        return self.exclude(assignment__isnull=True).filter(disabled=False)
+        return self.exclude(assignment__isnull=True)
 
     def no_assignments(self):
-        return self.filter(assignment__isnull=True).filter(disabled=False)
+        return self.filter(assignment__isnull=True)
 
 
 class CleaningDay(models.Model):
@@ -459,7 +451,7 @@ class CleaningDay(models.Model):
     date = models.DateField()
     excluded = models.ManyToManyField(Cleaner)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
-    disabled = models.BooleanField()
+    disabled = models.BooleanField(default=False)
 
     objects = CleaningDayQuerySet.as_manager()
 

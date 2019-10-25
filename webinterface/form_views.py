@@ -179,6 +179,23 @@ class AffiliationUpdateView(UpdateView):
         return HttpResponseRedirect(reverse_lazy('webinterface:cleaner-edit', kwargs={'pk': self.object.cleaner.pk}))
 
 
+class CleaningDayUpdateView(UpdateView):
+    form_class = CleaningDayForm
+    model = CleaningDay
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Bearbeite Putzdienst"
+        return context
+
+    def form_valid(self, form):
+        self.object = form.save()
+        return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view',
+                                                 kwargs={'slug': self.object.schedule.slug, 'page': 1}))
+
+
 class TaskTemplateNewView(CreateView):
     form_class = TaskTemplateForm
     model = TaskTemplate

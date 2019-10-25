@@ -35,6 +35,8 @@ urlpatterns = [
 
     path('results/<from_date>/<to_date>/', staff_member_required(ResultsView.as_view()), name='results'),
 
+    path('cleaning-day-edit/<int:pk>/', staff_member_required(CleaningDayUpdateView.as_view()), name='cleaning-day-edit'),
+
     path('schedule-new/', staff_member_required(ScheduleNewView.as_view()), name='schedule-new'),
     path('schedule-edit/<int:pk>/', staff_member_required(ScheduleUpdateView.as_view()),
          name='schedule-edit'),

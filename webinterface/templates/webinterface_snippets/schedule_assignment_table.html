@@ -1,58 +1,68 @@
 <table class="table table-striped" style="margin-bottom: 0">
     <tr>
-        <td><span class="glyphicon glyphicon-info-sign"></span></td>
+        <td> </td>
         <td><span class="glyphicon glyphicon-calendar"></span> Datum</td>
         <td><span class="glyphicon glyphicon-user"></span> Putzer</td>
+        {% if user.is_superuser %}
+            <td> </td>
+        {% endif %}
     </tr>
 
     {% for cleaning_day in page %}
-        <tr>
-            <td>
-                <div class="dropdown">
-                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1"
-                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                    <span class="glyphicon glyphicon-info-sign"></span></button>
-                    <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                    <style>
-                        .dropdown ul li {
-                            margin: 0 0.5em
-                        }
-                    </style>
-                        <li>Geputzt</li>
-                        {% for task in cleaning_day.task_set.cleaned %}
-
-                        {% empty %}
-                            <li><i>Noch nichts.</i></li>
-                        {% endfor %}
-
-                        <li role="separator" class="divider"></li>
-
-                        <li>Offene Aufgaben</li>
-                        {% for task in cleaning_day.task_set.cleaned %}
-                        {% empty %}
-                            <li><i>Noch nichts.</i></li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </td>
-
-            <td>{{ cleaning_day.date }}</td>
-            <td>
-                {% for assignment in cleaning_day.assignment_set.all %}
-                    {% if request.user.is_superuser %}
-                        <a href="#">{{ assignment.cleaner.name }}</a>
-                    {% else %}
-                        {{ assignment.cleaner.name }}
-                    {% endif %}
-                    {% if not forloop.last %}& {% endif %}
-                {% endfor %}
-            </td>
-
-            {% if user.is_superuser %}
+        {% if not cleaning_day.disabled or user.is_superuser %}
+            <tr {% if cleaning_day.disabled %}class="danger"{% endif %}>
                 <td>
+                   {% if not cleaning_day.disabled %}
+                       <div class="dropdown">
+                           <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1"
+                                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                               <span class="glyphicon glyphicon-info-sign"></span></button>
+                           <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                               <style>
+                                   .dropdown ul li {
+                                       margin: 0 0.5em
+                                   }
+                               </style>
+                               <li>Geputzt</li>
+                               {% for task in cleaning_day.task_set.cleaned %}
 
+                               {% empty %}
+                                   <li><i>Noch nichts.</i></li>
+                               {% endfor %}
+
+                               <li role="separator" class="divider"></li>
+
+                               <li>Offene Aufgaben</li>
+                               {% for task in cleaning_day.task_set.cleaned %}
+                               {% empty %}
+                                   <li><i>Noch nichts.</i></li>
+                               {% endfor %}
+                           </ul>
+                       </div>
+                   {% endif %}
                 </td>
-            {% endif %}
-        </tr>
+
+                <td>{{ cleaning_day.date }}</td>
+                <td>
+                    {% if not cleaning_day.disabled %}
+                        {% for assignment in cleaning_day.assignment_set.all %}
+                            {{ assignment.cleaner.name }}
+                            {% if not forloop.last %}& {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <b>Deaktiviert</b>
+                    {% endif %}
+                </td>
+
+                {% if user.is_superuser %}
+                    <td>
+                        <a class="btn btn-warning" role="button"
+                           href="{% url 'webinterface:cleaning-day-edit' cleaning_day.pk %}">
+                            <span class="glyphicon glyphicon-cog"></span>
+                        </a>
+                    </td>
+                {% endif %}
+            </tr>
+        {% endif %}
     {% endfor %}
 </table>

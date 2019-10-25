@@ -23,42 +23,73 @@ class ScheduleQuerySetTest(TestCase):
         self.assertNotIn(self.enabled, disabled_schedules)
 
 
-class ScheduleTest(TestCase):
+class CompleteTestEnvironment:
     @classmethod
     def setUpTestData(cls):
         # Config
-        cls.reference_datetime = datetime.datetime(2010, 1, 8)
-        cls.reference_date = correct_dates_to_due_day(cls.reference_datetime.date())
+        cls.reference_date = datetime.date(2010, 1, 4)  # Is a Monday (weekday == 0)
         cls.one_week = timezone.timedelta(days=7)
 
         # Schedule
-        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=3)
-        cls.no_assignment_schedule = Schedule.objects.create(name="no_assignment_sch", cleaners_per_date=2, frequency=2)
+        cls.bathroom_schedule = Schedule.objects.create(name="bathroom", cleaners_per_date=1, weekday=2,
+                                                        frequency=1)
+        cls.kitchen_schedule = Schedule.objects.create(name="kitchen", cleaners_per_date=2, weekday=4,
+                                                       frequency=2)
+        cls.bedroom_schedule = Schedule.objects.create(name="bedroom", cleaners_per_date=2, weekday=6,
+                                                       frequency=3)
+        cls.garage_schedule = Schedule.objects.create(name="garage", cleaners_per_date=1, weekday=0,
+                                                      frequency=1, disabled=True)
 
         # ScheduleGroup
-        cls.group = ScheduleGroup.objects.create(name="group")
-        cls.group.schedules.add(cls.schedule, cls.no_assignment_schedule)
+        cls.upper_group = ScheduleGroup.objects.create(name="upper")
+        cls.upper_group.schedules.add(cls.bathroom_schedule, cls.kitchen_schedule, cls.bedroom_schedule)
+
+        cls.lower_group = ScheduleGroup.objects.create(name="lower")
+        cls.lower_group.schedules.add(cls.kitchen_schedule, cls.bedroom_schedule, cls.garage_schedule)
 
         # Cleaners
-        cls.cleaner1 = Cleaner.objects.create(name="cleaner1", preference=1)
-        cls.cleaner2 = Cleaner.objects.create(name="cleaner2", preference=1)
-        cls.cleaner3 = Cleaner.objects.create(name="cleaner3")
+        cls.angie = Cleaner.objects.create(name="angie", preference=1)  # Max one duty a week please
+        cls.angie_affiliation = Affiliation.objects.create(
+            cleaner=cls.angie, group=cls.upper_group,
+            beginning=cls.reference_date, end=cls.reference_date + 4 * cls.one_week
+        )
+
+        cls.bob = Cleaner.objects.create(name="bob", preference=2)  # Max two duties a week please
+        cls.bob_affiliation_1 = Affiliation.objects.create(
+            cleaner=cls.bob, group=cls.upper_group,
+            beginning=cls.reference_date, end=cls.reference_date + 2 * cls.one_week
+        )
+        cls.bob_affiliation_2 = Affiliation.objects.create(
+            cleaner=cls.bob, group=cls.lower_group,
+            beginning=cls.reference_date + 2 * cls.one_week, end=cls.reference_date + 4 * cls.one_week
+        )
+
+        cls.chris = Cleaner.objects.create(name="chris", preference=3)  # I don't care how many duties a week
+        cls.chris_affiliation_1 = Affiliation.objects.create(
+            cleaner=cls.chris, group=cls.lower_group,
+            beginning=cls.reference_date, end=cls.reference_date + 2 * cls.one_week
+        )
+        cls.chris_affiliation_2 = Affiliation.objects.create(
+            cleaner=cls.chris, group=cls.upper_group,
+            beginning=cls.reference_date + 2 * cls.one_week, end=cls.reference_date + 4 * cls.one_week
+        )
+
+        cls.dave = Cleaner.objects.create(name="dave", preference=3)  # I don't care how many duties a week
+        cls.dave_affiliation = Affiliation.objects.create(
+            cleaner=cls.dave, group=cls.lower_group,
+            beginning=cls.reference_date, end=cls.reference_date + 4 * cls.one_week
+        )
 
         # CleaningDays
-        cls.cleaning_day1 = CleaningDay.objects.create(
-            date=correct_dates_to_due_day(cls.reference_date), schedule=cls.schedule)
-        cls.cleaning_day2 = CleaningDay.objects.create(date=correct_dates_to_due_day(
-            cls.reference_date + cls.one_week), schedule=cls.schedule)
-        cls.cleaning_day3 = CleaningDay.objects.create(date=correct_dates_to_due_day(
-            cls.reference_date + 2 * cls.one_week), schedule=cls.schedule)
-
-        # Affiliations
-        cls.cleaner1_affiliation = Affiliation.objects.create(
-            cleaner=cls.cleaner1, group=cls.group, beginning=cls.reference_date,
-            end=cls.reference_date + 3 * cls.one_week)
-        cls.cleaner2_affiliation = Affiliation.objects.create(
-            cleaner=cls.cleaner2, group=cls.group, beginning=cls.reference_date,
-            end=cls.reference_date + 3 * cls.one_week)
+        mondays = [datetime.date(2010, 1, 4) + datetime.timedelta(weeks=x) for x in range(0, 4)]
+        counter = 1
+        for date in mondays:
+            for schedule in [cls.bathroom_schedule, cls.kitchen_schedule, cls.bedroom_schedule, cls.garage_schedule]:
+                setattr(cls, "{}_cleaning_day_{}".format(schedule.name, counter),
+                        CleaningDay.objects.create(
+                            date=date + datetime.timedelta(days=schedule.weekday),
+                            schedule=schedule)
+                        )
 
         # Assignments
         cls.assignment1 = Assignment.objects.create(
@@ -76,6 +107,8 @@ class ScheduleTest(TestCase):
                                                                     selected_assignment=cls.assignment1)
         cls.pending_dutyswitch_request = DutySwitch.objects.create(status=1, source_assignment=cls.assignment1)
 
+
+class ScheduleTest(CompleteTestEnvironment, TestCase):
     def test__creation(self):
         schedule = Schedule.objects.create()
         self.assertIsInstance(schedule, Schedule)
@@ -120,7 +153,7 @@ class ScheduleTest(TestCase):
         date1, date2 = [self.reference_date, self.reference_date + 4 * self.one_week]
 
         with patch.object(Schedule, 'create_assignment', return_value=False) as mock_create_assignment:
-            self.schedule.new_cleaning_duties(date2, date1, 2)
+            self.schedule.new_cleaning_duties(self.cleaning_day1.date, self.cleaning_day5.date, 2)
             new_assignment_set = self.schedule.assignment_set.all()
             self.assertIn(self.assignment1, new_assignment_set)
             self.assertIn(self.assignment2, new_assignment_set)
@@ -128,8 +161,9 @@ class ScheduleTest(TestCase):
             self.assertIn(self.assignment4, new_assignment_set)
 
             self.assertListEqual(mock_create_assignment.mock_calls,
-                                 [call(date1), call(date1 + self.one_week), call(date1 + 2 * self.one_week),
-                                  call(date1 + 3 * self.one_week), call(date1 + 4 * self.one_week)])
+                                 [call(self.cleaning_day1.date), call(self.cleaning_day2.date),
+                                  call(self.cleaning_day4__irregular_date.date),
+                                  call(self.cleaning_day5.date)])
 
     def test__new_cleaning_duties__clear_existing_assignments(self):
         date1, date2 = [self.reference_date, self.reference_date + 4 * self.one_week]
