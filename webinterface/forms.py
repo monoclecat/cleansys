@@ -244,7 +244,7 @@ class AffiliationForm(forms.ModelForm):
 
 class CleaningDayForm(forms.ModelForm):
     class Meta:
-        model = CleaningDay
+        model = CleaningWeek
         fields = ['disabled', 'date']
 
     disabled = forms.BooleanField(label="Putzdienst für diese Woche deaktivieren", required=False)

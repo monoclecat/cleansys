@@ -30,7 +30,7 @@ class TaskTest(TestCase):
     def setUpTestData(cls):
         cls.reference_date = correct_dates_to_due_day(datetime.date(2010, 1, 8))
         cls.schedule = Schedule.objects.create(name="schedule")
-        cls.cleaning_day = CleaningDay.objects.create(date=cls.reference_date, schedule=cls.schedule)
+        cls.cleaning_day = CleaningWeek.objects.create(date=cls.reference_date, schedule=cls.schedule)
 
     def test__creation(self):
         task = Task.objects.create(name="task1", cleaning_day=self.cleaning_day, start_date=self.reference_date,

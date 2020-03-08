@@ -7,6 +7,8 @@ from django.utils.text import slugify
 import logging
 from django.contrib.auth.models import User
 from django.utils import timezone
+import calendar
+import time
 
 
 def correct_dates_to_due_day(days):
@@ -32,6 +34,20 @@ def correct_dates_to_weekday(days, weekday):
         days = datetime.date(9999, 12, 26) if days > datetime.date(9999, 12, 26) else days
         return days + timezone.timedelta(days=weekday - days.weekday())
     return None
+
+
+def date_to_epoch_week(date):
+    epoch_seconds = calendar.timegm(date.timetuple())
+    return int((epoch_seconds / 60 / 60 / 24 - 4) / 7)
+
+
+def epoch_week_to_monday(week):
+    epoch_seconds = (week * 7 + 4) * 24 * 60 * 60
+    return datetime.date.fromtimestamp(time.mktime(time.gmtime(epoch_seconds)))
+
+
+def current_epoch_week():
+    return date_to_epoch_week(datetime.date.today())
 
 
 class ScheduleQuerySet(models.QuerySet):
@@ -70,10 +86,10 @@ class Schedule(models.Model):
         self.__last_cleaners_per_date = self.cleaners_per_date
         self.__last_frequency = self.frequency
 
-    def deployment_ratios(self, date):
+    def deployment_ratios(self, week):
         ratios = []
 
-        active_affiliations = Affiliation.objects.active_on_date_for_schedule(date, self)
+        active_affiliations = Affiliation.objects.active_in_week_for_schedule(week, self)
         if active_affiliations.exists():
             for active_affiliation in active_affiliations:
                 cleaner = active_affiliation.cleaner
@@ -82,9 +98,10 @@ class Schedule(models.Model):
         else:
             return []
 
-    def defined_on_date(self, date):
-        return self.frequency == 1 or self.frequency == 2 and date.isocalendar()[1] % 2 == 0 or \
-               self.frequency == 3 and date.isocalendar()[1] % 2 == 1
+    def occurs_in_week(self, week):
+        return self.frequency == 1 or \
+               self.frequency == 2 and week % 2 == 0 or \
+               self.frequency == 3 and week % 2 == 1
 
     """
     Like create_assignment, only that it can cover a timespan and has several more options.
@@ -97,61 +114,56 @@ class Schedule(models.Model):
     - 2: Keep existing Assignments and only create new ones where there are none already
     - 3: Only reassign Assignments on existing CleaningDays, don't generate new CleaningDays
     """
-    def new_cleaning_duties(self, date1, date2, mode=1):
-        """Generates new cleaning duties between date1 and date2."""
-        # start_date, end_date = correct_dates_to_due_day([min(date1, date2), max(date1, date2)])
-        start_date, end_date = correct_dates_to_weekday([min(date1, date2), max(date1, date2)], self.weekday)
-        cleaning_days = CleaningDay.objects.enabled().filter(date__range=[start_date, end_date])
+    def new_cleaning_duties(self, week1, week2, mode=1):
+        """Generates new cleaning duties between week1 and week2."""
+        start_week = date_to_epoch_week(week1)
+        end_week = date_to_epoch_week(week2)
+        cleaning_weeks = CleaningWeek.objects.enabled().filter(week__range=[start_week, end_week])
 
         if mode == 1:
-            cleaning_days.delete()
+            cleaning_weeks.delete()
         elif mode == 3:
-            Assignment.objects.filter(cleaning_day__in=cleaning_days).delete()
+            Assignment.objects.filter(cleaning_week__in=cleaning_weeks).delete()
 
-        date_iterator = start_date
-        while date_iterator <= end_date:
-            while self.create_assignment(date_iterator):
+        for week in range(start_week, end_week + 1):
+            while self.create_assignment(week):
                 # This loop enables Schedules with cleaners_per_date > 1 to be handled correctly, as each
                 # call to create_assignment only assigns one Cleaner
                 pass
-            date_iterator += timezone.timedelta(days=7)
 
-    def create_assignment(self, date):
-        """A CleaningDay is created if not existing yet on date.
-        Then, Assignments are generated until cleaners_per_date is satisfied"""
-
-        cleaning_day, was_created = self.cleaningday_set.get_or_create(date=date)
-        if cleaning_day.assignment_set.count() >= self.cleaners_per_date:
+    def create_assignment(self, week):
+        cleaning_week, was_created = self.cleaningweek_set.get_or_create(week=week)
+        if cleaning_week.assignment_set.count() >= self.cleaners_per_date:
             logging.debug("All Cleaners for this date have already been found.")
             return False
 
-        ratios = self.deployment_ratios(date)
+        ratios = self.deployment_ratios(week)
         if not ratios:
             logging.debug("Ratios are not defined for this date.")
             return False
 
         if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
-            logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} on the {} -------------'
-                          .format(self.name, date))
+            logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} in week {} -------------'
+                          .format(self.name, week))
             logging_text = "All cleaners' ratios: "
             for cleaner, ratio in ratios:
                 logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
             logging.debug(logging_text)
 
         for cleaner, ratio in ratios:
-            if cleaner in cleaning_day.excluded.all():
-                logging.debug("   {} is excluded for this date".format(cleaner.name))
+            if cleaner in cleaning_week.excluded.all():
+                logging.debug("   {} is excluded for this week".format(cleaner.name))
                 continue
-            if cleaner.is_eligible_for_date(date):
+            if cleaner.is_eligible_for_week(week):
                 logging.debug("   {} inserted!".format(cleaner.name))
-                return self.assignment_set.create(cleaner=cleaner, cleaning_day=cleaning_day)
+                return self.assignment_set.create(cleaner=cleaner, cleaning_week=cleaning_week)
             else:
                 logging.debug("   {} already has {} duties today.".format(
-                    cleaner.name, cleaner.nr_assignments_on_day(date)))
+                    cleaner.name, cleaner.nr_assignments_in_week(week)))
         else:
             logging.debug("   Cleaner's preferences result in no cleaner, we must choose {}"
                           .format(ratios[0][0]))
-            return self.assignment_set.create(cleaner=ratios[0][0], cleaning_day=cleaning_day)
+            return self.assignment_set.create(cleaner=ratios[0][0], cleaning_week=cleaning_week)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
@@ -205,11 +217,11 @@ class ScheduleGroup(models.Model):
 class CleanerQuerySet(models.QuerySet):
     def active(self):
         return self.filter(
-            affiliation__beginning__lte=timezone.now().date(), affiliation__end__gte=timezone.now().date())
+            affiliation__beginning__lte=current_epoch_week(), affiliation__end__gte=current_epoch_week())
 
     def inactive(self):
         return self.exclude(
-            affiliation__beginning__lte=timezone.now().date(), affiliation__end__gte=timezone.now().date())
+            affiliation__beginning__lte=current_epoch_week(), affiliation__end__gte=current_epoch_week())
 
     def no_slack_id(self):
         return self.filter(slack_id='')
@@ -246,7 +258,8 @@ class Cleaner(models.Model):
     def current_affiliation(self):
         try:
             current_affiliation = self.affiliation_set.get(
-                beginning__lte=timezone.now().date(), end__gt=timezone.now().date())
+                beginning__lte=current_epoch_week(), end__gte=current_epoch_week()
+            )
             return current_affiliation
         except Affiliation.DoesNotExist:
             return None
@@ -255,8 +268,8 @@ class Cleaner(models.Model):
         assignments_while_affiliated = Assignment.objects.none()
         for affiliation in self.affiliation_set.filter(group__schedules=schedule).all():
             assignments_while_affiliated |= Assignment.objects.filter(
-                cleaning_day__date__gte=affiliation.beginning, cleaning_day__date__lt=affiliation.end,
-                cleaning_day__schedule=schedule)
+                cleaning_week__week__gte=affiliation.beginning, cleaning_week__week__lt=affiliation.end,
+                cleaning_week__schedule=schedule)
         return assignments_while_affiliated
 
     def own_assignments_during_affiliation_with_schedule(self, schedule):
@@ -286,12 +299,11 @@ class Cleaner(models.Model):
         return self.pending_dutyswitch_requests().exists() or self.dutyswitch_requests_received().exists() or \
                self.rejected_dutyswitch_requests().exists()
 
-    def nr_assignments_on_day(self, date):
-        return self.assignment_set.filter(
-            cleaning_day__date__range=[date - timezone.timedelta(days=3), date + timezone.timedelta(days=3)]).count()
+    def nr_assignments_in_week(self, week):
+        return self.assignment_set.filter(cleaning_week__week=week).count()
 
-    def is_eligible_for_date(self, date):
-        nr_assignments_on_day = self.nr_assignments_on_day(date)
+    def is_eligible_for_week(self, week):
+        nr_assignments_on_day = self.nr_assignments_in_week(week)
         return nr_assignments_on_day == 0 or nr_assignments_on_day == 1 and self.preference == 2 \
             or self.preference == 3
 
@@ -317,20 +329,11 @@ class Cleaner(models.Model):
 
 
 class AffiliationQuerySet(models.QuerySet):
-    def active_on_date(self, date):
-        """
-        The end of the Affiliation must lie at least one week ahead of date. The reason for this is that if
-        someone is moving to another floor or out of the house, he at least does not have to clean during the
-        last week of his stay when he has lots of stress anyway.
-        :param date:
-        :return:
-        """
-        corrected_date = correct_dates_to_due_day(date)
-        one_week = datetime.timedelta(days=7)
-        return self.filter(beginning__lte=corrected_date, end__gt=corrected_date + one_week)
+    def active_in_week(self, week):
+        return self.filter(beginning__lte=week, end__gte=week)
 
-    def active_on_date_for_schedule(self, date, schedule):
-        return self.active_on_date(date).filter(group__schedules=schedule)
+    def active_in_week_for_schedule(self, week, schedule):
+        return self.active_in_week(week).filter(group__schedules=schedule)
 
 
 class Affiliation(models.Model):
@@ -347,13 +350,13 @@ class Affiliation(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE)
 
-    beginning = models.DateField()
-    end = models.DateField()
+    beginning = models.IntegerField()
+    end = models.IntegerField()
 
     objects = AffiliationQuerySet.as_manager()
 
     def __str__(self):
-        return self.cleaner.name+" in "+self.group.name+" from "+str(self.beginning)+" to "+str(self.end)
+        return self.cleaner.name+" in "+self.group.name+" from week"+str(self.beginning)+" to week"+str(self.end)
 
     def __init__(self, *args, **kwargs):
         super(Affiliation, self).__init__(*args, **kwargs)
@@ -404,7 +407,7 @@ class Affiliation(models.Model):
 
         try:
             overlapping_affiliation = self.cleaner.affiliation_set.exclude(pk=self.pk).get(
-                end__gt=self.beginning, beginning__lt=self.beginning)
+                end__gte=self.beginning, beginning__lte=self.beginning)
 
             # In overlap.save(), the Assignments in the overlapping dates are re-assigned.
             # For that reason we don't need to reassign those again
@@ -419,8 +422,8 @@ class Affiliation(models.Model):
             interval_start = min(prev, curr)
             interval_end = max(prev, curr)
             Assignment.objects. \
-                filter(cleaning_day__date__gte=interval_start). \
-                filter(cleaning_day__date__lte=interval_end). \
+                filter(cleaning_week__week__gte=interval_start). \
+                filter(cleaning_week__week__lte=interval_end). \
                 delete()
             for schedule in self.group.schedules.all():
                 schedule.new_cleaning_duties(interval_start, interval_end, 3)
@@ -428,7 +431,7 @@ class Affiliation(models.Model):
         return
 
 
-class CleaningDayQuerySet(models.QuerySet):
+class CleaningWeekQuerySet(models.QuerySet):
     def enabled(self):
         return self.filter(disabled=False)
 
@@ -444,23 +447,22 @@ class CleaningDayQuerySet(models.QuerySet):
         return self.filter(assignment__isnull=True)
 
 
-class CleaningDay(models.Model):
+class CleaningWeek(models.Model):
     class Meta:
-        ordering = ('-date',)
-        unique_together = ('date', 'schedule')
-    date = models.DateField()
+        ordering = ('-week',)
+        unique_together = ('week', 'schedule')
+    week = models.IntegerField()
     excluded = models.ManyToManyField(Cleaner)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
     disabled = models.BooleanField(default=False)
 
-    objects = CleaningDayQuerySet.as_manager()
+    objects = CleaningWeekQuerySet.as_manager()
 
     def __str__(self):
-        return "{}: {}".format(self.schedule.name, self.date.strftime('%d-%b-%Y'))
+        return "{}: Week {}".format(self.schedule.name, self.week)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__previous_date = self.date
 
     def has_tasks(self):
         return self.task_set.exists()
@@ -477,12 +479,12 @@ class CleaningDay(models.Model):
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         # TODO When created, populate task_set
 
-        if self.date != self.__previous_date:
-            date_difference = self.__previous_date - self.date
-            for task in self.task_set.all():
-                task.start_date -= date_difference
-                task.end_date -= date_difference
-                task.save()
+        # if self.date != self.__previous_date:
+        #     date_difference = self.__previous_date - self.date
+        #     for task in self.task_set.all():
+        #         task.start_date -= date_difference
+        #         task.end_date -= date_difference
+        #         task.save()
         super().save(force_insert, force_update, using, update_fields)
 
 
@@ -491,21 +493,24 @@ class Assignment(models.Model):
     cleaners_comment = models.CharField(max_length=200)
     created = models.DateField(auto_now_add=timezone.now().date())
 
-    cleaning_day = models.ForeignKey(CleaningDay, on_delete=models.CASCADE)
+    cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
 
     class Meta:
-        ordering = ('-cleaning_day__date',)
+        ordering = ('-cleaning_week__week',)
 
     def __str__(self):
-        return "{}: {}, {} ".format(self.cleaning_day.schedule.name, self.cleaner.name,
-                                    self.cleaning_day.date.strftime('%d-%b-%Y'))
+        return "{}: {}, {} ".format(
+            self.cleaning_week.schedule.name, self.cleaner.name, self.assignment_date().strftime('%d-%b-%Y'))
 
-    def cleaners_on_date_for_schedule(self):
-        return Cleaner.objects.filter(assignment__cleaning_day=self.cleaning_day)
+    def assignment_date(self):
+        return epoch_week_to_monday(self.cleaning_week.week) + datetime.timedelta(days=self.schedule.weekday)
+
+    def cleaners_in_week_for_schedule(self):
+        return Cleaner.objects.filter(assignment__cleaning_week=self.cleaning_week)
 
     def cleaning_buddies(self):
-        return self.cleaners_on_date_for_schedule().exclude(pk=self.cleaner.pk)
+        return self.cleaners_in_week_for_schedule().exclude(pk=self.cleaner.pk)
 
     def is_source_of_dutyswitch(self):
         duty_switch = DutySwitch.objects.filter(source_assignment=self)
@@ -595,7 +600,7 @@ class TaskManager(models.Manager):
 
 
 class Task(TaskBase):
-    cleaning_day = models.ForeignKey(CleaningDay, on_delete=models.CASCADE)
+    cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE)
     cleaned_by = models.ForeignKey(Assignment, null=True, on_delete=models.SET_NULL)
 
     start_date = models.DateField()
@@ -625,14 +630,14 @@ class DutySwitch(models.Model):
         if self.selected_assignment:
             return "Source: {} on {}  -  Selected: {} on {}  -  Status: {} ".\
                 format(self.source_assignment.cleaner.name,
-                       self.source_assignment.cleaning_day.date.strftime('%d-%b-%Y'),
+                       self.source_assignment.assignment_date().strftime('%d-%b-%Y'),
                        self.selected_assignment.cleaner.name,
-                       self.selected_assignment.cleaning_day.date.strftime('%d-%b-%Y'),
+                       self.selected_assignment.assignment_date().strftime('%d-%b-%Y'),
                        self.status)
         else:
             return "Source: {} on {}  -  Selected:            -  Status: {} ". \
                 format(self.source_assignment.cleaner.name,
-                       self.source_assignment.cleaning_day.date.strftime('%d-%b-%Y'),
+                       self.source_assignment.assignment_date().strftime('%d-%b-%Y'),
                        self.status)
 
     def destinations_without_source_and_selected(self):
@@ -647,14 +652,14 @@ class DutySwitch(models.Model):
         self.save()
 
     def selected_was_accepted(self):
-        cleaning_day = self.source_assignment.cleaning_day
+        cleaning_week = self.source_assignment.cleaning_week
 
-        cleaning_day.excluded.add(self.source_assignment.cleaner)
+        cleaning_week.excluded.add(self.source_assignment.cleaner)
 
-        source_cleaning_day = self.source_assignment.cleaning_day
-        self.source_assignment.cleaning_day = self.selected_assignment.cleaning_day
+        source_cleaning_week = self.source_assignment.cleaning_week
+        self.source_assignment.cleaning_week = self.selected_assignment.cleaning_week
         self.source_assignment.save()
-        self.selected_assignment.cleaning_day = source_cleaning_day
+        self.selected_assignment.cleaning_week = source_cleaning_week
         self.selected_assignment.save()
 
         all_except_self = DutySwitch.objects.exclude(pk=self.pk)
@@ -681,27 +686,27 @@ class DutySwitch(models.Model):
         self.save()
 
     def look_for_destinations(self):
-        schedule = self.source_assignment.cleaning_day.schedule
+        schedule = self.source_assignment.cleaning_week.schedule
 
         active_affiliations = Affiliation.objects.active_on_date_for_schedule(
-            self.source_assignment.cleaning_day.date, schedule).exclude(
-            cleaner=self.source_assignment.cleaner, cleaner__in=self.source_assignment.cleaning_day.excluded.all())
+            self.source_assignment.cleaning_week.week, schedule).exclude(
+            cleaner=self.source_assignment.cleaner, cleaner__in=self.source_assignment.cleaning_week.excluded.all())
 
         candidates = []
         for affiliation in active_affiliations:
-            if affiliation.cleaner.is_eligible_for_date(self.source_assignment.cleaning_day.date):
+            if affiliation.cleaner.is_eligible_for_week(self.source_assignment.cleaning_week.week):
                 candidates.append(affiliation.cleaner)
 
         logging.debug("------------ Looking for replacement cleaners -----------")
 
         for cleaner in candidates:
             logging.debug(
-                "{}:  Duties on {}: {}".format(self.source_assignment.cleaning_day.date, cleaner.name,
-                                              cleaner.nr_assignments_on_day(self.source_assignment.cleaning_day.date)))
+                "{}:  Duties on {}: {}".format(self.source_assignment.assignment_date(), cleaner.name,
+                                               cleaner.nr_assignments_on_day(self.source_assignment.assignment_date())))
 
             assignments_in_future = schedule.assignment_set.filter(
-                cleaner=cleaner, cleaning_day__date__gt=timezone.now().date())
+                cleaner=cleaner, cleaning_week__week__gt=current_epoch_week())
 
             for assignment in assignments_in_future.all():
-                if self.source_assignment.cleaner.is_eligible_for_date(assignment.cleaning_day.date):
+                if self.source_assignment.cleaner.is_eligible_for_week(assignment.cleaning_week.week):
                     self.destinations.add(assignment)

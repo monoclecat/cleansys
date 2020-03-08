@@ -21,8 +21,8 @@ class AssignmentTest(TestCase):
         cls.cleaner3 = Cleaner.objects.create(name="cleaner3")
 
         # CleaningDays
-        cls.cleaning_day1 = CleaningDay.objects.create(date=cls.reference_date, schedule=cls.schedule)
-        cls.cleaning_day2 = CleaningDay.objects.create(date=cls.reference_date + one_week, schedule=cls.schedule)
+        cls.cleaning_day1 = CleaningWeek.objects.create(date=cls.reference_date, schedule=cls.schedule)
+        cls.cleaning_day2 = CleaningWeek.objects.create(date=cls.reference_date + one_week, schedule=cls.schedule)
 
         # Assignments
         cls.assignment1 = Assignment.objects.create(

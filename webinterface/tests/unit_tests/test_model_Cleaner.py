@@ -26,11 +26,11 @@ class CleanerTest(TestCase):
         cls.cleaner3 = Cleaner.objects.create(name="cleaner3")
 
         # CleaningDays
-        cls.cleaning_day1 = CleaningDay.objects.create(
+        cls.cleaning_day1 = CleaningWeek.objects.create(
             date=correct_dates_to_due_day(cls.reference_date), schedule=cls.schedule)
-        cls.cleaning_day2 = CleaningDay.objects.create(date=correct_dates_to_due_day(
+        cls.cleaning_day2 = CleaningWeek.objects.create(date=correct_dates_to_due_day(
             cls.reference_date + cls.one_week), schedule=cls.schedule)
-        cls.cleaning_day3 = CleaningDay.objects.create(date=correct_dates_to_due_day(
+        cls.cleaning_day3 = CleaningWeek.objects.create(date=correct_dates_to_due_day(
             cls.reference_date - cls.one_week), schedule=cls.schedule)
 
         # Affiliations

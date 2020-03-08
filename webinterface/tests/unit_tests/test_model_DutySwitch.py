@@ -36,9 +36,9 @@ class DutySwitchTest(TestCase):
             end=cls.reference_date + 4 * cls.one_week)
 
         # CleaningDays
-        cls.cleaning_day1 = CleaningDay.objects.create(date=cls.reference_date, schedule=cls.schedule)
-        cls.cleaning_day2 = CleaningDay.objects.create(date=cls.reference_date + cls.one_week, schedule=cls.schedule)
-        cls.cleaning_day3 = CleaningDay.objects.create(
+        cls.cleaning_day1 = CleaningWeek.objects.create(date=cls.reference_date, schedule=cls.schedule)
+        cls.cleaning_day2 = CleaningWeek.objects.create(date=cls.reference_date + cls.one_week, schedule=cls.schedule)
+        cls.cleaning_day3 = CleaningWeek.objects.create(
             date=cls.reference_date + 2 * cls.one_week, schedule=cls.schedule)
 
         # Assignments

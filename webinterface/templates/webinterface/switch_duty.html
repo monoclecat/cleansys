@@ -31,7 +31,7 @@ Putzdienst tauschen
                     <h3>
                         Deine Tauschanfrage<br>
                         <span class="glyphicon glyphicon-play"></span> {{ object.source_assignment.schedule.name }}<br>
-                        <span class="glyphicon glyphicon-calendar"></span> {{ object.source_assignment.cleaning_day.date }}
+                        <span class="glyphicon glyphicon-calendar"></span> {{ object.source_assignment.cleaning_week.date }}
                     </h3>
                 </div>
             </div>
@@ -46,7 +46,7 @@ Putzdienst tauschen
                 <h3>
                     {{ object.source_assignment.schedule.name }}</h3>
                 <h4>
-                    Du, {{ object.source_assignment.cleaning_day.date }}<br>
+                    Du, {{ object.source_assignment.cleaning_week.date }}<br>
                     <span class="glyphicon glyphicon-sort"></span><br>
                     <span class="glyphicon glyphicon-calendar"></span> {{ object.selected_assignment.cleaning_day.date }}
                     <span class="glyphicon glyphicon-user"></span> {{ object.selected_assignment.cleaner.name }}
@@ -98,7 +98,7 @@ Putzdienst tauschen
                     <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3" style="text-align: center">
                         <h4>
                             <span class="glyphicon glyphicon-user"></span> {{ object.source_assignment.cleaner.name }}
-                            <span class="glyphicon glyphicon-calendar"></span> {{ object.source_assignment.cleaning_day.date }}<br>
+                            <span class="glyphicon glyphicon-calendar"></span> {{ object.source_assignment.cleaning_week.date }}<br>
                             <span class="glyphicon glyphicon-sort"></span><br>
                             <span class="glyphicon glyphicon-user"></span> Du
                             <span class="glyphicon glyphicon-calendar"></span> {{ object.selected_assignment.cleaning_day.date }}

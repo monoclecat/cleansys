@@ -181,7 +181,7 @@ class AffiliationUpdateView(UpdateView):
 
 class CleaningDayUpdateView(UpdateView):
     form_class = CleaningDayForm
-    model = CleaningDay
+    model = CleaningWeek
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
 
@@ -265,7 +265,7 @@ class AssignmentCleaningView(UpdateView):
         context = super().get_context_data(**kwargs)
         try:
             context['tasks'] = self.object.cleaning_day.task_set.all()
-        except CleaningDay.DoesNotExist:
+        except CleaningWeek.DoesNotExist:
             logging.error("CleaningDay does not exist on date!")
             raise Exception("CleaningDay does not exist on date!")
 

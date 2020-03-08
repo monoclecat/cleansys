@@ -27,8 +27,10 @@ class CompleteTestEnvironment:
     @classmethod
     def setUpTestData(cls):
         # Config
-        cls.reference_date = datetime.date(2010, 1, 4)  # Is a Monday (weekday == 0)
-        cls.one_week = timezone.timedelta(days=7)
+        cls.start_week = 2500
+        cls.duration = 4
+        cls.mid_week = cls.start_week + cls.duration / 2 - 1
+        cls.end_week = cls.start_week + cls.duration-1
 
         # Schedule
         cls.bathroom_schedule = Schedule.objects.create(name="bathroom", cleaners_per_date=1, weekday=2,
@@ -50,45 +52,37 @@ class CompleteTestEnvironment:
         # Cleaners
         cls.angie = Cleaner.objects.create(name="angie", preference=1)  # Max one duty a week please
         cls.angie_affiliation = Affiliation.objects.create(
-            cleaner=cls.angie, group=cls.upper_group,
-            beginning=cls.reference_date, end=cls.reference_date + 4 * cls.one_week
+            cleaner=cls.angie, group=cls.upper_group, beginning=cls.start_week, end=cls.end_week
         )
 
         cls.bob = Cleaner.objects.create(name="bob", preference=2)  # Max two duties a week please
         cls.bob_affiliation_1 = Affiliation.objects.create(
-            cleaner=cls.bob, group=cls.upper_group,
-            beginning=cls.reference_date, end=cls.reference_date + 2 * cls.one_week
+            cleaner=cls.bob, group=cls.upper_group, beginning=cls.start_week, end=cls.mid_week
         )
         cls.bob_affiliation_2 = Affiliation.objects.create(
-            cleaner=cls.bob, group=cls.lower_group,
-            beginning=cls.reference_date + 2 * cls.one_week, end=cls.reference_date + 4 * cls.one_week
+            cleaner=cls.bob, group=cls.lower_group, beginning=cls.mid_week+1, end=cls.end_week
         )
 
         cls.chris = Cleaner.objects.create(name="chris", preference=3)  # I don't care how many duties a week
         cls.chris_affiliation_1 = Affiliation.objects.create(
-            cleaner=cls.chris, group=cls.lower_group,
-            beginning=cls.reference_date, end=cls.reference_date + 2 * cls.one_week
+            cleaner=cls.chris, group=cls.lower_group, beginning=cls.start_week, end=cls.mid_week
         )
         cls.chris_affiliation_2 = Affiliation.objects.create(
-            cleaner=cls.chris, group=cls.upper_group,
-            beginning=cls.reference_date + 2 * cls.one_week, end=cls.reference_date + 4 * cls.one_week
+            cleaner=cls.chris, group=cls.upper_group, beginning=cls.mid_week+1, end=cls.end_week
         )
 
         cls.dave = Cleaner.objects.create(name="dave", preference=3)  # I don't care how many duties a week
         cls.dave_affiliation = Affiliation.objects.create(
-            cleaner=cls.dave, group=cls.lower_group,
-            beginning=cls.reference_date, end=cls.reference_date + 4 * cls.one_week
+            cleaner=cls.dave, group=cls.lower_group, beginning=cls.start_week, end=cls.end_week
         )
 
         # CleaningDays
-        mondays = [datetime.date(2010, 1, 4) + datetime.timedelta(weeks=x) for x in range(0, 4)]
+        weeks = [x for x in range(cls.start_week, cls.end_week + 1)]
         counter = 1
-        for date in mondays:
+        for week in weeks:
             for schedule in [cls.bathroom_schedule, cls.kitchen_schedule, cls.bedroom_schedule, cls.garage_schedule]:
-                setattr(cls, "{}_cleaning_day_{}".format(schedule.name, counter),
-                        CleaningDay.objects.create(
-                            date=date + datetime.timedelta(days=schedule.weekday),
-                            schedule=schedule)
+                setattr(cls, "{}_cleaning_week_{}".format(schedule.name, counter),
+                        CleaningWeek.objects.create(week=week, schedule=schedule)
                         )
 
         # Assignments
@@ -142,12 +136,12 @@ class ScheduleTest(CompleteTestEnvironment, TestCase):
         even_week = datetime.date(2010, 2, 8)
         odd_week = datetime.date(2010, 2, 1)
 
-        self.assertTrue(weekly_schedule.defined_on_date(even_week))
-        self.assertTrue(even_week_schedule.defined_on_date(even_week))
-        self.assertFalse(odd_week_schedule.defined_on_date(even_week))
+        self.assertTrue(weekly_schedule.occurs_in_week(even_week))
+        self.assertTrue(even_week_schedule.occurs_in_week(even_week))
+        self.assertFalse(odd_week_schedule.occurs_in_week(even_week))
 
-        self.assertFalse(even_week_schedule.defined_on_date(odd_week))
-        self.assertTrue(odd_week_schedule.defined_on_date(odd_week))
+        self.assertFalse(even_week_schedule.occurs_in_week(odd_week))
+        self.assertTrue(odd_week_schedule.occurs_in_week(odd_week))
 
     def test__new_cleaning_duties__keep_existing_assignments(self):
         date1, date2 = [self.reference_date, self.reference_date + 4 * self.one_week]
