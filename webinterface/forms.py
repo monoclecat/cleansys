@@ -115,20 +115,12 @@ class CleanerForm(forms.ModelForm):
 
     name = forms.CharField(max_length=20, label="Name des Putzers", widget=forms.TextInput)
 
-    email = forms.EmailField(label="Email des Putzers in der Form vorname.nachname@pvka.de")
+    email = forms.EmailField(label="Email des Putzers")
 
     preference = forms.ChoiceField(choices=Cleaner.PREFERENCE, initial=2, label="Putzvorlieben")
 
     slack_id = forms.ChoiceField(choices=(None, "--------------------"), label="Wähle des Putzers Slackprofil aus.",
                                  required=False)
-
-    def clean(self):
-        cleaned_data = super().clean()
-
-        if pv_email.match(cleaned_data.get('email')) is None:
-            raise forms.ValidationError("Ungültige Email! Sie muss wie folgt aussehen: vorname.nachname@pvka.de")
-
-        return cleaned_data
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
