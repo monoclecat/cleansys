@@ -42,8 +42,13 @@ Einstellungen
         <div class="row">
             <div class="col-xs-12 col-sm-6">
                 <h2>Putzer
-                    <a class="btn btn-default" href="{% url 'webinterface:cleaner-new' %}" role="button">
-                    <span class="glyphicon glyphicon-plus"></span> Neuer Putzer</a>
+                    <a class="btn btn-default {% if not active_schedule_group_list %}disabled{% endif %} %}"
+                       href="{% url 'webinterface:cleaner-new' %}" role="button">
+                    {% if not active_schedule_group_list %}
+                        <span class="glyphicon glyphicon-warning-sign"></span> Erstelle/Aktiviere zuerst eine Putzplan-Gruppierung</a>
+                    {% else %}
+                        <span class="glyphicon glyphicon-plus"></span> Neuer Putzer</a>
+                    {% endif %}
                 </h2>
                 <div class="well">
                     <div class="row">
@@ -150,11 +155,11 @@ Einstellungen
                         {% empty %}
                             <p>Keine Putzplan-Gruppen zu Zeigen...</p>
                         {% endfor %}
-                        {% if disabled_schedule_list %}
+                        {% if disabled_schedule_group_list %}
                             <h3>Deaktivierte Putzplan-Gruppen</h3>
                             {% for group in disabled_schedule_group_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
-                                <a class="btn btn-default btn-lg btn-block" role="button"
+                                <a class="btn btn-default btn-lg btn-block" role="button" style="white-space: normal"
                                    href="{% url 'webinterface:schedule-group-edit' group.pk %}">
                                     <span class="glyphicon glyphicon-cog"></span> {{ group.name }}
                                 </a>
