@@ -6,6 +6,7 @@ from crispy_forms.layout import *
 from crispy_forms.bootstrap import *
 from slackbot.slackbot import get_slack_users, slack_running
 from django.contrib.auth.forms import AuthenticationForm
+from django.core.exceptions import ValidationError
 
 import re
 
@@ -134,6 +135,8 @@ class CleanerForm(forms.ModelForm):
             'name',
             'email',
             'preference',
+            'schedule_group',
+            'schedule_group__action_date',
 
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
@@ -158,6 +161,49 @@ class CleanerForm(forms.ModelForm):
                 "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
                 "href=\"{% url 'webinterface:cleaner-delete' object.pk %}\""
                 "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzer</a>"))
+
+
+class CleanerNewForm(CleanerForm):
+    schedule_group = forms.ModelChoiceField(
+        queryset=ScheduleGroup.objects.enabled(), required=False, empty_label="---Ausgezogen---",
+        label="Wähle die Putzplan-Gruppierung, zu der der/die Putzer/in gehört")
+    schedule_group__beginning = forms.DateField(
+        input_formats=['%d.%m.%Y'], required=False, label="Beginn der Zugehörigkeit TT.MM.YYYY")
+    schedule_group__end = forms.DateField(
+        input_formats=['%d.%m.%Y'], required=False, label="Ende der Zugehörigkeit TT.MM.YYYY")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'name',
+            'email',
+            'preference',
+            HTML("<p>Du erstellst einen neue/n Putzer/in. Bitte gebe den Zeitraum an, während dem er/sie "
+                 "voraussichtlich Teil der Putzgemeinschaft sein wird. </p>"
+                 "<p>Durch Klicken auf den Reiter rechts vom Putzername, dann auf "
+                 "'<span class=\"glyphicon glyphicon-home\"></span> Zugehörigkeiten' können diese Daten bearbeitet"
+                 "werden.</p>"),
+            'schedule_group',
+            'schedule_group__beginning',
+            'schedule_group__end',
+
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
+                 "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> ")
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        schedule_group = cleaned_data.get("schedule_group")
+        beginning = cleaned_data.get("schedule_group__beginning")
+        end = cleaned_data.get("schedule_group__end")
+
+        if schedule_group is not None and (beginning is None or end is None):
+            raise ValidationError("Wenn eine Zugehörigkeit angegeben wird, muss sein Beginn und Ende "
+                                  "ebenfalls angegeben werden.")
 
 
 class AffiliationForm(forms.ModelForm):
