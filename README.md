@@ -12,3 +12,5 @@ The admin area can be accessed with the credentials of the Django superuser:
 *Password:*CleaningAdmin  
 
 > WARNING: Make sure to change the superuser password when deploying the CSG! 
+
+### First steps

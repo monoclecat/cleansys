@@ -7,41 +7,35 @@ from unittest.mock import *
 logging.disable(logging.FATAL)
 
 
-class HelperFunctionsTest(TestCase):
-    def test__correct_dates_to_weekday__date_argument(self):
-        self.assertEqual(correct_dates_to_weekday(datetime.date(2010, 2, 1), 3).weekday(), 3)
+class EpochFunctionsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Beginning of epoch has epoch week number 0 but date number 3 (is a Thursday)
+        # January 5, 1970 is first Monday of epoch, and thus our reference, since our weeks start on a Monday.
+        cls.beginning = {'date': datetime.date(1970, 1, 5), 'week_nr': 0}
 
-    def test__correct_dates_to_weekday__list_argument(self):
-        corrected_list = correct_dates_to_weekday([datetime.date(2010, 2, 1), datetime.date(2010, 2, 1)], 3)
-        self.assertIsInstance(corrected_list, list)
-        self.assertEqual(corrected_list[0].weekday(), 3)
+        add_weeks = 135
+        cls.weeks_after = {'date': cls.beginning.get('date') + datetime.timedelta(weeks=add_weeks),
+                           'week_nr': add_weeks}
 
-    def test__correct_dates_to_weekday__invalid_argument(self):
-        self.assertIsNone(correct_dates_to_weekday("thisisnotadate", 4))
+    def epoch_tester(self, func, conv_from, conv_to, expected_input_instance, return_instance, wrong_input_example):
+        self.assertIsInstance(func(self.beginning[conv_from]), return_instance)
+        self.assertEqual(func(self.beginning[conv_from]), self.beginning[conv_to])
 
-    def test__correct_dates_to_due_day(self):
-        reference_date = datetime.date(2010, 2, 1)  # Has weekday #0
-        self.assertEqual(correct_dates_to_due_day(reference_date).weekday(), 6)
+        self.assertEqual(func(self.weeks_after[conv_from]), self.weeks_after[conv_to])
 
-        corrected_list = correct_dates_to_weekday([reference_date, reference_date], 6)
-        self.assertIsInstance(corrected_list, list)
-        self.assertEqual(corrected_list[0].weekday(), 6)
+        self.assertRaisesRegex(TypeError, func.__name__+'.*'+expected_input_instance.__name__,
+                               func, wrong_input_example)
 
-        self.assertIsNone(correct_dates_to_weekday("thisisnotadate", 6))
+    def test__date_to_epoch_week(self):
+        self.epoch_tester(func=date_to_epoch_week,
+                          conv_from='date', conv_to='week_nr',
+                          expected_input_instance=datetime.date, return_instance=int,
+                          wrong_input_example=123)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def test__epoch_week_to_monday(self):
+        self.epoch_tester(func=epoch_week_to_monday,
+                          conv_from='week_nr', conv_to='date',
+                          expected_input_instance=int, return_instance=datetime.date,
+                          wrong_input_example=datetime.date(2000, 1, 1))

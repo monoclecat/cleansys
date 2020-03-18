@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'crispy_forms',
     'slack',
     'django_celery_beat',
-    'django_celery_results'
+    'django_celery_results',
+    'coverage'
 ]
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'

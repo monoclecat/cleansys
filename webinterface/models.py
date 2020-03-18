@@ -11,37 +11,42 @@ import calendar
 import time
 
 
-def correct_dates_to_due_day(days):
-    return correct_dates_to_weekday(days, 6)
+# def correct_dates_to_due_day(days):
+#     return correct_dates_to_weekday(days, 6)
+#
+#
+# def correct_dates_to_weekday(days, weekday):
+#     """
+#     Days is a date or list of timezone.date objects you want converted. 0 = Monday, 6 = Sunday
+#     The corrected weekday/s will always lie in the same week as days.
+#     """
+#     if isinstance(days, list):
+#         corrected_days = []
+#         for day in days:
+#             if isinstance(day, datetime.date):
+#                 # To prevent overflow of day over datetime.date.max
+#                 day = datetime.date(9999, 12, 26) if day > datetime.date(9999, 12, 26) else day
+#                 day += timezone.timedelta(days=weekday - day.weekday())
+#             corrected_days.append(day)
+#         return corrected_days
+#     elif isinstance(days, datetime.date):
+#         # To prevent overflow of day over datetime.date.max
+#         days = datetime.date(9999, 12, 26) if days > datetime.date(9999, 12, 26) else days
+#         return days + timezone.timedelta(days=weekday - days.weekday())
+#     return None
 
 
-def correct_dates_to_weekday(days, weekday):
-    """
-    Days is a date or list of timezone.date objects you want converted. 0 = Monday, 6 = Sunday
-    The corrected weekday/s will always lie in the same week as days.
-    """
-    if isinstance(days, list):
-        corrected_days = []
-        for day in days:
-            if isinstance(day, datetime.date):
-                # To prevent overflow of day over datetime.date.max
-                day = datetime.date(9999, 12, 26) if day > datetime.date(9999, 12, 26) else day
-                day += timezone.timedelta(days=weekday - day.weekday())
-            corrected_days.append(day)
-        return corrected_days
-    elif isinstance(days, datetime.date):
-        # To prevent overflow of day over datetime.date.max
-        days = datetime.date(9999, 12, 26) if days > datetime.date(9999, 12, 26) else days
-        return days + timezone.timedelta(days=weekday - days.weekday())
-    return None
-
-
-def date_to_epoch_week(date):
+def date_to_epoch_week(date: datetime.date) -> int:
+    if not isinstance(date, datetime.date):
+        raise TypeError("In date_to_epoch_week: Argument must be of type datetime.date or datetime.datetime!")
+    # Beginning of epoch has epoch week number 0 but date number 3 (is a Thursday), so we subtract 4 days from input
     epoch_seconds = calendar.timegm(date.timetuple())
     return int((epoch_seconds / 60 / 60 / 24 - 4) / 7)
 
 
-def epoch_week_to_monday(week):
+def epoch_week_to_monday(week: int) -> datetime.date:
+    if not isinstance(week, int):
+        raise TypeError("In epoch_week_to_monday: Argument must be an int!")
     epoch_seconds = (week * 7 + 4) * 24 * 60 * 60
     return datetime.date.fromtimestamp(time.mktime(time.gmtime(epoch_seconds)))
 
