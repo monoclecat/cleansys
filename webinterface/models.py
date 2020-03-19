@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.utils import OperationalError
+from django.db.models.query import QuerySet
 from operator import itemgetter
 import datetime
 from django.contrib.auth.hashers import make_password
@@ -230,18 +231,18 @@ class ScheduleGroup(models.Model):
 
 
 class CleanerQuerySet(models.QuerySet):
-    def active(self):
+    def active(self) -> QuerySet:
         return self.filter(
             affiliation__beginning__lte=current_epoch_week(), affiliation__end__gte=current_epoch_week())
 
-    def inactive(self):
+    def inactive(self) -> QuerySet:
         return self.exclude(
             affiliation__beginning__lte=current_epoch_week(), affiliation__end__gte=current_epoch_week())
 
-    def no_slack_id(self):
+    def no_slack_id(self) -> QuerySet:
         return self.filter(slack_id='')
 
-    def has_slack_id(self):
+    def has_slack_id(self) -> QuerySet:
         return self.exclude(slack_id='')
 
 
@@ -279,45 +280,51 @@ class Cleaner(models.Model):
         except Affiliation.DoesNotExist:
             return None
 
-    def all_assignments_during_affiliation_with_schedule(self, schedule):
+    def all_assignments_during_affiliation_with_schedule(self, schedule: Schedule) -> QuerySet:
+        """
+        Finds all Assignments that a Schedule has during the time this Cleaner is affiliated with it
+
+        :param schedule: The Schedule object to consider
+        :return: A QuerySet with Assignments
+        """
         assignments_while_affiliated = Assignment.objects.none()
         for affiliation in self.affiliation_set.filter(group__schedules=schedule).all():
             assignments_while_affiliated |= Assignment.objects.filter(
-                cleaning_week__week__gte=affiliation.beginning, cleaning_week__week__lt=affiliation.end,
+                cleaning_week__week__gte=affiliation.beginning, cleaning_week__week__lte=affiliation.end,
                 cleaning_week__schedule=schedule)
         return assignments_while_affiliated
 
-    def own_assignments_during_affiliation_with_schedule(self, schedule):
+    def own_assignments_during_affiliation_with_schedule(self, schedule: Schedule) -> QuerySet:
         return self.all_assignments_during_affiliation_with_schedule(schedule).filter(cleaner=self)
 
-    def deployment_ratio_for_schedule(self, schedule):
-        all_assignments = self.all_assignments_during_affiliation_with_schedule(schedule)
-        nr_own_assignments = all_assignments.filter(cleaner=self).count()
-        if nr_own_assignments != 0:
-            return nr_own_assignments / all_assignments.count()
+    def deployment_ratio_for_schedule(self, schedule) -> float:
+        nr_all_assignments = self.all_assignments_during_affiliation_with_schedule(schedule).count()
+        nr_own_assignments = self.own_assignments_during_affiliation_with_schedule(schedule).count()
+        if nr_all_assignments != 0:
+            return nr_own_assignments / nr_all_assignments
         else:
-            return 0
+            return 0.0
 
     def is_active(self):
         return self.current_affiliation() is not None
 
-    def rejected_dutyswitch_requests(self):
+    def rejected_dutyswitch_requests(self) -> QuerySet:
         return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
 
-    def dutyswitch_requests_received(self):
+    def dutyswitch_requests_received(self) -> QuerySet:
         return DutySwitch.objects.filter(selected_assignment__cleaner=self)
 
-    def pending_dutyswitch_requests(self):
+    def pending_dutyswitch_requests(self) -> QuerySet:
         return DutySwitch.objects.filter(source_assignment__cleaner=self, status=1)
 
-    def has_pending_requests(self):
+    def has_pending_requests(self) -> QuerySet:
         return self.pending_dutyswitch_requests().exists() or self.dutyswitch_requests_received().exists() or \
                self.rejected_dutyswitch_requests().exists()
 
-    def nr_assignments_in_week(self, week):
+    def nr_assignments_in_week(self, week: int):
         return self.assignment_set.filter(cleaning_week__week=week).count()
 
-    def is_eligible_for_week(self, week):
+    def is_eligible_for_week(self, week: int):
         nr_assignments_on_day = self.nr_assignments_in_week(week)
         return nr_assignments_on_day == 0 or nr_assignments_on_day == 1 and self.preference == 2 \
             or self.preference == 3
