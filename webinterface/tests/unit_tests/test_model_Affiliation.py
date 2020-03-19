@@ -42,16 +42,6 @@ class AffiliationTest(TestCase):
         self.assertIn(str(self.start_week), affil_str)
         self.assertIn(str(self.end_week), affil_str)
 
-    def test__save__cleaner_change(self):
-        affiliation = Affiliation.objects.get(pk=self.affiliation.pk)
-        affiliation.cleaner = self.cleaner2
-        self.assertRaises(ValidationError, affiliation.save)
-
-    def test__save__group_change(self):
-        affiliation = Affiliation.objects.get(pk=self.affiliation.pk)
-        affiliation.group = self.group2
-        self.assertRaises(ValidationError, affiliation.save)
-
     def test__save__end_before_beginning(self):
         affiliation = Affiliation.objects.get(pk=self.affiliation.pk)
         affiliation.end = affiliation.beginning - 1
