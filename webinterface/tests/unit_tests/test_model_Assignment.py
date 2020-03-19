@@ -1,16 +1,12 @@
 from django.test import TestCase
 from webinterface.models import *
 
-import logging
-from unittest.mock import *
-
 
 class AssignmentTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         # Config
-        cls.reference_date = correct_dates_to_due_day(datetime.date(2010, 1, 8))
-        one_week = timezone.timedelta(days=7)
+        cls.reference_week = 2500
 
         # Schedule
         cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=2)
@@ -21,41 +17,36 @@ class AssignmentTest(TestCase):
         cls.cleaner3 = Cleaner.objects.create(name="cleaner3")
 
         # CleaningDays
-        cls.cleaning_day1 = CleaningWeek.objects.create(date=cls.reference_date, schedule=cls.schedule)
-        cls.cleaning_day2 = CleaningWeek.objects.create(date=cls.reference_date + one_week, schedule=cls.schedule)
+        cls.cleaning_week1 = CleaningWeek.objects.create(week=cls.reference_week, schedule=cls.schedule)
+        cls.cleaning_week2 = CleaningWeek.objects.create(week=cls.reference_week + 1, schedule=cls.schedule)
 
         # Assignments
         cls.assignment1 = Assignment.objects.create(
-            cleaner=cls.cleaner1, schedule=cls.schedule, cleaning_day=cls.cleaning_day1)
+            cleaner=cls.cleaner1, schedule=cls.schedule, cleaning_week=cls.cleaning_week1)
         cls.assignment2 = Assignment.objects.create(
-            cleaner=cls.cleaner2, schedule=cls.schedule, cleaning_day=cls.cleaning_day1)
+            cleaner=cls.cleaner2, schedule=cls.schedule, cleaning_week=cls.cleaning_week1)
         cls.assignment3 = Assignment.objects.create(
-            cleaner=cls.cleaner3, schedule=cls.schedule, cleaning_day=cls.cleaning_day2)
+            cleaner=cls.cleaner3, schedule=cls.schedule, cleaning_week=cls.cleaning_week2)
 
         # DutySwitch
         cls.dutyswitch = DutySwitch.objects.create(source_assignment=cls.assignment1)
 
-    def test__creation(self):
-        assignment = Assignment.objects.create(cleaner=self.cleaner1, schedule=self.schedule,
-                                               cleaning_day=self.cleaning_day1)
-        self.assertIsInstance(assignment, Assignment)
-
     def test__str(self):
         self.assertIn(self.schedule.name, self.assignment1.__str__())
         self.assertIn(self.cleaner1.name, self.assignment1.__str__())
-        self.assertIn(self.assignment1.cleaning_day.date.strftime('%d-%b-%Y'), self.assignment1.__str__())
+        self.assertIn(self.assignment1.assignment_date().strftime('%d-%b-%Y'), self.assignment1.__str__())
 
-    def test__cleaners_on_day_for_schedule(self):
-        cleaners_on_date_for_schedule = self.assignment1.cleaners_on_date_for_schedule()
-        self.assertIn(self.cleaner1, cleaners_on_date_for_schedule)
-        self.assertIn(self.cleaner2, cleaners_on_date_for_schedule)
-        self.assertNotIn(self.cleaner3, cleaners_on_date_for_schedule)
+    def test__all_cleaners_in_week_for_schedule(self):
+        all_cleaners = self.assignment1.all_cleaners_in_week_for_schedule()
+        self.assertIn(self.cleaner1, all_cleaners)
+        self.assertIn(self.cleaner2, all_cleaners)
+        self.assertNotIn(self.cleaner3, all_cleaners)
 
-    def test__cleaning_buddies(self):
-        cleaners_on_date_for_schedule = self.assignment1.cleaning_buddies()
-        self.assertNotIn(self.cleaner1, cleaners_on_date_for_schedule)
-        self.assertIn(self.cleaner2, cleaners_on_date_for_schedule)
-        self.assertNotIn(self.cleaner3, cleaners_on_date_for_schedule)
+    def test__other_cleaners_in_week_for_schedule(self):
+        other_cleaners = self.assignment1.other_cleaners_in_week_for_schedule()
+        self.assertNotIn(self.cleaner1, other_cleaners)
+        self.assertIn(self.cleaner2, other_cleaners)
+        self.assertNotIn(self.cleaner3, other_cleaners)
 
     def test__is_source_of_dutyswitch(self):
         self.assertEqual(self.assignment1.is_source_of_dutyswitch(), self.dutyswitch)

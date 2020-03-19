@@ -528,11 +528,11 @@ class Assignment(models.Model):
     def assignment_date(self):
         return epoch_week_to_monday(self.cleaning_week.week) + datetime.timedelta(days=self.schedule.weekday)
 
-    def cleaners_in_week_for_schedule(self):
+    def all_cleaners_in_week_for_schedule(self):
         return Cleaner.objects.filter(assignment__cleaning_week=self.cleaning_week)
 
-    def cleaning_buddies(self):
-        return self.cleaners_in_week_for_schedule().exclude(pk=self.cleaner.pk)
+    def other_cleaners_in_week_for_schedule(self):
+        return self.all_cleaners_in_week_for_schedule().exclude(pk=self.cleaner.pk)
 
     def is_source_of_dutyswitch(self):
         duty_switch = DutySwitch.objects.filter(source_assignment=self)
