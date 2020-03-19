@@ -83,7 +83,7 @@ class Schedule(models.Model):
 
     objects = ScheduleQuerySet.as_manager()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def __init__(self, *args, **kwargs):
@@ -91,7 +91,8 @@ class Schedule(models.Model):
         self.__last_cleaners_per_date = self.cleaners_per_date
         self.__last_frequency = self.frequency
 
-    def deployment_ratios(self, week):
+    def deployment_ratios(self, week: int) -> list:
+        """week must be a epoch week number as returned by date_to_epoch_week()"""
         ratios = []
 
         active_affiliations = Affiliation.objects.active_in_week_for_schedule(week, self)
@@ -103,48 +104,59 @@ class Schedule(models.Model):
         else:
             return []
 
-    def occurs_in_week(self, week):
+    def occurs_in_week(self, week: int) -> bool:
         return self.frequency == 1 or \
                self.frequency == 2 and week % 2 == 0 or \
                self.frequency == 3 and week % 2 == 1
 
     """
-    Like create_assignment, only that it can cover a timespan and has several more options.
+    Creates assignments cover a timespan and has several more options.
     
-    date1 does not have to be smaller than date2 or vice-versa. 
-    @param date1 First date of timeframe, will be corrected to the due-day
-    @param date2 Second date of timeframe, will be corrected to the due-day
+    Week numbers must be epoch week numbers as returned by date_to_epoch_week().
+    @param start_week: First week number on which a new Assignment will be created.
+    @param end_week: Last week number on which a new Assignment will be created
     @param mode Sets the mode of creation:
-    - 1(default): Delete existing Assignments and CleaningDays and regenerate them throughout timeframe
+    - 1(default): Delete existing Assignments and CleaningDays and regenerate them throughout time frame
     - 2: Keep existing Assignments and only create new ones where there are none already
     - 3: Only reassign Assignments on existing CleaningDays, don't generate new CleaningDays
     """
-    def new_cleaning_duties(self, week1, week2, mode=1):
+    def create_assignments_over_timespan(self, start_week: int, end_week: int, mode=1) -> None:
         """Generates new cleaning duties between week1 and week2."""
-        start_week = date_to_epoch_week(week1)
-        end_week = date_to_epoch_week(week2)
-        cleaning_weeks = CleaningWeek.objects.enabled().filter(week__range=[start_week, end_week])
+        if mode not in [1, 2, 3]:
+            raise ValueError("In create_assignments_over_timespan: mode must be either 1,2 or 3!")
 
-        if mode == 1:
-            cleaning_weeks.delete()
-        elif mode == 3:
-            Assignment.objects.filter(cleaning_week__in=cleaning_weeks).delete()
+        min_week = min(start_week, end_week)
+        max_week = max(start_week, end_week)
+        cleaning_weeks = self.cleaningweek_set.enabled().filter(week__range=[min_week, max_week])
 
-        for week in range(start_week, end_week + 1):
+        if mode == 3 or mode == 1:
+            self.assignment_set.filter(cleaning_week__in=cleaning_weeks).delete()
+            if mode == 1:
+                cleaning_weeks.delete()
+
+        for week in range(min_week, max_week + 1):
             while self.create_assignment(week):
                 # This loop enables Schedules with cleaners_per_date > 1 to be handled correctly, as each
                 # call to create_assignment only assigns one Cleaner
                 pass
 
-    def create_assignment(self, week):
+    def create_assignment(self, week: int, bypass_check_if_occurs_in_week=False):
+        if not self.occurs_in_week(week) and not bypass_check_if_occurs_in_week:
+            logging.debug("NO ASSIGNMENT CREATED [Code01]: This schedule does not occur "
+                          "in week {} as frequency is set to {}".
+                          format(week, self.frequency))
+            return False
+
         cleaning_week, was_created = self.cleaningweek_set.get_or_create(week=week)
         if cleaning_week.assignment_set.count() >= self.cleaners_per_date:
-            logging.debug("All Cleaners for this date have already been found.")
+            logging.debug("NO ASSIGNMENT CREATED [Code02]: There are no open cleaning positions for week {}. "
+                          "There are already {} Cleaners assigned for this week. ".
+                          format(self.cleaners_per_date, week))
             return False
 
         ratios = self.deployment_ratios(week)
         if not ratios:
-            logging.debug("Ratios are not defined for this date.")
+            logging.debug("NO ASSIGNMENT CREATED [Code03]: Deployment ratios are not defined for this date.")
             return False
 
         if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
@@ -157,25 +169,23 @@ class Schedule(models.Model):
 
         for cleaner, ratio in ratios:
             if cleaner in cleaning_week.excluded.all():
-                logging.debug("   {} is excluded for this week".format(cleaner.name))
+                logging.debug("   {} is excluded for this week. [Code11]".format(cleaner.name))
                 continue
             if cleaner.is_eligible_for_week(week):
-                logging.debug("   {} inserted!".format(cleaner.name))
+                logging.debug("   {} inserted! [Code21]".format(cleaner.name))
                 return self.assignment_set.create(cleaner=cleaner, cleaning_week=cleaning_week)
             else:
-                logging.debug("   {} already has {} duties today.".format(
+                logging.debug("   {} already has {} duties today. [Code12]".format(
                     cleaner.name, cleaner.nr_assignments_in_week(week)))
         else:
-            logging.debug("   Cleaner's preferences result in no cleaner, we must choose {}"
+            logging.debug("   All Cleaners are excluded or are already cleaning as much as they like. "
+                          "We must choose {} [Code22]"
                           .format(ratios[0][0]))
             return self.assignment_set.create(cleaner=ratios[0][0], cleaning_week=cleaning_week)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
         super(Schedule, self).save(force_insert, force_update, using, update_fields)
-
-        if self.pk and (self.cleaners_per_date != self.__last_cleaners_per_date or self.frequency != self.__last_frequency):
-            raise OperationalError("cleaners_per_date and frequency cannot be changed!")
 
 
 class ScheduleGroupQuerySet(models.QuerySet):
