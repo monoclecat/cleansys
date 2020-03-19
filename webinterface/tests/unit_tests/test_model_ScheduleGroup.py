@@ -24,10 +24,6 @@ class ScheduleGroupQuerySetTest(TestCase):
 
 
 class ScheduleGroupTest(TestCase):
-    def test__creation(self):
-        group = ScheduleGroup.objects.create()
-        self.assertIsInstance(group, ScheduleGroup)
-
     def test__str(self):
         group = ScheduleGroup(name="test")
         self.assertEqual(group.__str__(), group.name)
