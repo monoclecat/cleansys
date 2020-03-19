@@ -10,41 +10,31 @@ from django.core.exceptions import ValidationError
 
 import re
 
-pv_email = re.compile("(\S+)\.(\S+)@pvka\.de")
-
 
 class ScheduleForm(forms.ModelForm):
     class Meta:
         model = Schedule
         exclude = ('slug',)
-
-    name = forms.CharField(max_length=20, label="Putzplan Name", help_text="Der Name des Putzplans",
-                           required=True, widget=forms.TextInput)
-
-    cleaners_per_date = forms.ChoiceField(choices=Schedule.CLEANERS_PER_DATE_CHOICES,
-                                          label="Anzahl der Putzer pro Woche",
-                                          help_text="Z.B. Bad braucht nur einen, Bar braucht zwei.",
-                                          required=True, initial=1)
-
-    weekday = forms.ChoiceField(choices=Schedule.WEEKDAYS, required=True, initial=6,
-                                label="Wochentag, an dem sich der Dienst wiederholen soll.",
-                                help_text="Normale Putzdienste wiederholen sich immer Sonntags, Mülldienste sind "
-                                          "i.d.R. unter der Woche. Dieser Wochentag sagt noch nichts darüber aus, "
-                                          "wie viel Zeit die Putzer zum Erledigen des Dienstes haben.")
-
-    frequency = forms.ChoiceField(choices=Schedule.FREQUENCY_CHOICES, required=True, initial=1,
-                                  label="Häufigkeit der Putzdienste",
-                                  help_text="Wenn du zwei Putzdienste hast, die alle zwei Wochen dran sind, "
-                                            "aber nicht an gleichen Tagen, dann wähle bei einem 'Gerade Wochen' und "
-                                            "beim anderen 'Ungerade Wochen' aus.")
+        labels = {
+            'name': "Name des Putzplans",
+            'cleaners_per_date': "Anzahl der Putzer pro Woche",
+            'weekday': "Wochentag, an dem sich der Dienst wiederholen soll.",
+            'frequency': "Häufigkeit der Putzdienste",
+            'disabled': "Putzplan deaktivieren"
+        }
+        help_texts = {
+            'weekday': "Dieser Wochentag sagt noch nichts darüber aus, wie viel Zeit die Putzer zum "
+                       "Erledigen des Dienstes haben.",
+        }
 
     schedule_group = forms. \
-        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.enabled(),
+        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.enabled(), label="Zugehörigkeit zur Putzgruppe",
+                                 help_text="Alle Putzer einer Putzgruppe sind allen Putzdiensten dieser "
+                                           "Gruppe zugewiesen. Ein Putzer kann nur einer Putzgruppe auf "
+                                           "einmal zugewiesen sein. Ein Putzplan kann jedoch mehreren Putzgruppen "
+                                           "angehören.",
                                  widget=forms.CheckboxSelectMultiple,
-                                 label="Zugehörigkeit", required=False,
-                                 help_text="Wähle die Gruppe(n), zu der/denen der Putzplan gehört.")
-
-    disabled = forms.BooleanField(label="Deaktivieren", required=False)
+                                 required=False)
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
@@ -73,55 +63,59 @@ class ScheduleForm(forms.ModelForm):
             self.fields['cleaners_per_date'].disabled = True
             self.fields['weekday'].disabled = True
 
+        if kwargs['instance']:
+            self.helper.layout.fields.insert(-1, HTML(
+                "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
+                "href=\"{% url 'webinterface:schedule-delete' object.pk %}\""
+                "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Putzplan</a>"))
+
 
 class ScheduleGroupForm(forms.ModelForm):
     class Meta:
         model = ScheduleGroup
         fields = '__all__'
-
-    name = forms.CharField(max_length=30, label="Name der Putzplan-Gruppe",
-                           help_text="Dieser Name steht für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
-                                     "denen manche Bewohner angehören. Wenn du Putzer oder Pläne dieser Gruppe "
-                                     "hinzufügen möchtest, so tue dies in den entsprechenden Putzer- und "
-                                     "Putzplan-Änderungsformularen selbst. ",
-                           required=True, widget=forms.TextInput)
-
-    schedules = forms. \
-        ModelMultipleChoiceField(queryset=Schedule.objects.all(),
-                                 widget=forms.CheckboxSelectMultiple,
-                                 label="Putzpläne", required=False,
-                                 help_text="Wähle die Putzpläne, die dieser Gruppe angehören.")
-
-    disabled = forms.BooleanField(required=False, label="Deaktivieren")
+        labels = {
+            'name': "Name der Putzplan-Gruppe",
+            'schedules': "Putzpläne, die dieser Putzplan-Gruppe angehören",
+            'disabled': "Putzplan-Gruppierung deaktivieren"
+        }
+        help_texts = {
+            'name': "Dieser Name steht z.B. für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
+                    "denen manche oder alle Bewohner angehören."
+        }
+        widgets = {
+            'schedules': forms.CheckboxSelectMultiple
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
-
+        self.fields['schedules'].required = False
         self.helper.layout = Layout(
             'name',
             'schedules',
-            'disabled',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
                  "<a class=\"btn btn-warning\" href=\"{% url \'webinterface:config\' %}\" role=\"button\">"
-                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> ")
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
+            'disabled'
         )
 
 
 class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
-        exclude = ('slug', 'user', 'time_zone')
-
-    name = forms.CharField(max_length=20, label="Name des Putzers", widget=forms.TextInput)
+        fields = ['name', 'preference']
+        labels = {
+            'name': "Name des Putzers",
+            'preference': "Putzvorlieben",
+            'slack_id': "Wähle das Slackprofil des Putzers aus"
+        }
+        help_texts = {
+            'slack_id': "Das Putzplan-System muss dafür mit dem Slack-Server verbunden sein."
+        }
 
     email = forms.EmailField(label="Email des Putzers")
-
-    preference = forms.ChoiceField(choices=Cleaner.PREFERENCE, initial=2, label="Putzvorlieben")
-
-    slack_id = forms.ChoiceField(choices=(None, "--------------------"), label="Wähle des Putzers Slackprofil aus.",
-                                 required=False)
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', {})
@@ -146,13 +140,13 @@ class CleanerForm(forms.ModelForm):
             # We are in the UpdateView
             self.fields['email'].initial = kwargs['instance'].user.email
 
-        if slack_running():
-            self.fields['slack_id'].choices = get_slack_users()
-            self.helper.layout.fields.insert(5, 'slack_id')
-        else:
-            self.Meta.exclude += ('slack_id',)
-            self.helper.layout.fields.insert(0, HTML("<p><i>Slack ist ausgeschaltet. Schalte Slack ein, um "
-                                                     "dem Putzer eine Slack-ID zuordnen zu können.</i></p>"))
+        # if slack_running():
+        #     self.fields['slack_id'].choices = get_slack_users()
+        #     self.helper.layout.fields.insert(5, 'slack_id')
+        # else:
+        #     self.Meta.exclude += ('slack_id',)
+        #     self.helper.layout.fields.insert(0, HTML("<p><i>Slack ist ausgeschaltet. Schalte Slack ein, um "
+        #                                              "dem Putzer eine Slack-ID zuordnen zu können.</i></p>"))
 
         if kwargs['instance']:
             self.helper.layout.fields.append(HTML(
@@ -276,8 +270,14 @@ class AffiliationForm(forms.ModelForm):
                          + str(self.cleaner.pk) + " %}\" "
                                                   "role=\"button\"><span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a>"))
 
+        if kwargs['instance']:
+            self.helper.layout.fields.append(HTML(
+                "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
+                "href=\"{% url 'webinterface:affiliation-delete' object.pk %}\""
+                "role=\"button\"><span class=\"glyphicon glyphicon-trash\"></span> Lösche Zugehörigkeit</a>"))
 
-class CleaningDayForm(forms.ModelForm):
+
+class CleaningWeekForm(forms.ModelForm):
     class Meta:
         model = CleaningWeek
         fields = ['disabled', 'date']

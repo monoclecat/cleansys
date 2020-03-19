@@ -35,11 +35,13 @@ urlpatterns = [
 
     path('results/<from_date>/<to_date>/', staff_member_required(ResultsView.as_view()), name='results'),
 
-    path('cleaning-day-edit/<int:pk>/', staff_member_required(CleaningDayUpdateView.as_view()), name='cleaning-day-edit'),
+    path('cleaning-day-edit/<int:pk>/', staff_member_required(CleaningWeekUpdateView.as_view()), name='cleaning-day-edit'),
 
     path('schedule-new/', staff_member_required(ScheduleNewView.as_view()), name='schedule-new'),
     path('schedule-edit/<int:pk>/', staff_member_required(ScheduleUpdateView.as_view()),
          name='schedule-edit'),
+    path('schedule-delete/<int:pk>/', staff_member_required(ScheduleDeleteView.as_view()),
+         name='schedule-delete'),
     path('schedule/<int:pk>/tasks/', staff_member_required(ScheduleTaskList.as_view()),
          name='schedule-task-list'),
     path('schedule/<int:pk>/tasks/new/', staff_member_required(TaskTemplateNewView.as_view()),
@@ -60,6 +62,9 @@ urlpatterns = [
     path('cleaner-delete/<int:pk>/', staff_member_required(CleanerDeleteView.as_view()), name='cleaner-delete'),
 
     path('affiliation-edit/<int:pk>/', staff_member_required(AffiliationUpdateView.as_view()), name='affiliation-edit'),
+
+    path('affiliation-delete/<int:pk>/', staff_member_required(AffiliationDeleteView.as_view()),
+         name='affiliation-delete'),
 
     path('task-edit/<int:pk>/', staff_member_required(TaskTemplateUpdateView.as_view()), name='task-edit'),
 

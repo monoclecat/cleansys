@@ -47,6 +47,17 @@ class ScheduleUpdateView(UpdateView):
         return HttpResponseRedirect(self.get_success_url())
 
 
+class ScheduleDeleteView(DeleteView):
+    model = Schedule
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_delete_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Lösche Putzplan"
+        return context
+
+
 class ScheduleGroupNewView(CreateView):
     form_class = ScheduleGroupForm
     model = ScheduleGroup
@@ -193,8 +204,24 @@ class AffiliationUpdateView(UpdateView):
                                                  kwargs={'pk': self.object.cleaner.pk}))
 
 
-class CleaningDayUpdateView(UpdateView):
-    form_class = CleaningDayForm
+class AffiliationDeleteView(DeleteView):
+    model = Affiliation
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_delete_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Lösche Zugehörigkeit"
+        return context
+
+    def delete(self, request, *args, **kwargs):
+        affiliation = Affiliation.objects.get(pk=kwargs['pk'])
+        self.success_url = reverse_lazy('webinterface:affiliation-list', kwargs={'pk': affiliation.cleaner.pk})
+        return super().delete(request, *args, **kwargs)
+
+
+class CleaningWeekUpdateView(UpdateView):
+    form_class = CleaningWeekForm
     model = CleaningWeek
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
@@ -280,8 +307,8 @@ class AssignmentCleaningView(UpdateView):
         try:
             context['tasks'] = self.object.cleaning_day.task_set.all()
         except CleaningWeek.DoesNotExist:
-            logging.error("CleaningDay does not exist on date!")
-            raise Exception("CleaningDay does not exist on date!")
+            logging.error("CleaningWeek does not exist on date!")
+            raise Exception("CleaningWeek does not exist on date!")
 
         context['assignment'] = self.object
         return context
