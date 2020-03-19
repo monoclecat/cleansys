@@ -39,17 +39,17 @@ import time
 
 
 def date_to_epoch_week(date: datetime.date) -> int:
-    if not isinstance(date, datetime.date):
-        raise TypeError("In date_to_epoch_week: Argument must be of type datetime.date or datetime.datetime!")
-    # Beginning of epoch has epoch week number 0 but date number 3 (is a Thursday), so we subtract 4 days from input
     epoch_seconds = calendar.timegm(date.timetuple())
-    return int((epoch_seconds / 60 / 60 / 24 - 4) / 7)
+    return int(((epoch_seconds / 60 / 60 / 24) + 3) / 7)
 
 
 def epoch_week_to_monday(week: int) -> datetime.date:
-    if not isinstance(week, int):
-        raise TypeError("In epoch_week_to_monday: Argument must be an int!")
-    epoch_seconds = (week * 7 + 4) * 24 * 60 * 60
+    epoch_seconds = ((week * 7) - 3) * 24 * 60 * 60
+    return datetime.date.fromtimestamp(time.mktime(time.gmtime(epoch_seconds)))
+
+
+def epoch_week_to_sunday(week: int) -> datetime.date:
+    epoch_seconds = ((week * 7) + 3) * 24 * 60 * 60
     return datetime.date.fromtimestamp(time.mktime(time.gmtime(epoch_seconds)))
 
 
