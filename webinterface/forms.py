@@ -135,8 +135,6 @@ class CleanerForm(forms.ModelForm):
             'name',
             'email',
             'preference',
-            'schedule_group',
-            'schedule_group__action_date',
 
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "
@@ -207,37 +205,41 @@ class CleanerNewForm(CleanerForm):
 
 
 class AffiliationForm(forms.ModelForm):
+    """
+    AffiliationForm allows creating and editing Affiliation objects. Important to note is that the beginning and end
+    fields of the model are integer fields that store the week number since 1.1.1970.
+    Showing this number and expecting only such a number as an input is not very user-friendly, which is why
+    this field displays the beginning_as_date() and end_as_date() values of the respective model fields.
+    As an input, this form accepts dates and translates them into these so-called "epoch-weeks" using the
+    function date_to_epoch_week().
+    """
     class Meta:
         model = Affiliation
-        exclude = ('cleaner',)
+        fields = ['group']
+        labels = {
+            'group': "Zugehörigkeit"
+        }
+        help_texts = {
+            'group': "Wähle die Etage oder die Gruppe, zu der der Putzer gehört. <br> "
+                     "Ein Putzer zählt als ausgezogen wenn seine Zugehörigkeiten ausgelaufen sind."
+        }
 
-    group = forms.ModelChoiceField(
-        queryset=ScheduleGroup.objects.enabled(), label="Zugehörigkeit", empty_label="---Ausgezogen---",
-        required=False,
-        help_text="Wähle die Etage oder die Gruppe, zu der der Putzer gehört.")
-    beginning = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Beginn der Zugehörigkeit TT.MM.YYYY")
-    end = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Ende der Zugehörigkeit",
-                          initial=timezone.datetime.max,
-                          help_text="Wenn kein genaues Datum bekannt ist, bitte 31.12.9999 eingeben")
+    beginning = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Beginn der Zugehörigkeit TT.MM.YYYY",
+                                help_text="Das eingegebene Datum wird auf den nächsten Montag abgerundet.")
+    end = forms.DateField(input_formats=['%d.%m.%Y'], required=True, label="Ende der Zugehörigkeit TT.MM.YYYY",
+                          help_text="Das eingegebene Datum wird auf den nächsten Sonntag aufgerundet.")
 
     def clean(self):
         cleaned_data = super().clean()
-        beginning = cleaned_data.get('beginning')
-        end = cleaned_data.get('end')
-        group = cleaned_data.get('group')
 
-        if beginning and beginning > end:
-            raise forms.ValidationError("Das Ende darf nicht vor dem Beginn liegen!", code='end_before_beginning')
+        pk = self.instance.pk
+        try:
+            beginning = date_to_epoch_week(cleaned_data.get('beginning'))
+            end = date_to_epoch_week(cleaned_data.get('end'))
+            Affiliation.date_validator(pk=pk, cleaner=self.cleaner, beginning=beginning, end=end)
+        except TypeError:
+            pass
 
-        if self.cleaner and self.cleaner.is_active() and self.cleaner.current_affiliation().group != group:
-            if not beginning:
-                raise forms.ValidationError("Zur neuen Zugehörigkeit muss auch ein Datum angegeben werden!",
-                                            code='new_aff_no_date')
-
-        if self.cleaner.affiliation_set.filter(beginning__gte=beginning).exclude(pk=self.cleaner.pk).exists():
-            raise forms.ValidationError(
-                "Der Beginn der neuen Zugehörigkeit kann nicht vor dem Beginn einer alten Zugehörigkeit liegen!",
-                code='new_aff_before_old_aff')
         return cleaned_data
 
     def __init__(self, cleaner=None, *args, **kwargs):
@@ -249,6 +251,7 @@ class AffiliationForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             'beginning',
+            'end',
             'group',
             HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                  "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> ")
@@ -257,27 +260,21 @@ class AffiliationForm(forms.ModelForm):
         if self.cleaner and self.cleaner.is_active():
             self.fields['group'].initial = self.cleaner.current_affiliation().group
 
-        # TODO to help prevent trying to set end after another's beginning, show max date that is allowed
-
         if 'instance' in kwargs and kwargs['instance']:
-            # We are in UpdateView
-            self.helper.layout.fields.insert(1, 'end')
+            # We are in AffiliationUpdateView
 
-            if kwargs['instance'].beginning < timezone.now().date():
-                self.fields['beginning'].disabled = True
-            if kwargs['instance'].end < timezone.now().date():
-                self.fields['end'].disabled = True
-
+            # if kwargs['instance'].beginning < timezone.now().date():
+            #     self.fields['beginning'].disabled = True
+            # if kwargs['instance'].end < timezone.now().date():
+            #     self.fields['end'].disabled = True
+            self.fields['beginning'].initial = kwargs['instance'].beginning_as_date
+            self.fields['end'].initial = kwargs['instance'].end_as_date
             self.helper.layout.fields.insert(0, HTML("<h3>" + str(kwargs['instance'].group) + "</h3>"))
             if self.cleaner:
                 self.helper.layout.fields.append(
                     HTML("<a class=\"btn btn-warning\" href=\"{% url \'webinterface:affiliation-list\' "
                          + str(self.cleaner.pk) + " %}\" "
                                                   "role=\"button\"><span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a>"))
-        else:
-            # We are in CreateView
-            self.fields['end'].initial = timezone.datetime.max.date
-            self.fields['end'].disabled = True
 
 
 class CleaningDayForm(forms.ModelForm):

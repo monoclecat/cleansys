@@ -370,8 +370,8 @@ class Affiliation(models.Model):
         ordering = ('-end',)
         unique_together = ('beginning', 'cleaner')
 
-    cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
-    group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE)
+    cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE, editable=False)
+    group = models.ForeignKey(ScheduleGroup, on_delete=models.CASCADE, null=False)
 
     beginning = models.IntegerField()
     end = models.IntegerField()
@@ -391,10 +391,16 @@ class Affiliation(models.Model):
             self.__previous_cleaner = None
             self.__previous_group = None
 
+    def beginning_as_date(self):
+        return epoch_week_to_monday(self.beginning)
+
+    def end_as_date(self):
+        return epoch_week_to_sunday(self.end)
+
     @staticmethod
-    def affiliation_date_validator(pk: int, cleaner: Cleaner, beginning: int, end: int):
+    def date_validator(pk, cleaner: Cleaner, beginning: int, end: int):
         if beginning > end:
-            raise ValidationError("The end of an Affiliation cannot lie before its beginning!")
+            raise ValidationError("Das Ende einer Zugehörigkeit darf nicht vor dem Anfang liegen!")
 
         other_affiliations = cleaner.affiliation_set
 
@@ -402,21 +408,24 @@ class Affiliation(models.Model):
             other_affiliations = other_affiliations.exclude(pk=pk)
 
         if other_affiliations.filter(beginning__range=(beginning, end)).exists():
-            raise ValidationError("The Affiliation you are trying to create is overlapping with the beginning"
-                                  "of an existing Affiliation. Please change the beginning of the existing "
-                                  "Affiliation before trying again.")
+            raise ValidationError("Der vogeschlagene Beginn dieser Zugehörigkeit überlappt "
+                                  "mit einer anderen Zugehörigkeit. "
+                                  "Bitte passe die andere Zugehörigkeit zuerst an, "
+                                  "damit es zu keiner Überlappung kommt.")
 
         if other_affiliations.filter(end__range=(beginning, end)).exists():
-            raise ValidationError("The Affiliation you are trying to create is overlapping with the end"
-                                  "of an existing Affiliation. Please change the end of the existing "
-                                  "Affiliation before trying again.")
+            raise ValidationError("Das vogeschlagene Ende dieser Zugehörigkeit überlappt "
+                                  "mit einer anderen Zugehörigkeit. "
+                                  "Bitte passe die andere Zugehörigkeit zuerst an, "
+                                  "damit es zu keiner Überlappung kommt.")
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        if self.__previous_cleaner and self.__previous_group:
-            if self.__previous_cleaner != self.cleaner or self.__previous_group != self.group:
-                raise ValidationError("Cleaner or ScheduleGroup of an Affiliation cannot be changed!")
+        # Does editable=False do this for us?
+        # if self.__previous_cleaner:  # and self.__previous_group:
+        #     if self.__previous_cleaner != self.cleaner:  # or self.__previous_group != self.group:
+        #         raise ValidationError("Cleaner of an Affiliation cannot be changed!")
 
-        self.affiliation_date_validator(pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
+        self.date_validator(pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
 
         # if self.pk:
         #     # Modifying an already created object

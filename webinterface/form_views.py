@@ -161,10 +161,15 @@ class AffiliationNewView(CreateView):
             cleaner = Cleaner.objects.get(pk=self.kwargs['pk'])
         except Cleaner.DoesNotExist:
             raise OperationalError('PK provided in URL does not belong to any Cleaner!')
-        self.object = form.save(commit=False)
-        self.object.cleaner = cleaner
+        # self.object = form.save(commit=False)
+        beginning_date = datetime.datetime.strptime(form.data['beginning'], "%d.%m.%Y")
+        end_date = datetime.datetime.strptime(form.data['end'], "%d.%m.%Y")
+        self.object = Affiliation(cleaner=cleaner,
+                                  group=ScheduleGroup.objects.get(pk=form.data['group']),
+                                  beginning=date_to_epoch_week(beginning_date),
+                                  end=date_to_epoch_week(end_date))
         self.object.save()
-        return HttpResponseRedirect(reverse_lazy('webinterface:cleaner-edit', kwargs={'pk': cleaner.pk}))
+        return HttpResponseRedirect(reverse_lazy('webinterface:affiliation-list', kwargs={'pk': cleaner.pk}))
 
 
 class AffiliationUpdateView(UpdateView):
@@ -179,8 +184,13 @@ class AffiliationUpdateView(UpdateView):
         return context
 
     def form_valid(self, form):
-        self.object = form.save()
-        return HttpResponseRedirect(reverse_lazy('webinterface:cleaner-edit', kwargs={'pk': self.object.cleaner.pk}))
+        beginning_date = datetime.datetime.strptime(form.data['beginning'], "%d.%m.%Y")
+        end_date = datetime.datetime.strptime(form.data['end'], "%d.%m.%Y")
+        self.object.beginning = date_to_epoch_week(beginning_date)
+        self.object.end = date_to_epoch_week(end_date)
+        self.object.save()
+        return HttpResponseRedirect(reverse_lazy('webinterface:affiliation-list',
+                                                 kwargs={'pk': self.object.cleaner.pk}))
 
 
 class CleaningDayUpdateView(UpdateView):
