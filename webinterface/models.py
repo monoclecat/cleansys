@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.utils import OperationalError
+from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
 from operator import itemgetter
 import datetime
@@ -383,9 +384,6 @@ class Affiliation(models.Model):
     def __init__(self, *args, **kwargs):
         super(Affiliation, self).__init__(*args, **kwargs)
 
-        self.__previous_beginning = self.beginning
-        self.__previous_end = self.end
-
         if self.pk:
             self.__previous_cleaner = self.cleaner
             self.__previous_group = self.group
@@ -393,62 +391,64 @@ class Affiliation(models.Model):
             self.__previous_cleaner = None
             self.__previous_group = None
 
-    def delete(self, using=None, keep_parents=False):
-        super().delete(using, keep_parents)
-        interval_start = min(self.beginning, self.end)
-        interval_end = max(self.beginning, self.end)
-        for schedule in self.group.schedules.all():
-            schedule.new_cleaning_duties(interval_start, interval_end, 3)
+    @staticmethod
+    def affiliation_date_validator(pk: int, cleaner: Cleaner, beginning: int, end: int):
+        if beginning > end:
+            raise ValidationError("The end of an Affiliation cannot lie before its beginning!")
+
+        other_affiliations = cleaner.affiliation_set
+
+        if pk:
+            other_affiliations = other_affiliations.exclude(pk=pk)
+
+        if other_affiliations.filter(beginning__range=(beginning, end)).exists():
+            raise ValidationError("The Affiliation you are trying to create is overlapping with the beginning"
+                                  "of an existing Affiliation. Please change the beginning of the existing "
+                                  "Affiliation before trying again.")
+
+        if other_affiliations.filter(end__range=(beginning, end)).exists():
+            raise ValidationError("The Affiliation you are trying to create is overlapping with the end"
+                                  "of an existing Affiliation. Please change the end of the existing "
+                                  "Affiliation before trying again.")
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         if self.__previous_cleaner and self.__previous_group:
             if self.__previous_cleaner != self.cleaner or self.__previous_group != self.group:
-                raise OperationalError("Cleaner or ScheduleGroup of an Affiliation cannot be changed!")
+                raise ValidationError("Cleaner or ScheduleGroup of an Affiliation cannot be changed!")
 
-        # TODO write validator(pk, current_beginning, proposed_beginning, ...) that can be used by form as well
-        if self.beginning > self.end:
-            raise OperationalError("The end of an Affiliation cannot lie before its beginning!")
+        self.affiliation_date_validator(pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
 
-        if self.pk:
-            # Modifying an already created object
-            beginning_was_set_before_beginning_of_these = \
-                self.cleaner.affiliation_set.filter(
-                    beginning__lt=self.__previous_beginning, beginning__gte=self.beginning)
-            if beginning_was_set_before_beginning_of_these.exists():
-                raise OperationalError("You can't set the beginning before the beginning of another Affiliation of "
-                                       "a Cleaner.")
-        else:
-            # Creating a new object
-            if self.cleaner.affiliation_set.filter(beginning__gte=self.beginning).exclude(pk=self.pk).exists():
-                # The proposed Affiliation shall begin before an existing Affiliation begins -> Not allowed!
-                # Affiliations can only be chained behind each other in time
-                raise OperationalError("Affiliation with beginning before beginning of another Affiliation of "
-                                       "a Cleaner cannot be created!")
+        # if self.pk:
+        #     # Modifying an already created object
+        #     beginning_was_set_before_beginning_of_these = \
+        #         self.cleaner.affiliation_set.filter(
+        #             beginning__lt=self.__previous_beginning, beginning__gte=self.beginning)
+        #     if beginning_was_set_before_beginning_of_these.exists():
+        #         raise ValidationError("You can't set the beginning before the beginning of another Affiliation of "
+        #                                "a Cleaner.")
+        # else:
+        #     # Creating a new object
+        #     if self.cleaner.affiliation_set.filter(beginning__gte=self.beginning).exclude(pk=self.pk).exists():
+        #         # The proposed Affiliation shall begin before an existing Affiliation begins -> Not allowed!
+        #         # Affiliations can only be chained behind each other in time
+        #         raise ValidationError("Affiliation with beginning before beginning of another Affiliation of "
+        #                                "a Cleaner cannot be created!")
 
         super().save(force_insert, force_update, using, update_fields)
 
-        try:
-            overlapping_affiliation = self.cleaner.affiliation_set.exclude(pk=self.pk).get(
-                end__gte=self.beginning, beginning__lte=self.beginning)
-
-            # In overlap.save(), the Assignments in the overlapping dates are re-assigned.
-            # For that reason we don't need to reassign those again
-            overlapping_affiliation.end = self.beginning
-            overlapping_affiliation.save()
-        except Affiliation.DoesNotExist:
-            pass
-
-        for (prev, curr) in [(self.__previous_beginning, self.beginning), (self.__previous_end, self.end)]:
-            if not prev or prev == curr:
-                continue
-            interval_start = min(prev, curr)
-            interval_end = max(prev, curr)
-            Assignment.objects. \
-                filter(cleaning_week__week__gte=interval_start). \
-                filter(cleaning_week__week__lte=interval_end). \
-                delete()
-            for schedule in self.group.schedules.all():
-                schedule.new_cleaning_duties(interval_start, interval_end, 3)
+        # I don't think we should do this here. I believe the generation of Assignments should be a triggered event.
+        # Because sometimes the admin wants to change many Affiliations at once which would affect each other.
+        # for (previous, current) in [(self.__previous_beginning, self.beginning), (self.__previous_end, self.end)]:
+        #     if not previous or previous == current:
+        #         continue
+        #     interval_start = min(previous, current)
+        #     interval_end = max(previous, current)
+        #     Assignment.objects. \
+        #         filter(cleaning_week__week__gte=interval_start). \
+        #         filter(cleaning_week__week__lte=interval_end). \
+        #         delete()
+        #     for schedule in self.group.schedules.all():
+        #         schedule.new_cleaning_duties(interval_start, interval_end, 3)
 
         return
 
