@@ -83,7 +83,7 @@ class ScheduleGroupUpdateView(UpdateView):
 
 
 class CleanerNewView(CreateView):
-    form_class = CleanerNewForm
+    form_class = CleanerForm
     model = Cleaner
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_form.html'
@@ -94,12 +94,6 @@ class CleanerNewView(CreateView):
         return context
 
     def form_valid(self, form):
-        schedule_group = form.cleaned_data['schedule_group']
-        if schedule_group is not None:
-            beginning = form.cleaned_data['schedule_group__beginning']
-            end = form.cleaned_data['schedule_group__end']
-            Affiliation.objects.create(cleaner=self.object, group=schedule_group, beginning=beginning, end=end)
-
         self.object = form.save()
         self.object.user.email = form.cleaned_data.get('email')
         self.object.user.save()
