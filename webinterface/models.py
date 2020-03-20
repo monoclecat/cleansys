@@ -482,9 +482,9 @@ class CleaningWeek(models.Model):
     class Meta:
         ordering = ('-week',)
         unique_together = ('week', 'schedule')
-    week = models.IntegerField()
+    week = models.IntegerField(editable=False)
     excluded = models.ManyToManyField(Cleaner)
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
     disabled = models.BooleanField(default=False)
 
     objects = CleaningWeekQuerySet.as_manager()
