@@ -22,9 +22,10 @@ urlpatterns = [
 
     path('putzplan-liste/', login_required(ScheduleList.as_view()), name='schedule-list'),
 
-    #path('putzplan/<slug:slug>/seite<int:page>/<slug:cleaner_slug>/', ScheduleView.as_view(),
-    #     name='schedule-view-highlight'),
+    path('putzplan/<slug:slug>/seite<int:page>/<slug:highlight_slug>/', login_required(ScheduleView.as_view()),
+         name='schedule-view-highlight'),
     path('putzplan/<slug:slug>/seite<int:page>/', login_required(ScheduleView.as_view()), name='schedule-view'),
+    path('putzplan/<slug:slug>/', login_required(ScheduleView.as_view()), name='schedule-view-no-page'),
 
     path('config/', staff_member_required(ConfigView.as_view(), login_url=reverse_lazy("webinterface:login")), name='config'),
     path('results/', staff_member_required(RedirectView.as_view(
@@ -35,7 +36,14 @@ urlpatterns = [
 
     path('results/<from_date>/<to_date>/', staff_member_required(ResultsView.as_view()), name='results'),
 
-    path('cleaning-day-edit/<int:pk>/', staff_member_required(CleaningWeekUpdateView.as_view()), name='cleaning-day-edit'),
+    path('cleaning-week-edit/<int:pk>/<int:page>/', staff_member_required(CleaningWeekUpdateView.as_view()),
+         name='cleaning-week-edit'),
+
+    path('cleaning-week-delete/<int:pk>/<int:page>/', staff_member_required(CleaningWeekDeleteView.as_view()),
+         name='cleaning-week-delete'),
+
+    path('assignment-edit/<int:pk>/<int:page>/', staff_member_required(AssignmentUpdateView.as_view()),
+         name='assignment-edit'),
 
     path('schedule-new/', staff_member_required(ScheduleNewView.as_view()), name='schedule-new'),
     path('schedule-edit/<int:pk>/', staff_member_required(ScheduleUpdateView.as_view()),

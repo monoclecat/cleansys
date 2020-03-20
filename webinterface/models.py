@@ -507,6 +507,12 @@ class CleaningWeek(models.Model):
     def is_in_future(self):
         return self.task_set.in_future().exists() and not self.is_active()
 
+    def week_start(self):
+        return epoch_week_to_monday(self.week)
+
+    def week_end(self):
+        return epoch_week_to_sunday(self.week)
+
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         # TODO When created, populate task_set
 
@@ -522,10 +528,10 @@ class CleaningWeek(models.Model):
 class Assignment(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     cleaners_comment = models.CharField(max_length=200)
-    created = models.DateField(auto_now_add=timezone.now().date())
+    created = models.DateField(auto_now_add=timezone.now().date(), editable=False)
 
-    cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE)
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+    cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE, editable=False)
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
 
     class Meta:
         ordering = ('-cleaning_week__week',)

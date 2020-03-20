@@ -222,13 +222,49 @@ class CleaningWeekUpdateView(UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = "Bearbeite Putzdienst"
+        context['title'] = "Putzwoche deaktivieren"
         return context
 
     def form_valid(self, form):
         self.object = form.save()
         return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view',
-                                                 kwargs={'slug': self.object.schedule.slug, 'page': 1}))
+                                                 kwargs={'slug': self.object.schedule.slug,
+                                                         'page': self.kwargs['page']}))
+
+
+class CleaningWeekDeleteView(DeleteView):
+    model = CleaningWeek
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_delete_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Lösche Putzwoche"
+        return context
+
+    def delete(self, request, *args, **kwargs):
+        cleaning_week = CleaningWeek.objects.get(pk=kwargs['pk'])
+        self.success_url = reverse_lazy('webinterface:schedule-view', kwargs={'slug': cleaning_week.schedule.slug,
+                                                                              'page': kwargs['page']})
+        return super().delete(request, *args, **kwargs)
+
+
+class AssignmentUpdateView(UpdateView):
+    form_class = AssignmentForm
+    model = Assignment
+    success_url = reverse_lazy('webinterface:config')
+    template_name = 'webinterface/generic_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Einzelnen Putzdienst bearbeiten"
+        return context
+
+    def form_valid(self, form):
+        self.object = form.save()
+        return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view',
+                                                 kwargs={'slug': self.object.schedule.slug,
+                                                         'page': self.kwargs['page']}))
 
 
 class TaskTemplateNewView(CreateView):

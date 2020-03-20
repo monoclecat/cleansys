@@ -45,54 +45,31 @@ Einstellungen
                     <a class="btn btn-default {% if not active_schedule_group_list %}disabled{% endif %} %}"
                        href="{% url 'webinterface:cleaner-new' %}" role="button">
                     {% if not active_schedule_group_list %}
-                        <span class="glyphicon glyphicon-warning-sign"></span> Erstelle/Aktiviere zuerst eine Putzplan-Gruppierung</a>
+                        <span class="glyphicon glyphicon-warning-sign"></span> Erstelle/Aktiviere zuerst eine Putzplan-Gruppierung
                     {% else %}
-                        <span class="glyphicon glyphicon-plus"></span> Neuer Putzer</a>
+                        <span class="glyphicon glyphicon-plus"></span> Neuer Putzer
                     {% endif %}
+                    </a>
                 </h2>
                 <div class="well">
+                {% if active_cleaner_list %}
                     <div class="row">
-                        {% for cleaner in cleaner_list %}
-                            <div class="col-xs-12 col-sm-6" style="padding: 5px">
-                                <div class="btn-group btn-group-lg">
-                                    <a class="btn btn-primary" role="button" href="#">
-
-                                        <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
-                                        {% if not cleaner.is_active %}<span class="badge">Ausgezogen</span>
-                                        {% elif not cleaner.has_slack_id %}<span class="badge">Slack ID fehlt!</span>
-                                        {% endif %}
-                                    </a>
-                                    <button type="button" class="btn btn-primary dropdown-toggle"
-                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <span class="caret"></span>
-                                        <span class="sr-only">Toggle Dropdown</span>
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a href="{% url 'webinterface:cleaner-edit' cleaner.pk %}">
-                                            <span class="glyphicon glyphicon-cog"></span> Bearbeiten</a></li>
-                                        <li role="separator" class="divider"></li>
-                                        <li><a href="{% url 'webinterface:affiliation-list' cleaner.pk %}">
-                                            <span class="glyphicon glyphicon-home"></span> Zugehörigkeiten</a></li>
-                                    </ul>
-                                </div>
-                            </div>
+                        <h4>Putzer, die zur Zeit eine aktive Zugehörigkeit haben</h4>
+                        {% for cleaner in active_cleaner_list %}
+                            {% include "webinterface_snippets/cleaner_panel.html" %}
                         {% empty %}
                             Keine aktiven Putzer
                         {% endfor %}
                     </div>
-                    {% if inactive_cleaner_list %}
-                        <div class="row">
-                            <h3>Putzer, die ausgezogen sind</h3>
-                            {% for cleaner in inactive_cleaner_list %}
-                                <div class="col-xs-12 col-sm-6" style="padding: 5px">
-                                    <a class="btn btn-default btn-lg btn-block" role="button"
-                                       href="{% url 'webinterface:cleaner-edit' cleaner.pk %}">
-                                        <span class="glyphicon glyphicon-cog"></span> {{ cleaner.name }}
-                                    </a>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
+                {% endif %}
+                {% if inactive_cleaner_list %}
+                    <div class="row">
+                        <h4>Putzer, die ausgezogen sind</h4>
+                        {% for cleaner in inactive_cleaner_list %}
+                            {% include "webinterface_snippets/cleaner_panel.html" %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
                 </div>
             </div>
             <div class="col-xs-12 col-sm-6">
@@ -105,7 +82,7 @@ Einstellungen
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
                                 <div class="btn-group btn-group-lg">
                                     <a class="btn btn-primary" role="button"
-                                        href="{% url 'webinterface:schedule-view' schedule.slug 1 %}">
+                                        href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
                                         <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
                                     </a>
                                     <button type="button" class="btn btn-primary dropdown-toggle"

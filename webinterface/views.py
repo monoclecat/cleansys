@@ -28,7 +28,8 @@ class ConfigView(FormView):
         context['active_schedule_list'] = Schedule.objects.enabled()
         context['disabled_schedule_list'] = Schedule.objects.disabled()
 
-        context['cleaner_list'] = Cleaner.objects.all()
+        context['active_cleaner_list'] = Cleaner.objects.active()
+        context['inactive_cleaner_list'] = Cleaner.objects.inactive()
 
         context['active_schedule_group_list'] = ScheduleGroup.objects.enabled()
         context['disabled_schedule_group_list'] = ScheduleGroup.objects.disabled()
@@ -70,19 +71,63 @@ class ScheduleView(TemplateView):
         except Schedule.DoesNotExist:
             Http404("Putzplan existiert nicht.")
 
-        four_weeks = timezone.timedelta(days=21)
-        cleaning_dates = context['schedule'].cleaningday_set.with_assignments().filter(
-            date__gte=timezone.now().date() - four_weeks).order_by('date')
+        cleaning_weeks = context['schedule'].cleaningweek_set.order_by('week')
+        elements_per_page = 5
 
-        pagination = Paginator(cleaning_dates, 30)
+        if 'page' not in kwargs:
+            index_of_current_cleaning_week = next(i for i, v
+                                                  in enumerate(context['schedule'].cleaningweek_set.order_by('week'))
+                                                  if v.week >= current_epoch_week())
+            page_nr_with_current_cleaning_week = 1 + (index_of_current_cleaning_week // elements_per_page)
+            return redirect(reverse_lazy('webinterface:schedule-view',
+                                         kwargs={'slug': kwargs['slug'], 'page': page_nr_with_current_cleaning_week}))
+
+        pagination = Paginator(cleaning_weeks, elements_per_page)
         context['page'] = pagination.get_page(kwargs['page'])
 
-        try:
-            context['highlighted_cleaner'] = Cleaner.objects.get(user=request.user)
-        except Cleaner.DoesNotExist:
-            pass
+        if 'highlight_slug' in kwargs and kwargs['highlight_slug']:
+            context['highlight_slug'] = kwargs['highlight_slug']
+
+        if not request.user.is_superuser and 'highlight_slug' not in context:
+            try:
+                context['highlight_slug'] = Cleaner.objects.get(user=request.user)
+            except Cleaner.DoesNotExist:
+                pass
 
         return self.render_to_response(context)
+
+    def post(self, request, *args, **kwargs):
+        if 'toggle_cleaning_week_active_status' in request.POST:
+            pass
+            # if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
+            #     try:
+            #         source_assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
+            #         duty_to_switch = DutySwitch.objects.create(source_assignment=source_assignment)
+            #         duty_to_switch.look_for_destinations()
+            #         return HttpResponseRedirect(reverse_lazy(
+            #             'webinterface:switch-duty', kwargs={'pk': duty_to_switch.pk}))
+            #     except (Cleaner.DoesNotExist, Assignment.DoesNotExist):
+            #         raise SuspiciousOperation("Invalid PKs")
+            # else:
+            #     raise SuspiciousOperation("Invalid POST data sent by client")
+        # elif 'clean' in request.POST:
+        #     if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
+        #         try:
+        #             assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
+        #             if not assignment.cleaning_day.task_set.all():
+        #                 assignment.cleaning_day.initiate_tasks()
+        #                 assignment.cleaning_day.save()
+        #
+        #             return HttpResponseRedirect(reverse_lazy(
+        #                 'webinterface:clean-duty', kwargs={'assignment_pk': assignment.pk}))
+        #
+        #         except Assignment.DoesNotExist:
+        #             raise SuspiciousOperation("Invalid Assignment PK")
+        # else:
+        #     raise SuspiciousOperation("POST sent that didn't match a catchable case!")
+
+        return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view', kwargs={'slug': kwargs['slug'],
+                                                                                       'page': kwargs['page']}))
 
 
 class ScheduleList(ListView):

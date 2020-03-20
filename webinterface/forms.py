@@ -29,7 +29,7 @@ class ScheduleForm(forms.ModelForm):
 
     schedule_group = forms. \
         ModelMultipleChoiceField(queryset=ScheduleGroup.objects.enabled(), label="Zugehörigkeit zur Putzgruppe",
-                                 help_text="Alle Putzer einer Putzgruppe sind allen Putzdiensten dieser "
+                                 help_text="Alle Putzer einer Putzgruppe sind allen Putzplänen dieser "
                                            "Gruppe zugewiesen. Ein Putzer kann nur einer Putzgruppe auf "
                                            "einmal zugewiesen sein. Ein Putzplan kann jedoch mehreren Putzgruppen "
                                            "angehören.",
@@ -58,10 +58,10 @@ class ScheduleForm(forms.ModelForm):
             'disabled',
         )
 
-        if 'instance' in kwargs and kwargs['instance']:
-            self.fields['frequency'].disabled = True
-            self.fields['cleaners_per_date'].disabled = True
-            self.fields['weekday'].disabled = True
+        # if 'instance' in kwargs and kwargs['instance']:
+        #     self.fields['frequency'].disabled = True
+        #     self.fields['cleaners_per_date'].disabled = True
+        #     self.fields['weekday'].disabled = True
 
         if kwargs['instance']:
             self.helper.layout.fields.insert(-1, HTML(
@@ -247,35 +247,63 @@ class AffiliationForm(forms.ModelForm):
 class CleaningWeekForm(forms.ModelForm):
     class Meta:
         model = CleaningWeek
-        fields = ['disabled', 'date']
+        fields = ['disabled']
+        labels = {
+            'disabled': "Putzdienst für diese Woche deaktivieren",
+        }
 
-    disabled = forms.BooleanField(label="Putzdienst für diese Woche deaktivieren", required=False)
+    # disabled = forms.BooleanField(label="Putzdienst für diese Woche deaktivieren", required=False)
 
-    date = forms.ChoiceField(label="Datum")
+    # date = forms.ChoiceField(label="Datum")
 
-    def __init__(self, cleaning_day=None, schedule=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if 'instance' in kwargs and kwargs['instance']:
-            cleaning_day = kwargs['instance']
-            schedule = cleaning_day.schedule
+            cleaning_week = kwargs['instance']
 
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            HTML("<div class=\"alert alert-info\" role=\"alert\">Du bearbeitest den Putzdienst "
-                 "für <b>{}</b> am <b>{}</b></div>".format(schedule.name, cleaning_day.date)),
-            'disabled',
-            'date',
-            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
-                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
-        )
+            self.helper = FormHelper()
+            self.helper.layout = Layout(
+                HTML("<div class=\"alert alert-info\" role=\"alert\">Du bearbeitest die Woche von <b>{}</b> bis "
+                     "<b>{}</b> für <b>{}</b></div>".format(cleaning_week.week_start(), cleaning_week.week_end(),
+                                                            cleaning_week.schedule, cleaning_week.schedule.name)),
+                'disabled',
+                HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                     "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
+            )
 
-        possible_dates = [cleaning_day.date + datetime.timedelta(days=x) for x in
-                          range(-1*cleaning_day.date.weekday(), -1*cleaning_day.date.weekday() + 7)]
+        # possible_dates = [cleaning_day.date + datetime.timedelta(days=x) for x in
+        #                   range(-1*cleaning_day.date.weekday(), -1*cleaning_day.date.weekday() + 7)]
+        #
+        # self.fields['date'].choices = [(date, "{} - {}".format(Schedule.WEEKDAYS[date.weekday()][1], date))
+        #                                for date in possible_dates]
+        # self.fields['date'].initial = cleaning_day.date
 
-        self.fields['date'].choices = [(date, "{} - {}".format(Schedule.WEEKDAYS[date.weekday()][1], date))
-                                       for date in possible_dates]
-        self.fields['date'].initial = cleaning_day.date
+
+class AssignmentForm(forms.ModelForm):
+    class Meta:
+        model = Assignment
+        fields = ['cleaner']
+        labels = {
+            'cleaner': "Putzer für diesen Putzdienst",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if 'instance' in kwargs and kwargs['instance']:
+            assignment = kwargs['instance']
+
+            self.helper = FormHelper()
+            self.helper.layout = Layout(
+                HTML("<div class=\"alert alert-info\" role=\"alert\">Du bearbeitest einen einzelnen Putzdienst "
+                     "im Putzplan <b>{}</b> in der Woche von <b>{}</b> bis <b>{}</b></div>".
+                     format(assignment.schedule, assignment.cleaning_week.week_start(),
+                            assignment.cleaning_week.week_end())),
+                'cleaner',
+                HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                     "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
+            )
 
 
 class TaskTemplateForm(forms.ModelForm):

@@ -17,7 +17,7 @@ Putzpläne
         {% for schedule in object_list %}
             <div class="col-xs-12 col-sm-4" style="padding: 5px">
                 <a class="btn btn-primary btn-block" role="button"
-                   href="{% url 'webinterface:schedule-view' schedule.slug 1 %}">
+                   href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
                     <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
                 </a>
             </div>

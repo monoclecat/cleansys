@@ -23,7 +23,98 @@
         </div>
     </div>
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
-    {% include "webinterface_snippets/schedule_assignment_table.html" %}
+    <table class="table table-striped" style="margin-bottom: 0">
+        <tr>
+            <td> </td>
+            <td><span class="glyphicon glyphicon-calendar"></span> Datum</td>
+            <td><span class="glyphicon glyphicon-user"></span> Putzer</td>
+            {% if user.is_superuser %}
+                <td> </td>
+            {% endif %}
+        </tr>
+
+        {% for cleaning_week in page %}
+                <tr {% if cleaning_week.disabled %}class="danger"{% endif %}>
+                    <td>
+                       {% if not cleaning_week.disabled %}
+                           <div class="dropdown">
+                               <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1"
+                                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                   <span class="glyphicon glyphicon-info-sign"></span></button>
+                               <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                                   <style>
+                                       .dropdown ul li {
+                                           margin: 0 0.5em
+                                       }
+                                   </style>
+                                   <li>Geputzt</li>
+                                   {% for task in cleaning_week.task_set.cleaned %}
+
+                                   {% empty %}
+                                       <li><i>Noch nichts.</i></li>
+                                   {% endfor %}
+
+                                   <li role="separator" class="divider"></li>
+
+                                   <li>Offene Aufgaben</li>
+                                   {% for task in cleaning_week.task_set.cleaned %}
+                                   {% empty %}
+                                       <li><i>Noch nichts.</i></li>
+                                   {% endfor %}
+                               </ul>
+                           </div>
+                       {% endif %}
+                    </td>
+
+                    <td>{{ cleaning_week.week_start|date:"d. M y" }} - {{ cleaning_week.week_end|date:"d. M y" }}</td>
+                    <td>
+                        {% if not cleaning_week.disabled %}
+                            {% for assignment in cleaning_week.assignment_set.all %}
+                                <div class="btn-group btn-group-xs" role="group" aria-label="...">
+                                    <a class="btn btn-default"
+                                       href="#"
+                                       role="button">
+                                    {{ assignment.cleaner.name }}
+                                    </a>
+                                    {% if user.is_superuser %}
+                                        <a class="btn btn-default"
+                                           href="{% url 'webinterface:assignment-edit' assignment.pk page.number %}"
+                                           role="button">
+                                            <span class="glyphicon glyphicon-cog"></span>
+                                        </a>
+                                    {% endif %}
+                                </div>
+
+                            {% empty %}
+                                Keine Putzer festgelegt!
+                            {% endfor %}
+                        {% else %}
+                            <b>In dieser Woche deaktiviert</b>
+                        {% endif %}
+                    </td>
+
+                    {% if user.is_superuser %}
+                        <td>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-default dropdown-toggle"
+                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="glyphicon glyphicon-cog"></span> <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a href="{% url 'webinterface:cleaning-week-edit' cleaning_week.pk page.number %}">
+                                        <span class="glyphicon glyphicon-off"></span> Aktivieren/Deaktivieren
+                                    </a></li>
+                                    <li role="separator" class="divider"></li>
+                                    <li><a href="{% url 'webinterface:cleaning-week-delete' cleaning_week.pk page.number %}">
+                                        <span class="glyphicon glyphicon-warning-sign"></span> Löschen
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    {% endif %}
+                </tr>
+        {% endfor %}
+    </table>
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
     {% comment %}<div class="row" style="padding: 1em">
         <h4>Hebe Putzer hervor</h4>
