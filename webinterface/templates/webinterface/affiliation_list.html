@@ -24,7 +24,8 @@ Zugehörigkeiten von {{ cleaner }}
         {% for affiliation in cleaner.affiliation_set.all %}
             <tr>
                 <td class="info"><b>{{ affiliation.group }}</b></td>
-                <td>{{ affiliation.beginning_as_date }} bis {{ affiliation.end_as_date }}</td>
+                <td>{{ affiliation.beginning_as_date|date:"d. M, Y" }} bis
+                    {{ affiliation.end_as_date|date:"d. M, Y" }}</td>
                 <td><a class="btn btn-default btn-sm" href="{% url 'webinterface:affiliation-edit' affiliation.pk %}"
                    role="button">
                     <span class="glyphicon glyphicon-cog"></span> Bearbeiten</a></td>

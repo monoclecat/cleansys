@@ -1,20 +1,17 @@
 <div class="row" style="padding: 0.25em">
     <div class="col-xs-12">
-        <span class="glyphicon glyphicon-play"></span> <b>{{ assignment.schedule.name }}</b>
+        Putzplan <span class="glyphicon glyphicon-play"></span> <b>{{ assignment.schedule.name }}</b>
     </div>
 
     <div class="col-xs-6">
-        <span class="glyphicon glyphicon-calendar"></span> {{ assignment.cleaning_day.date }}
+        <span class="glyphicon glyphicon-calendar"></span> {{ assignment.assignment_date|date:"d. M y" }}
     </div>
 
     <div class="col-xs-6">
         {% if assignment.cleaning_buddies.all %}
             <span class="glyphicon glyphicon-user"></span> Mit
             {% for cleaner in assignment.cleaning_buddies.all %}
-                {{ cleaner.name }}
-                {% ifnotequal cleaner assignment.cleaning_buddies.last %}
-                    ,
-                {% endifnotequal %}
+                {{ cleaner.name }}{% if not forloop.last %}, {% endif %}
             {% endfor %}
         {% endif %}
     </div>
