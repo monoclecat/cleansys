@@ -1,0 +1,96 @@
+{% extends "webinterface/mobile_first_body.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+Putzdienst erledigen
+{% endblock %}
+
+{% block main %}
+    <div class="row">
+        <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+            {% include "webinterface_snippets/button_to_cleaner_page.html" %}
+        </div>
+    </div>
+
+    {% if already_cleaned_error %}
+        <h3 style="padding: 1em;" class="bg-danger">{{ already_cleaned_error }}</h3>
+    {% endif %}
+
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+            {% ifequal user.username assignment.cleaner.slug %}
+                <h4>Hallo {{ assignment.cleaner }}!
+                    Du bist am {{ assignment.assignment_date|date:"d. M, y" }} für den Putzdienst
+                    {{ assignment.schedule.name }} eingetragen
+                {% if assignment.cleaning_buddies %}
+                     zusammen mit
+                    {% for other_cleaner in assignment.cleaning_buddies %}
+                        {{ other_cleaner }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                {% endif %}!</h4>
+            {% else %}
+                <h4>
+                    {% for cleaner in assignment.all_cleaners_in_week_for_schedule %}
+                        {{ cleaner }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                    {{ assignment.all_cleaners_in_week_for_schedule.count|pluralize:"ist,sind" }}
+                    am {{ assignment.assignment_date|date:"d. M, y" }} für den Putzdienst
+                    {{ assignment.schedule.name }} eingetragen. </h4>
+            {% endifequal %}
+
+        </div>
+    </div>
+
+    <h4>Folgende Aufgaben stehen an.
+        {% ifequal user.username assignment.cleaner.slug %}
+            Wenn du einen Teil geputzt hast, klicke auf die entsprechende
+            Aufgabe, um sie abzuschließen.
+        {% endifequal %}
+    </h4>
+    <div class="row">
+        {% for task in tasks.uncleaned %}
+            <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        {% if user.username == assignment.cleaner.slug or user.is_superuser %}
+                            <a class="btn btn-warning"
+                               href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
+                               role="button">
+                                <span class="glyphicon glyphicon-saved"></span> Abhaken
+                            </a>
+                        {% endif %}
+                        <b>{{ task }}</b>
+                    </div>
+                    <div class="panel-footer">
+                        Bearbeitbar von <b>{{ task.start_date|date:"l, d. M Y" }}</b> bis
+                        <b>{{ task.end_date|date:"l, d. M Y" }}</b>.
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <i>Es gibt keine Aufgaben...</i>
+        {% endfor %}
+    </div>
+    <h4>Folgende Aufgaben wurden schon geputzt.</h4>
+    <div class="row">
+        {% for task in tasks.cleaned %}
+            <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+                {% if user.username == assignment.cleaner.slug or user.is_superuser %}
+                    <a class="btn btn-success btn-block"
+                       href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
+                       role="button">
+                        {{ task }} -> <span class="glyphicon glyphicon-user"></span> {{ task.cleaned_by }}
+                    </a>
+                {% else %}
+                    <a class="btn btn-success btn-block disabled" href="#" role="button">
+                        {{ task }} -> <span class="glyphicon glyphicon-user"></span> {{ task.cleaned_by }}
+                    </a>
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+                <i>Keine bisher...</i>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
