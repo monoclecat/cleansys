@@ -14,121 +14,25 @@ Deine Putzdienste
         </div>
         <h2>Hallo {{ cleaner.name }}!</h2>
 
-        {% if cleaner.dutyswitch_requests_received %}
-            <div class="panel panel-success" style="margin-bottom: 0">
-                <div class="panel-heading">
-                    <h4>Du hast Tauschanfragen! Bitte beantworte sie rasch!</h4>
-                </div>
-            </div>
-            {% for dutyswitch in cleaner.dutyswitch_requests_received %}
-                <a class="btn btn-success btn-block" role="button" style="white-space: normal"
-                        href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
-
-                    <b>{{ dutyswitch.source_assignment.schedule.name }}</b><br>
-                    <span class="badge">
-                        <span class="glyphicon glyphicon-user"></span> {{ dutyswitch.source_assignment.cleaner.name }}
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.cleaning_day.date }}
-                    </span><br>
-                    <span class="glyphicon glyphicon-sort"></span><br>
-                    <span class="badge">
-                        <span class="glyphicon glyphicon-user"></span> Du
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.selected_assignment.cleaning_day.date }}
-                    </span>
-                </a>
-            {% endfor %}
-        {% endif %}
-
-        {% if cleaner.rejected_dutyswitch_requests %}
-            <div class="panel panel-danger" style="margin-bottom: 0">
-                <div class="panel-heading">
-                    <h4>Folgende Tauschanfragen wurden abgelehnt, wähle einen neuen Termin aus!</h4>
-                </div>
-            </div>
-            {% for dutyswitch in cleaner.rejected_dutyswitch_requests %}
-                <a class="btn btn-danger btn-block" role="button" style="white-space: normal"
-                        href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
-
-                    <span class="glyphicon glyphicon-remove-sign"></span>
-                    {{ dutyswitch.source_assignment.schedule.name }}
-                    <span class="badge">
-                        <span class="glyphicon glyphicon-user"></span> {{ dutyswitch.source_assignment.cleaner.name }}
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.cleaning_day.date }}
-                    </span>
-                </a>
-            {% endfor %}
-        {% endif %}
-
-        {% if cleaner.pending_dutyswitch_requests %}
-            <div class="panel panel-info" style="margin-bottom: 0">
-                <div class="panel-heading">
-                    <h4>Wir warten auf Antwort für folgende Dienst-Tausche</h4>
-                </div>
-            </div>
-            {% for dutyswitch in cleaner.pending_dutyswitch_requests %}
-                <a class="btn btn-info btn-block" role="button" style="white-space: normal"
-                        href="{% url 'webinterface:switch-duty' dutyswitch.pk %}">
-
-                    {{ dutyswitch.source_assignment.schedule.name }}<br>
-                    <span class="badge">
-                        <span class="glyphicon glyphicon-user"></span> Du
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.source_assignment.cleaning_day.date }}
-                    </span><br>
-                    <span class="glyphicon glyphicon-sort"></span><br>
-                    <span class="badge">
-                        <span class="glyphicon glyphicon-user"></span> {{ dutyswitch.selected_assignment.cleaner.name }}
-                        <span class="glyphicon glyphicon-calendar"></span> {{ dutyswitch.selected_assignment.cleaning_day.date }}
-                    </span>
-                </a>
-            {% endfor %}
-        {% endif %}
-        <br>
-
-        {% if assignments_due_now %}
-            <div class="well well-sm" style="margin-right: -10px; margin-left: -10px">
-                <h3 style="margin-top: 0.25em">Dieses Wochenende hast du Putzdienst!</h3>
-
-                {% for assignment in assignments_due_now.all %}
-                    {% include "webinterface_snippets/assignment_table_row.html" %}
-                    <div class="row">
-                        {% if can_start_assignments_due_now %}
-                            <form class="form-inline" method="post">
-                                {% csrf_token %}
-                                <input type="hidden" name="source_assignment_pk" value="{{ assignment.pk }}">
-
-                                {% if assignment.tasks_cleaned.all %}
-                                    <div class="col-xs-6">
-                                        <button class="btn btn-default btn-sm" disabled style="white-space: normal;
-                                            margin: 0.5em" >Tauschen nicht mehr möglich
-                                        </button>
-                                    </div>
-                                {% else %}
-                                    <div class="col-xs-6">
-                                        {% include 'webinterface_snippets/cleaner_switch_duty_button.html' %}
-                                    </div>
-                                {% endif %}
-
-                                <div class="col-xs-12">
-                                    <button class="btn btn-success btn-block
-                                            {% if assignment.finished_cleaning %}active{% endif %}"
-                                            type="submit" name="clean" style="white-space: normal">
-                                        {% if assignment.finished_cleaning %}
-                                            Fertig geputzt <span class="glyphicon glyphicon-ok"></span>
-                                        {% else %}
-                                            Putzen <span class="glyphicon glyphicon-chevron-right"></span>
-                                        {% endif %}
-                                        </button>
-                                </div>
-                            </form>
-                        {% else %}
-                            <div class="col-xs-12">
-                                <button class="btn btn-success btn-block disabled" type="submit">
-                                    Du kannst erst ab {{ assignment.possible_start_date }} beginnen.</button>
-                            </div>
-                        {% endif %}
+        {% if answerable_dutyswitch_requests %}
+            {% for dutyswitch in answerable_dutyswitch_requests %}
+                <div class="panel panel-info" style="margin-bottom: 0">
+                    <div class="panel-body">
+                        <p>
+                            {{ dutyswitch.requester_assignment.cleaner }} möchte seinen Putzdienst am
+                            {{ dutyswitch.requester_assignment.assignment_date }} tauschen und <b>du</b> kannst helfen!
+                        </p>
+                        <a class="btn btn-info btn-sm"
+                           href="{% url 'webinterface:dutyswitch-accept' dutyswitch.pk page.number %}"
+                           role="button" style="white-space: normal; margin: 0.5em">
+                                Tauschanfrage ansehen <span class="glyphicon glyphicon-eye-open"></span>
+                        </a>
                     </div>
-                {% endfor %}
-            </div>
+                </div>
+            {% endfor %}
         {% endif %}
+
+        <br>
 
         <div class="row">
             <div class="panel panel-primary" style="margin: 0">
@@ -143,22 +47,21 @@ Deine Putzdienste
                     <div class="col-xs-12">
                         {% include "webinterface_snippets/assignment_table_row.html" %}
                         <div class="row">
-                            {% if assignment.is_up_for_switching %}
-                                <div class="col-xs-6">
-                                    <a class="btn btn-default btn-sm"
-                                       href="{% url 'webinterface:switch-duty' assignment.is_up_for_switching.pk %}"
+                            <div class="col-xs-6">
+                                {% if assignment.switch_requested %}
+                                    <a class="btn btn-warning btn-sm"
+                                       href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page.number %}"
                                        role="button" style="white-space: normal; margin: 0.5em">
-                                        Tausch-Anfrage ansehen <span class="glyphicon glyphicon-eye-open"></span></a>
-                                </div>
-                            {% else %}
-                                <form class="form-inline" method="post">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="source_assignment_pk" value="{{ assignment.pk }}">
-                                    <div class="col-xs-6">
-                                        {% include 'webinterface_snippets/cleaner_switch_duty_button.html' %}
-                                    </div>
-                                </form>
-                            {% endif %}
+                                            Tauschanfrage löschen <span class="glyphicon glyphicon-remove"></span>
+                                    </a>
+                                {% else %}
+                                    <a class="btn btn-default btn-sm"
+                                       href="{% url 'webinterface:dutyswitch-create' assignment.pk page.number %}"
+                                       role="button" style="white-space: normal; margin: 0.5em">
+                                            Tauschen <span class="glyphicon glyphicon-random"></span>
+                                    </a>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     </div>

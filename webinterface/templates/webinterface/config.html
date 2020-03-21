@@ -14,9 +14,8 @@ Einstellungen
 
 {% block body %}
     <div class="container-fluid">
-        <div class="row">
+        <!--div class="row">
             <div class="col-md-2 col-lg-3" style="padding: 2em 2em 0 2em;">
-                <a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:logout' %}">Logout</a>
                 <br>
                 {% if not slack_running %}
                     <form method="POST" class="form form-inline">
@@ -38,7 +37,7 @@ Einstellungen
                     </div>
                 </div>
             </div>
-        </div>
+        </div-->
         <div class="row">
             <div class="col-xs-12 col-sm-6">
                 <h2>Putzer
@@ -145,6 +144,9 @@ Einstellungen
                         {% endif %}
                     </div>
                 </div>
+
+                <a class="btn btn-default" role="button" href="{% url 'webinterface:logout' %}">Logout</a>
+                <br><br><br>
             </div>
         </div>
     </div>

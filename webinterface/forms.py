@@ -280,6 +280,35 @@ class CleaningWeekForm(forms.ModelForm):
         # self.fields['date'].initial = cleaning_day.date
 
 
+class AssignmentCreateForm(forms.Form):
+    from_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Die Kalenderwoche von TT.MM.YYYY")
+    to_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Die Kalenderwoche bis TT.MM.YYYY")
+
+    # See definitions in model Schedule, method create_assignments_over_timespan()
+    # Only add mode 3 if there is a need
+    mode = forms.ChoiceField(choices=[(1, 'Bestehende Putzdienste komplett löschen und neu generieren. Dies löscht '
+                                          'aus der Putzwoche alle Information, wie z.B. welche Putzer dann in '
+                                          'Urlaub sind und nicht putzen können.'),
+                                      (2, 'Behalte vorhandene Putzdienste behalten und nur dort Putzdienste '
+                                          'erzeugen wo welche fehlen.')],
+                             widget=forms.RadioSelect, label="Modus")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            'from_date',
+            'to_date',
+            'mode',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
+            HTML("<a class=\"btn btn-warning\" "
+                 "href=\"{% url \'webinterface:schedule-view\' schedule.slug page %}\" "
+                 "role=\"button\"><span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a>")
+        )
+
+
 class AssignmentForm(forms.ModelForm):
     class Meta:
         model = Assignment
@@ -309,40 +338,36 @@ class AssignmentForm(forms.ModelForm):
 class TaskTemplateForm(forms.ModelForm):
     class Meta:
         model = TaskTemplate
-        exclude = ('schedule',)
+        fields = '__all__'
+        labels = {
+            'task_name': "Name der Aufgabe",
+            'start_days_before': "Kann ab diesem Wochentag angefangen werden",
+            'end_days_after': "Darf bis zu diesem Wochentag gemacht werden",
+            'task_help_text': "Hilfetext",
+            'task_disabled': "Aufgabe deaktiviert"
+        }
+        help_texts = {
+            'task_help_text': "Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können."
+        }
+        widgets = {
+            'task_help_text': forms.Textarea
+        }
 
-    task_name = forms.CharField(label="Name der Aufgabe")
-
-    start_days_before = forms.ChoiceField(
-        label="Kann ab diesem Wochentag angefangen werden",
-    )
-
-    end_days_after = forms.ChoiceField(
-        label="Darf bis zu diesem Wochentag gemacht werden",
-    )
-
-    task_help_text = forms.CharField(
-        widget=forms.Textarea,
-        label="Hilfetext", help_text="Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können."
-    )
-
-    task_disabled = forms.BooleanField(label="Deaktiviert", required=False)
-
-    def clean(self):
-        cleaned_data = super().clean()
-
-        task_name = cleaned_data.get('task_name')
-        start_days_before = cleaned_data.get('start_days_before')
-        end_days_after = cleaned_data.get('end_days_after')
-
-        if task_name and not start_days_before or task_name and not end_days_after:
-            raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
-                                        'die Aufgabe erledigt werden kann!', code='incomplete_inputs')
-        if start_days_before + end_days_after > 6:
-            raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
-                                        'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
-
-        return cleaned_data
+    # def clean(self):
+    #     cleaned_data = super().clean()
+    #
+    #     task_name = cleaned_data.get('task_name')
+    #     start_days_before = cleaned_data.get('start_days_before')
+    #     end_days_after = cleaned_data.get('end_days_after')
+    #
+    #     if task_name and not start_days_before or task_name and not end_days_after:
+    #         raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
+    #                                     'die Aufgabe erledigt werden kann!', code='incomplete_inputs')
+    #     if start_days_before + end_days_after > 6:
+    #         raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
+    #                                     'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
+    #
+    #     return cleaned_data
 
     def __init__(self, schedule=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -368,9 +393,9 @@ class TaskTemplateForm(forms.ModelForm):
         self.fields['start_days_before'].initial = 0
         self.fields['end_days_after'].initial = 0
 
-        days_before = [(i, "{} - {} Tage davor".format(Schedule.WEEKDAYS[(i + schedule.weekday) % 7][1], i))
-                       for i in range(6, -1, -1)]
-        days_after = [(i, "{} - {} Tage danach".format(Schedule.WEEKDAYS[(i + schedule.weekday) % 7][1], i))
+        days_before = [(i, "{} - {} Tage davor".format(Schedule.WEEKDAYS[(schedule.weekday - i) % 7][1], i))
+                       for i in range(0, 7)]
+        days_after = [(i, "{} - {} Tage danach".format(Schedule.WEEKDAYS[(schedule.weekday + i) % 7][1], i))
                       for i in range(0, 7)]
 
         self.fields['start_days_before'].choices = days_before
@@ -379,6 +404,108 @@ class TaskTemplateForm(forms.ModelForm):
             HTML("<a class=\"btn btn-warning\" "
                  "href=\"{% url \'webinterface:schedule-task-list\' +" + str(schedule.pk) + " %}\" role=\"button\">"
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "))
+
+
+class TaskCreateForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            HTML("{% include \"webinterface_snippets/list_of_task_have_vs_dont_haves_for_cleaningweek.html\" %}"),
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> Fehlende Aufgaben erstellen</button> "),
+            HTML("<a class=\"btn btn-warning\" "
+                 "href=\"{% url \'webinterface:schedule-view\' cleaning_week.schedule.slug page %}\" "
+                 "role=\"button\"><span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a>")
+        )
+
+
+class TaskCleanedForm(forms.ModelForm):
+    class Meta:
+        model = Task
+        fields = ['cleaned_by']
+        labels = {
+            'cleaned_by': "Putzer, der diese Aufgabe erledigt hat",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if 'instance' in kwargs and kwargs['instance']:
+            self.fields['cleaned_by'].queryset = kwargs['instance'].possible_cleaners()
+            self.fields['cleaned_by'].required = False
+            self.helper = FormHelper()
+            self.helper.layout = Layout(
+                HTML("<h4>Hilfetext</h4>"),
+                HTML("<p>{{ help_text }}</p>"),
+                'cleaned_by',
+                HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
+                     "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
+                HTML("<a class=\"btn btn-warning\" "
+                     "href=\"{% url \'webinterface:assignment-tasks\' assignment.pk %}\" "
+                     "role=\"button\"><span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a>")
+            )
+
+
+class DutySwitchCreateForm(forms.ModelForm):
+    class Meta:
+        model = DutySwitch
+        exclude = ('acceptor_assignment',)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            HTML("<div class=\"alert alert-info\" role=\"alert\">Du möchtest deinen Putzdienst "
+                 "im Putzplan <b>{{ assignment.schedule }}</b> in der Woche von "
+                 "<b>{{ assignment.cleaning_week.week_start|date:\"d. M Y\" }}</b> bis "
+                 "<b>{{ assignment.cleaning_week.week_end|date:\"d. M Y\" }}</b> "
+                 "tauschen.</div>"),
+            HTML("<p>Wenn du den Putzdienst-Tausch in Auftrag gibst, werden Putzdienste in der Zukunft gesucht "
+                 "während denen du keinen Urlaub angemeldet hast. Die Putzer dieser Tausch-Kandidaten werden "
+                 "benachrichtigt und gefragt, ob sie mit dir tauschen möchten.</p>"),
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\" "
+                 "style=\"white-space: normal; margin: 0.5em\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> "
+                 "Ja, ich möchte den Putzdienst-Tausch in Auftrag geben.</button> "),
+            HTML("<a class=\"btn btn-warning\" "
+                 "href=\"{% url \'webinterface:cleaner\' page %}\" role=\"button\" "
+                 "style=\"white-space: normal; margin: 0.5em\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Nein, hol mich hier raus!</a> ")
+        )
+
+
+class DutySwitchAcceptForm(forms.ModelForm):
+    class Meta:
+        model = DutySwitch
+        fields = ('acceptor_assignment',)
+        labels = {
+            'acceptor_assignment': "Welchen deiner Putzdienst möchtest du mit dem obigen tauschen?"
+        }
+
+    def __init__(self, cleaner=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if 'instance' in kwargs and kwargs['instance']:
+            self.fields['acceptor_assignment'].queryset = \
+                cleaner.switchable_assignments_for_request(kwargs['instance']).order_by('cleaning_week__week')
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            HTML("<div class=\"alert alert-info\" role=\"alert\"><b>{{ dutyswitch.requester_assignment.cleaner }}</b> "
+                 "möchte seinen Putzdienst am "
+                 "<b>{{ dutyswitch.requester_assignment.assignment_date }}</b> tauschen</div>"),
+            'acceptor_assignment',
+            HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\" "
+                 "style=\"white-space: normal; margin: 0.5em\">"
+                 "<span class=\"glyphicon glyphicon-ok\"></span> "
+                 "Ja, ich nehme den Tausch an.</button> "),
+            HTML("<a class=\"btn btn-warning\" "
+                 "href=\"{% url \'webinterface:cleaner\' page %}\" role=\"button\" "
+                 "style=\"white-space: normal; margin: 0.5em\">"
+                 "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> ")
+        )
 
 
 class AssignmentCleaningForm(forms.ModelForm):

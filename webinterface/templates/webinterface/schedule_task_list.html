@@ -16,8 +16,6 @@ Aufgaben für {{ schedule }}
         <span class="glyphicon glyphicon-send"></span> Neue Aufgabe erstellen
     </a></p>
 
-
-
     {% for task in object_list.all %}
         {% if task.task_disabled %}
             <div class="panel panel-default">
@@ -25,21 +23,21 @@ Aufgaben für {{ schedule }}
             <div class="panel panel-primary">
         {% endif %}
             <!-- Default panel contents -->
-            <div class="panel-heading">{{ task.task_name }} {% if task.task_disabled %}<b>Deaktiviert</b>{% endif %}
+            <div class="panel-heading">
+                <a class="btn btn-default btn-sm" role="button" href="{% url 'webinterface:task-edit' task.pk %}">
+                        <span class="glyphicon glyphicon-cog"></span>
+                </a>
+                {{ task.task_name }} {% if task.task_disabled %}<b>Deaktiviert</b>{% endif %}
             </div>
             <div class="panel-body">
                 <i>Hilfetext: </i>{{ task.task_help_text }}
             </div>
 
             <!-- List group -->
-            <ul class="list-group">
-                <li class="list-group-item">Muss zwischen <b>{{ task.start_day_to_weekday }}</b> und
-                    <b>{{ task.end_day_to_weekday }}</b> erledigt sein.</li>
-                <li class="list-group-item">
-                    <a class="btn btn-info" role="button" href="{% url 'webinterface:task-edit' task.pk %}">
-                        <span class="glyphicon glyphicon-cog"></span> Bearbeiten</a>
-                </li>
-            </ul>
+            <div class="panel-footer">
+                Muss zwischen <b>{{ task.start_day_to_weekday }}</b> und
+                    <b>{{ task.end_day_to_weekday }}</b> erledigt werden.
+            </div>
         </div>
     {% empty %}
         <h3>Es sind keine Aufgaben definiert.</h3>

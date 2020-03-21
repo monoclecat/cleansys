@@ -22,6 +22,15 @@
             </div>
         </div>
     </div>
+
+    {% if user.is_superuser %}
+        <a class="btn btn-warning" style="margin: 10px"
+           href="{% url 'webinterface:assignment-create' schedule.pk page.number %}"
+           role="button">
+        Erzeuge Putzdienste
+        </a>
+    {% endif %}
+
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
     <table class="table table-striped" style="margin-bottom: 0">
         <tr>
@@ -72,7 +81,7 @@
                             {% for assignment in cleaning_week.assignment_set.all %}
                                 <div class="btn-group btn-group-xs" role="group" aria-label="...">
                                     <a class="btn btn-default"
-                                       href="#"
+                                       href="{% url 'webinterface:assignment-tasks' assignment.pk %}"
                                        role="button">
                                     {{ assignment.cleaner.name }}
                                     </a>
@@ -96,7 +105,12 @@
                     {% if user.is_superuser %}
                         <td>
                             <div class="btn-group">
-                                <button type="button" class="btn btn-default dropdown-toggle"
+                                <button type="button"
+                                        class="btn
+                                               {% if cleaning_week.tasks_valid %}btn-default
+                                               {% else %}btn-warning
+                                               {% endif %}
+                                              dropdown-toggle"
                                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="glyphicon glyphicon-cog"></span> <span class="caret"></span>
                                 </button>
@@ -104,6 +118,13 @@
                                     <li><a href="{% url 'webinterface:cleaning-week-edit' cleaning_week.pk page.number %}">
                                         <span class="glyphicon glyphicon-off"></span> Aktivieren/Deaktivieren
                                     </a></li>
+                                    {% if not cleaning_week.tasks_valid %}
+                                        <li class="bg-danger">
+                                            <a href="{% url 'webinterface:cleaning-week-tasks' cleaning_week.pk page.number %}">
+                                                <span class="glyphicon glyphicon-plus"></span> Aufgaben aktualisieren
+                                            </a>
+                                        </li>
+                                    {% endif %}
                                     <li role="separator" class="divider"></li>
                                     <li><a href="{% url 'webinterface:cleaning-week-delete' cleaning_week.pk page.number %}">
                                         <span class="glyphicon glyphicon-warning-sign"></span> Löschen
@@ -113,6 +134,8 @@
                         </td>
                     {% endif %}
                 </tr>
+        {% empty %}
+            Keine Putzdienste vorhanden...
         {% endfor %}
     </table>
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
