@@ -1,0 +1,17 @@
+<h3>Aufgaben, die diese Putzwoche schon hat:</h3>
+<ul>
+    {% for task in cleaning_week_tasks %}
+        <li>{{ task.template.task_name }}</li>
+    {% empty %}
+        <i>Diese Putzwoche hat noch keine Aufgaben.</i>
+    {% endfor %}
+</ul>
+
+<h3>Aufgaben des Putudienstes, die zur Zeit der letzten Aktualisierung noch nicht existierten:</h3>
+<ul>
+    {% for template in missing_schedule_task_templates %}
+        <li>{{ template.task_name }}</li>
+    {% empty %}
+        <i>Die aktuelle Putzwoche ist auf dem neusten Stand.</i>
+    {% endfor %}
+</ul>

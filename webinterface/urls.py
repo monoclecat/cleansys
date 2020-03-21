@@ -13,9 +13,20 @@ urlpatterns = [
     path('', RedirectView.as_view(url=reverse_lazy("webinterface:cleaner", kwargs={'page': 1})), name='welcome'),
 
     #url(r'^switch/(?P<pk>[\d]+)/(?P<answer>[\S]+)/$', DutySwitchView.as_view(), name='switch-duty-answer'),
-    path('tauschen/<int:pk>/', login_required(DutySwitchView.as_view()), name='switch-duty'),
+    path('tauschen/<int:assignment_pk>/<int:page>', login_required(DutySwitchNewView.as_view()),
+         name='dutyswitch-create'),
 
-    path('putzen/<int:assignment_pk>/', login_required(AssignmentCleaningView.as_view()), name='clean-duty'),
+    path('tauschanfrage-akzeptieren/<int:pk>/<int:page>', login_required(DutySwitchUpdateView.as_view()),
+         name='dutyswitch-accept'),
+
+    path('tauschanfrage-loeschen/<int:pk>/<int:page>', login_required(DutySwitchDeleteView.as_view()),
+         name='dutyswitch-delete'),
+
+    path('putzen/<int:assignment_pk>/', login_required(AssignmentTasksView.as_view()),
+         name='assignment-tasks'),
+
+    path('geputzt/<int:assignment_pk>/<int:task_pk>', login_required(TaskCleanedView.as_view()),
+         name='task-cleaned'),
 
     # path('putzer/<slug:slug>/seite<int:page>/', CleanerView.as_view(), name='cleaner'),
     path('du/seite<int:page>/', login_required(CleanerView.as_view()), name='cleaner'),
@@ -29,19 +40,25 @@ urlpatterns = [
     path('putzplan/<slug:slug>/', login_required(ScheduleView.as_view()), name='schedule-view-no-page'),
 
     path('config/', staff_member_required(ConfigView.as_view(), login_url=reverse_lazy("webinterface:login")), name='config'),
-    path('results/', staff_member_required(RedirectView.as_view(
-         url=reverse_lazy('webinterface:results',
-                    kwargs={'from_date': (timezone.now().date() - timezone.timedelta(days=30)).strftime('%d-%m-%Y'),
-                            'to_date': (timezone.now().date() + timezone.timedelta(days=3*30)).strftime('%d-%m-%Y')}))),
-         name='results-now'),
+    # path('results/', staff_member_required(RedirectView.as_view(
+    #      url=reverse_lazy('webinterface:results',
+    #                 kwargs={'from_date': (timezone.now().date() - timezone.timedelta(days=30)).strftime('%d-%m-%Y'),
+    #                         'to_date': (timezone.now().date() + timezone.timedelta(days=3*30)).strftime('%d-%m-%Y')}))),
+    #      name='results-now'),
+    #
+    # path('results/<from_date>/<to_date>/', staff_member_required(ResultsView.as_view()), name='results'),
 
-    path('results/<from_date>/<to_date>/', staff_member_required(ResultsView.as_view()), name='results'),
+    path('cleaning-week-tasks/<int:pk>/<int:page>/', staff_member_required(TaskCreateView.as_view()),
+         name='cleaning-week-tasks'),
 
     path('cleaning-week-edit/<int:pk>/<int:page>/', staff_member_required(CleaningWeekUpdateView.as_view()),
          name='cleaning-week-edit'),
 
     path('cleaning-week-delete/<int:pk>/<int:page>/', staff_member_required(CleaningWeekDeleteView.as_view()),
          name='cleaning-week-delete'),
+
+    path('assignment-create/<int:schedule_pk>/<int:page>/', staff_member_required(AssignmentCreateView.as_view()),
+         name='assignment-create'),
 
     path('assignment-edit/<int:pk>/<int:page>/', staff_member_required(AssignmentUpdateView.as_view()),
          name='assignment-edit'),

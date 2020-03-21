@@ -137,12 +137,12 @@ class Schedule(models.Model):
                 cleaning_weeks.delete()
 
         for week in range(min_week, max_week + 1):
-            while self.create_assignment(week):
+            while self.create_assignment(week=week):
                 # This loop enables Schedules with cleaners_per_date > 1 to be handled correctly, as each
                 # call to create_assignment only assigns one Cleaner
                 pass
 
-    def create_assignment(self, week: int, bypass_check_if_occurs_in_week=False):
+    def create_assignment(self, week: int, bypass_check_if_occurs_in_week=False, initiate_tasks=True):
         if not self.occurs_in_week(week) and not bypass_check_if_occurs_in_week:
             logging.debug("NO ASSIGNMENT CREATED [Code01]: This schedule does not occur "
                           "in week {} as frequency is set to {}".
@@ -150,6 +150,9 @@ class Schedule(models.Model):
             return False
 
         cleaning_week, was_created = self.cleaningweek_set.get_or_create(week=week)
+        if initiate_tasks:
+            cleaning_week.create_missing_tasks()
+
         if cleaning_week.assignment_set.count() >= self.cleaners_per_date:
             logging.debug("NO ASSIGNMENT CREATED [Code02]: There are no open cleaning positions for week {}. "
                           "There are already {} Cleaners assigned for this week. ".
@@ -272,6 +275,16 @@ class Cleaner(models.Model):
     def __str__(self):
         return self.name
 
+    def switchable_assignments_for_request(self, duty_switch):
+        from_week = duty_switch.requester_assignment.cleaning_week.week  # TODO from_week should be current epoch week
+        switchable_assignments = self.assignment_set.filter(cleaning_week__week__range=(from_week, from_week+12))
+        requested = duty_switch.possible_acceptors()
+        acceptable = switchable_assignments
+        return requested & acceptable
+
+    def can_accept_duty_switch_request(self, duty_switch):
+        return len(self.switchable_assignments_for_request(duty_switch)) != 0
+
     def current_affiliation(self):
         try:
             current_affiliation = self.affiliation_set.get(
@@ -308,19 +321,6 @@ class Cleaner(models.Model):
 
     def is_active(self):
         return self.current_affiliation() is not None
-
-    def rejected_dutyswitch_requests(self) -> QuerySet:
-        return DutySwitch.objects.filter(source_assignment__cleaner=self, status=2)
-
-    def dutyswitch_requests_received(self) -> QuerySet:
-        return DutySwitch.objects.filter(selected_assignment__cleaner=self)
-
-    def pending_dutyswitch_requests(self) -> QuerySet:
-        return DutySwitch.objects.filter(source_assignment__cleaner=self, status=1)
-
-    def has_pending_requests(self) -> QuerySet:
-        return self.pending_dutyswitch_requests().exists() or self.dutyswitch_requests_received().exists() or \
-               self.rejected_dutyswitch_requests().exists()
 
     def nr_assignments_in_week(self, week: int):
         return self.assignment_set.filter(cleaning_week__week=week).count()
@@ -485,6 +485,7 @@ class CleaningWeek(models.Model):
     week = models.IntegerField(editable=False)
     excluded = models.ManyToManyField(Cleaner)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
+    tasks_valid = models.BooleanField(default=False)
     disabled = models.BooleanField(default=False)
 
     objects = CleaningWeekQuerySet.as_manager()
@@ -494,6 +495,16 @@ class CleaningWeek(models.Model):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def create_missing_tasks(self):
+        missing_task_templates = self.task_templates_missing()
+        for task_template in missing_task_templates.all():
+            self.task_set.create(template=task_template)
+        self.tasks_valid = True
+        self.save()
+
+    def task_templates_missing(self):
+        return self.schedule.tasktemplate_set.exclude(pk__in=[x.template.pk for x in self.task_set.all()])
 
     def has_tasks(self):
         return self.task_set.exists()
@@ -525,6 +536,13 @@ class CleaningWeek(models.Model):
         super().save(force_insert, force_update, using, update_fields)
 
 
+class AssignmentQuerySet(models.QuerySet):
+    def eligible_switching_destination_candidates(self, source_assignment):
+        return self.filter(schedule=source_assignment.schedule).\
+            filter(cleaning_week__week__gt=source_assignment.cleaning_week.week).\
+            exclude(cleaning_week__excluded=source_assignment.cleaner)
+
+
 class Assignment(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     cleaners_comment = models.CharField(max_length=200)
@@ -532,6 +550,8 @@ class Assignment(models.Model):
 
     cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE, editable=False)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
+
+    objects = AssignmentQuerySet.as_manager()
 
     class Meta:
         ordering = ('-cleaning_week__week',)
@@ -549,20 +569,12 @@ class Assignment(models.Model):
     def other_cleaners_in_week_for_schedule(self):
         return self.all_cleaners_in_week_for_schedule().exclude(pk=self.cleaner.pk)
 
-    def is_source_of_dutyswitch(self):
-        duty_switch = DutySwitch.objects.filter(source_assignment=self)
+    def switch_requested(self):
+        duty_switch = DutySwitch.objects.filter(requester_assignment=self).filter(acceptor_assignment__isnull=True)
         if duty_switch.exists():
             return duty_switch.first()
         else:
             return None
-
-
-class TaskBase(models.Model):
-    task_name = models.CharField(max_length=20)
-    task_help_text = models.CharField(max_length=200)
-
-    def __str__(self):
-        return self.task_name
 
 
 class TaskTemplateQuerySet(models.QuerySet):
@@ -573,20 +585,25 @@ class TaskTemplateQuerySet(models.QuerySet):
         return self.filter(disabled=True)
 
 
-class TaskTemplate(TaskBase):
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+class TaskTemplate(models.Model):
+    task_name = models.CharField(max_length=20)
+    task_help_text = models.CharField(max_length=200, default="", null=True)
+    start_days_before = models.IntegerField(choices=[(0, ''), (1, ''), (2, ''), (3, ''), (4, ''), (5, ''), (6, '')])
+    end_days_after = models.IntegerField(choices=[(0, ''), (1, ''), (2, ''), (3, ''), (4, ''), (5, ''), (6, '')])
+
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
     task_disabled = models.BooleanField(default=False)
 
     objects = TaskTemplateQuerySet.as_manager()
 
-    start_days_before = models.IntegerField(default=1)
-    end_days_after = models.IntegerField(default=2)
+    def __str__(self):
+        return self.task_name
 
     def start_day_to_weekday(self):
         return Schedule.WEEKDAYS[(self.schedule.weekday-self.start_days_before) % 7][1]
 
     def end_day_to_weekday(self):
-        return Schedule.WEEKDAYS[(self.schedule.weekday+self.start_days_before) % 7][1]
+        return Schedule.WEEKDAYS[(self.schedule.weekday+self.end_days_after) % 7][1]
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         if self.start_days_before + self.end_days_after > 6:
@@ -598,52 +615,49 @@ class TaskTemplate(TaskBase):
 
 class TaskQuerySet(models.QuerySet):
     def cleaned(self):
-        return self.filter(cleaned_by__isnull=True)
-
-    def uncleaned(self):
         return self.exclude(cleaned_by__isnull=True)
 
-    def expired(self):
-        return self.filter(end_date__lte=timezone.now().date())
-
-    def expired_uncleaned(self):
-        return self.expired().filter(cleaned_by__isnull=True)
-
-    def expired_cleaned(self):
-        return self.expired().exclude(cleaned_by__isnull=True)
-
-    def active(self):
-        return self.filter(start_date__lte=timezone.now().date(), end_date__gte=timezone.now().date())
-
-    def active_uncleaned(self):
-        return self.active().filter(cleaned_by__isnull=True)
-
-    def active_cleaned(self):
-        return self.active().exclude(cleaned_by__isnull=True)
-
-    def in_future(self):
-        return self.filter(start_date__gt=timezone.now().date())
+    def uncleaned(self):
+        return self.filter(cleaned_by__isnull=True)
 
 
-class TaskManager(models.Manager):
-    def create_from_template(self, template, **kwargs):
-        if 'name' not in kwargs:
-            kwargs['name'] = template.name
-        if 'help_text' not in kwargs:
-            kwargs['help_text'] = template.help_text
-        kwargs['start_date'] = kwargs['cleaning_day'] - timezone.timedelta(days=template.start_days_before)
-        kwargs['end_date'] = kwargs['cleaning_day'] + timezone.timedelta(days=template.end_days_after)
-        self.create(**kwargs)
+class Task(models.Model):
+    cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE, editable=False)
+    cleaned_by = models.ForeignKey(Cleaner, null=True, on_delete=models.PROTECT)
+    template = models.ForeignKey(TaskTemplate, on_delete=models.CASCADE, editable=False)
+
+    objects = TaskQuerySet.as_manager()
+
+    def __str__(self):
+        return self.template.task_name
+
+    def start_date(self):
+        return self.cleaning_week.week_start() \
+               + datetime.timedelta(days=self.cleaning_week.schedule.weekday) \
+               - datetime.timedelta(days=self.template.start_days_before)
+
+    def end_date(self):
+        return self.cleaning_week.week_start() \
+               + datetime.timedelta(days=self.cleaning_week.schedule.weekday) \
+               + datetime.timedelta(days=self.template.end_days_after)
+
+    def possible_cleaners(self):
+        return Cleaner.objects.filter(
+            pk__in=[x.cleaner.pk for x in self.cleaning_week.assignment_set.all()])
 
 
-class Task(TaskBase):
-    cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE)
-    cleaned_by = models.ForeignKey(Assignment, null=True, on_delete=models.SET_NULL)
+class DutySwitchQuerySet(models.QuerySet):
+    def open(self, schedule=None):
+        if schedule:
+            return self.filter(acceptor_assignment__isnull=True).filter(requester_assignment__schedule=schedule)
+        else:
+            return self.filter(acceptor_assignment__isnull=True)
 
-    start_date = models.DateField()
-    end_date = models.DateField()
-
-    objects = TaskManager.from_queryset(TaskQuerySet)()
+    def closed(self, schedule=None):
+        if schedule:
+            return self.exclude(acceptor_assignment__isnull=True).filter(requester_assignment__schedule=schedule)
+        else:
+            return self.exclude(acceptor_assignment__isnull=True)
 
 
 class DutySwitch(models.Model):
@@ -651,99 +665,45 @@ class DutySwitch(models.Model):
         ordering = ('created',)
     created = models.DateField(auto_now_add=timezone.now().date())
 
-    source_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="source")
-    selected_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="selected")
-    destinations = models.ManyToManyField(Assignment)
+    requester_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="requester", editable=False)
+    acceptor_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="acceptor")
 
-    STATES = ((0, 'Waiting on source choice'), (1, 'Waiting on approval for selected'), (2, 'Selected was rejected'))
-    status = models.IntegerField(choices=STATES, default=0)
-    # DutySwitch object gets created in statue 0 as Cleaner needs to select a desired Duty destination.
-    # When the desired Duty is selected the status is set to 1 because we need approval
-    # from the destination to commence switching.
-    # If the destination denies approval, status is set to 2 because the source needs to select a new
-    # destination. The cycle begins from the start
+    objects = DutySwitchQuerySet.as_manager()
+
+    def __init__(self, *args, **kwargs):
+        super(DutySwitch, self).__init__(*args, **kwargs)
+        self.__previous_acceptor = self.acceptor_assignment
 
     def __str__(self):
-        if self.selected_assignment:
-            return "Source: {} on {}  -  Selected: {} on {}  -  Status: {} ".\
-                format(self.source_assignment.cleaner.name,
-                       self.source_assignment.assignment_date().strftime('%d-%b-%Y'),
-                       self.selected_assignment.cleaner.name,
-                       self.selected_assignment.assignment_date().strftime('%d-%b-%Y'),
-                       self.status)
+        if self.acceptor_assignment:
+            return "Requester: {} on {}  -  Acceptor: {} on {}".\
+                format(self.requester_assignment.cleaner.name,
+                       self.requester_assignment.assignment_date().strftime('%d-%b-%Y'),
+                       self.acceptor_assignment.cleaner.name,
+                       self.acceptor_assignment.assignment_date().strftime('%d-%b-%Y'))
         else:
-            return "Source: {} on {}  -  Selected:            -  Status: {} ". \
-                format(self.source_assignment.cleaner.name,
-                       self.source_assignment.assignment_date().strftime('%d-%b-%Y'),
-                       self.status)
+            return "Requester: {} on {}  -  Acceptor: none yet". \
+                format(self.requester_assignment.cleaner.name,
+                       self.requester_assignment.assignment_date().strftime('%d-%b-%Y'))
 
-    def destinations_without_source_and_selected(self):
-        destinations = self.destinations.exclude(pk=self.source_assignment.pk)
-        if self.selected_assignment:
-            destinations = destinations.exclude(pk=self.selected_assignment.pk)
-        return destinations
+    def possible_acceptors(self, pk_list=None):
+        candidates = Assignment.objects.eligible_switching_destination_candidates(self.requester_assignment)
+        if pk_list:
+            return candidates.filter(pk__in=pk_list)
+        else:
+            return candidates
 
-    def set_selected(self, assignment):
-        self.selected_assignment = assignment
-        self.status = 1
-        self.save()
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        if self.__previous_acceptor is None and self.acceptor_assignment is not None:
+            self.requester_assignment.cleaning_week.excluded.add(self.requester_assignment.cleaner)
 
-    def selected_was_accepted(self):
-        cleaning_week = self.source_assignment.cleaning_week
+            source_cleaner = self.requester_assignment.cleaner
 
-        cleaning_week.excluded.add(self.source_assignment.cleaner)
+            self.requester_assignment.cleaner = self.acceptor_assignment.cleaner
+            self.requester_assignment.save()
 
-        source_cleaning_week = self.source_assignment.cleaning_week
-        self.source_assignment.cleaning_week = self.selected_assignment.cleaning_week
-        self.source_assignment.save()
-        self.selected_assignment.cleaning_week = source_cleaning_week
-        self.selected_assignment.save()
+            self.acceptor_assignment.cleaner = source_cleaner
+            self.acceptor_assignment.save()
 
-        all_except_self = DutySwitch.objects.exclude(pk=self.pk)
-
-        for destination in all_except_self.filter(selected_assignment=self.source_assignment) | \
-                all_except_self.filter(selected_assignment=self.selected_assignment):
-            destination.selected_was_rejected()
-
-        for destination in all_except_self.filter(source_assignment=self.source_assignment) | \
-                all_except_self.filter(source_assignment=self.selected_assignment):
-            destination.delete()
-
-        self.delete()
-
-    def selected_was_cancelled(self):
-        self.selected_assignment = None
-        self.status = 0
-        self.save()
-
-    def selected_was_rejected(self):
-        self.destinations.remove(self.selected_assignment)
-        self.selected_assignment = None
-        self.status = 2
-        self.save()
-
-    def look_for_destinations(self):
-        schedule = self.source_assignment.cleaning_week.schedule
-
-        active_affiliations = Affiliation.objects.active_on_date_for_schedule(
-            self.source_assignment.cleaning_week.week, schedule).exclude(
-            cleaner=self.source_assignment.cleaner, cleaner__in=self.source_assignment.cleaning_week.excluded.all())
-
-        candidates = []
-        for affiliation in active_affiliations:
-            if affiliation.cleaner.is_eligible_for_week(self.source_assignment.cleaning_week.week):
-                candidates.append(affiliation.cleaner)
-
-        logging.debug("------------ Looking for replacement cleaners -----------")
-
-        for cleaner in candidates:
-            logging.debug(
-                "{}:  Duties on {}: {}".format(self.source_assignment.assignment_date(), cleaner.name,
-                                               cleaner.nr_assignments_on_day(self.source_assignment.assignment_date())))
-
-            assignments_in_future = schedule.assignment_set.filter(
-                cleaner=cleaner, cleaning_week__week__gt=current_epoch_week())
-
-            for assignment in assignments_in_future.all():
-                if self.source_assignment.cleaner.is_eligible_for_week(assignment.cleaning_week.week):
-                    self.destinations.add(assignment)
+        super().save(force_insert, force_update, using, update_fields)
