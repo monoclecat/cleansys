@@ -30,7 +30,7 @@ ABSOLUTE_TRUST_IN_USERS = True
 ALLOWED_HOSTS = []
 
 LOGIN_URL = reverse_lazy('webinterface:login-by-click')
-LOGIN_REDIRECT_URL = reverse_lazy('webinterface:cleaner', kwargs={'page': 1})
+LOGIN_REDIRECT_URL = reverse_lazy('webinterface:cleaner-no-page')
 LOGOUT_REDIRECT_URL = '/'
 
 
