@@ -107,3 +107,25 @@ class BaseFixtureWithDutySwitch(BaseFixture):
             cleaner=cls.dave, schedule=cls.garage_schedule,
             cleaning_week=cls.garage_schedule.cleaningweek_set.get(week=cls.start_week))
         cls.dave_garage_dutyswitch_2500 = DutySwitch.objects.create(requester_assignment=dave_assignment_2500)
+
+
+class BaseFixtureWithTasks(BaseFixture):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+
+        cls.bathroom_task_template_1 = TaskTemplate.objects.create(task_name="bathroom_task_1",
+                                                                   start_days_before=1, end_days_after=2,
+                                                                   schedule=cls.bathroom_schedule)
+
+        cls.bathroom_task_template_2 = TaskTemplate.objects.create(task_name="bathroom_task_2",
+                                                                   start_days_before=3, end_days_after=3,
+                                                                   schedule=cls.bathroom_schedule)
+
+        for cleaning_week in CleaningWeek.objects.filter(schedule=cls.bathroom_schedule).all():
+            cleaning_week.create_missing_tasks()
+
+        cleaning_week_2500 = CleaningWeek.objects.get(week=cls.start_week, schedule=cls.bathroom_schedule)
+        for task in cleaning_week_2500.task_set.all():
+            task.cleaned_by = cls.angie
+            task.save()

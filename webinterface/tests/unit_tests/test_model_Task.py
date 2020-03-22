@@ -1,38 +1,43 @@
 from django.test import TestCase
 from webinterface.models import *
+from webinterface.tests.unit_tests.fixtures import BaseFixtureWithTasks
 
-import logging
-from unittest.mock import *
 
-#
-# class TaskTemplateQuerySetTest(TestCase):
-#     @classmethod
-#     def setUpTestData(cls):
-#         cls.schedule = Schedule.objects.create(name="schedule")
-#         cls.enabled_tasktemplate = TaskTemplate.objects.create(
-#             name="enabled_tasktemplate", disabled=False, schedule=cls.schedule)
-#         cls.disabled_tasktemplate = TaskTemplate.objects.create(
-#             name="disabled_tasktemplate", disabled=True, schedule=cls.schedule)
-#
-#     def test__enabled(self):
-#         enabled_queryset = TaskTemplate.objects.enabled()
-#         self.assertIn(self.enabled_tasktemplate, enabled_queryset)
-#         self.assertNotIn(self.disabled_tasktemplate, enabled_queryset)
-#
-#     def test__disabled(self):
-#         disabled_queryset = TaskTemplate.objects.disabled()
-#         self.assertNotIn(self.enabled_tasktemplate, disabled_queryset)
-#         self.assertIn(self.disabled_tasktemplate, disabled_queryset)
-#
-#
-# class TaskTest(TestCase):
-#     @classmethod
-#     def setUpTestData(cls):
-#         cls.reference_date = correct_dates_to_due_day(datetime.date(2010, 1, 8))
-#         cls.schedule = Schedule.objects.create(name="schedule")
-#         cls.cleaning_day = CleaningWeek.objects.create(date=cls.reference_date, schedule=cls.schedule)
-#
-#     def test__creation(self):
-#         task = Task.objects.create(name="task1", cleaning_day=self.cleaning_day, start_date=self.reference_date,
-#                                    end_date=self.reference_date)
-#         self.assertIsInstance(task, Task)
+class TaskQuerySetTest(BaseFixtureWithTasks, TestCase):
+    def test__cleaned(self):
+        self.assertSetEqual(set(Task.objects.cleaned()),
+                            set(Task.objects.filter(cleaning_week=CleaningWeek.objects.get(
+                                week=self.start_week, schedule=self.bathroom_schedule))))
+
+    def test__uncleaned(self):
+        self.assertSetEqual(set(Task.objects.uncleaned()),
+                            set(Task.objects.filter(cleaning_week__schedule=self.bathroom_schedule).
+                                exclude(cleaning_week=CleaningWeek.objects.get(week=self.start_week,
+                                                                               schedule=self.bathroom_schedule))))
+
+
+class TaskTest(BaseFixtureWithTasks, TestCase):
+    def setUp(self) -> None:
+        cleaning_week_2500 = self.bathroom_schedule.cleaningweek_set.get(week=self.start_week)
+        self.task_bathroom_2500_1, self.task_bathroom_2500_2 = cleaning_week_2500.task_set.all()
+
+        cleaning_week_2503 = self.bathroom_schedule.cleaningweek_set.get(week=self.end_week)
+        self.task_bathroom_2503_1, self.task_bathroom_2503_2 = cleaning_week_2503.task_set.all()
+
+    def test__start_date(self):
+        self.assertEqual(self.task_bathroom_2500_1.start_date(),
+                         epoch_week_to_monday(self.start_week) + datetime.timedelta(days=1))
+
+        self.assertEqual(self.task_bathroom_2500_2.start_date(),
+                         epoch_week_to_monday(self.start_week) - datetime.timedelta(days=1))
+
+    def test__end_date(self):
+        self.assertEqual(self.task_bathroom_2500_1.end_date(),
+                         epoch_week_to_monday(self.start_week) + datetime.timedelta(days=4))
+
+        self.assertEqual(self.task_bathroom_2500_2.end_date(),
+                         epoch_week_to_monday(self.start_week) + datetime.timedelta(days=5))
+
+    def test__possible_cleaners(self):
+        self.assertListEqual(list(self.task_bathroom_2500_1.possible_cleaners()), [self.angie])
+        self.assertListEqual(list(self.task_bathroom_2503_1.possible_cleaners()), [self.chris])
