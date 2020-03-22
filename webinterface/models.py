@@ -460,15 +460,21 @@ class CleaningWeek(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def tasks_are_ready_to_be_done(self):
+        for task in self.task_set.all():
+            if task.my_time_has_come():
+                return True
+        return False
+
     def create_missing_tasks(self):
         missing_task_templates = self.task_templates_missing()
-        for task_template in missing_task_templates.all():
+        for task_template in missing_task_templates.enabled():
             self.task_set.create(template=task_template)
         self.tasks_valid = True
         self.save()
 
     def task_templates_missing(self):
-        return self.schedule.tasktemplate_set.exclude(pk__in=[x.template.pk for x in self.task_set.all()])
+        return self.schedule.tasktemplate_set.enabled().exclude(pk__in=[x.template.pk for x in self.task_set.all()])
 
     def week_start(self):
         return epoch_week_to_monday(self.week)
@@ -507,6 +513,9 @@ class Assignment(models.Model):
 
     def assignment_date(self):
         return epoch_week_to_monday(self.cleaning_week.week) + datetime.timedelta(days=self.schedule.weekday)
+
+    def tasks_are_ready_to_be_done(self):
+        return self.cleaning_week.tasks_are_ready_to_be_done()
 
     def all_cleaners_in_week_for_schedule(self):
         return Cleaner.objects.filter(assignment__cleaning_week=self.cleaning_week)
@@ -578,6 +587,9 @@ class Task(models.Model):
         return self.cleaning_week.week_start() \
                + datetime.timedelta(days=self.cleaning_week.schedule.weekday) \
                + datetime.timedelta(days=self.template.end_days_after)
+
+    def my_time_has_come(self):
+        return self.start_date() <= timezone.now().date() <= self.end_date()
 
     def possible_cleaners(self):
         return Cleaner.objects.filter(

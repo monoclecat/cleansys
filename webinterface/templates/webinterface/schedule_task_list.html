@@ -27,7 +27,7 @@ Aufgaben für {{ schedule }}
                 <a class="btn btn-default btn-sm" role="button" href="{% url 'webinterface:task-edit' task.pk %}">
                         <span class="glyphicon glyphicon-cog"></span>
                 </a>
-                {{ task.task_name }} {% if task.task_disabled %}<b>Deaktiviert</b>{% endif %}
+                {{ task.task_name }} {% if task.task_disabled %}<span class="label label-warning">Disabled</span>{% endif %}
             </div>
             <div class="panel-body">
                 <i>Hilfetext: </i>{{ task.task_help_text }}

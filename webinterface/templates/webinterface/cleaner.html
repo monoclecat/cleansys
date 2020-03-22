@@ -62,12 +62,29 @@ Deine Putzdienste
                                     </a>
                                 {% endif %}
                             </div>
+                            <div class="col-xs-6">
+                                {% if assignment.tasks_are_ready_to_be_done %}
+                                    <a class="btn btn-success btn-sm"
+                                       href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.pk page.number %}"
+                                       role="button" style="white-space: normal; margin: 0.5em">
+                                        <span class="glyphicon glyphicon-play-circle"></span> Putzen
+                                    </a>
+                                {% else %}
+                                    <a class="btn btn-default btn-sm"
+                                       href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.pk page.number %}"
+                                       role="button" style="white-space: normal; margin: 0.5em">
+                                        Aufgaben ansehen
+                                    </a>
+                                {% endif %}
+
+                            </div>
                         </div>
                     </div>
                     </div>
                 {% empty %}
                     Keine Putzdienste zu zeigen
                 {% endfor %}
+                {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
             </div>
         </div>
 

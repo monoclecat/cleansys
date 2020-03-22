@@ -529,6 +529,14 @@ class AssignmentTasksView(UpdateView):
             raise Exception("CleaningWeek does not exist on date!")
 
         context['assignment'] = self.object
+        if 'schedule_page' in self.kwargs:
+            context['schedule_page'] = self.kwargs['schedule_page']
+        else:
+            context['schedule_page'] = -1
+        if 'cleaner_page' in self.kwargs:
+            context['cleaner_page'] = self.kwargs['cleaner_page']
+        else:
+            context['cleaner_page'] = -1
         return context
 
     # def post(self, request, *args, **kwargs):

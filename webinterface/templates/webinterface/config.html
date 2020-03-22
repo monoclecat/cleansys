@@ -14,30 +14,6 @@ Einstellungen
 
 {% block body %}
     <div class="container-fluid">
-        <!--div class="row">
-            <div class="col-md-2 col-lg-3" style="padding: 2em 2em 0 2em;">
-                <br>
-                {% if not slack_running %}
-                    <form method="POST" class="form form-inline">
-                        {% csrf_token %}
-                        <button class="btn btn-danger btn-block" type="submit" name="start_slack"
-                                style="white-space: normal;">
-                            <span class="glyphicon glyphicon-exclamation-sign"></span> Slack Server starten</button>
-                    </form>
-                {% endif %}
-            </div>
-            <div class="col-sm-10 col-sm-offset-1 col-md-8 col-sm-offset-0 col-lg-6">
-                <div class="well" style="margin-top: 1em">
-                    <div class="text-center">
-                        <h2 style="margin-top: 0px">Siehe dir alle Putzdienste in einer Zeitspanne an</h2>
-                        <form method="POST" class="form form-inline">
-                            {% csrf_token %}
-                            {% crispy form %}
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div-->
         <div class="row">
             <div class="col-xs-12 col-sm-6">
                 <h2>Putzer

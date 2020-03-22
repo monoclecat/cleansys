@@ -85,7 +85,8 @@
                                 {% for assignment in cleaning_week.assignment_set.all %}
                                     <div class="btn-group btn-group-xs" role="group" aria-label="...">
                                         <a class="btn btn-default"
-                                           href="{% url 'webinterface:assignment-tasks' assignment.pk %}"
+                                           href="
+{% url 'webinterface:assignment-tasks-back-to-schedule' assignment.pk page.number %}"
                                            role="button">
                                             {{ assignment.cleaner.name }}
                                         </a>

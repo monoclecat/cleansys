@@ -10,6 +10,22 @@ Putzdienst erledigen
         <div class="btn btn-group btn-group-md btn-group-justified" role="group">
             {% include "webinterface_snippets/button_to_cleaner_page.html" %}
         </div>
+        {% if schedule_page > 1 %}
+            <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+                <a class="btn btn-default btn-block" role="button"
+                   href="{% url 'webinterface:schedule-view' assignment.schedule.slug schedule_page %}">
+                    Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ assignment.schedule.name }}
+                </a>
+            </div>
+        {% endif %}
+        {% if cleaner_page > 1 %}
+            <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+                <a class="btn btn-default btn-block" role="button"
+                   href="{% url 'webinterface:cleaner' cleaner_page %}">
+                    Zurück
+                </a>
+            </div>
+        {% endif %}
     </div>
 
     {% if already_cleaned_error %}
@@ -52,7 +68,7 @@ Putzdienst erledigen
             <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
                 <div class="panel panel-info">
                     <div class="panel-heading">
-                        {% if user.username == assignment.cleaner.slug or user.is_superuser %}
+                        {% if user.username == assignment.cleaner.slug and task.my_time_has_come or user.is_superuser %}
                             <a class="btn btn-warning"
                                href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
                                role="button">

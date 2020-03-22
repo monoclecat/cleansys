@@ -176,38 +176,38 @@ class ScheduleTaskList(ListView):
 class CleanerView(TemplateView):
     template_name = "webinterface/cleaner.html"
 
-    def post(self, request, *args, **kwargs):
-        if 'switch' in request.POST:
-            if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
-                try:
-                    source_assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
-                    duty_to_switch = DutySwitch.objects.create(source_assignment=source_assignment)
-                    duty_to_switch.look_for_destinations()
-                    return HttpResponseRedirect(reverse_lazy(
-                        'webinterface:switch-duty', kwargs={'pk': duty_to_switch.pk}))
-                except (Cleaner.DoesNotExist, Assignment.DoesNotExist):
-                    raise SuspiciousOperation("Invalid PKs")
-            else:
-                raise SuspiciousOperation("Invalid POST data sent by client")
-        elif 'clean' in request.POST:
-            if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
-                try:
-                    assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
-                    if not assignment.cleaning_day.task_set.all():
-                        assignment.cleaning_day.initiate_tasks()
-                        assignment.cleaning_day.save()
-
-                    return HttpResponseRedirect(reverse_lazy(
-                        'webinterface:clean-duty', kwargs={'assignment_pk': assignment.pk}))
-
-                except Assignment.DoesNotExist:
-                    raise SuspiciousOperation("Invalid Assignment PK")
-        else:
-            raise SuspiciousOperation("POST sent that didn't match a catchable case!")
-
-        return HttpResponseRedirect(reverse_lazy(
-            'webinterface:cleaner',
-            kwargs={'slug': kwargs['slug'], 'page': kwargs['page']}))
+    # def post(self, request, *args, **kwargs):
+    #     if 'switch' in request.POST:
+    #         if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
+    #             try:
+    #                 source_assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
+    #                 duty_to_switch = DutySwitch.objects.create(source_assignment=source_assignment)
+    #                 duty_to_switch.look_for_destinations()
+    #                 return HttpResponseRedirect(reverse_lazy(
+    #                     'webinterface:switch-duty', kwargs={'pk': duty_to_switch.pk}))
+    #             except (Cleaner.DoesNotExist, Assignment.DoesNotExist):
+    #                 raise SuspiciousOperation("Invalid PKs")
+    #         else:
+    #             raise SuspiciousOperation("Invalid POST data sent by client")
+    #     elif 'clean' in request.POST:
+    #         if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
+    #             try:
+    #                 assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
+    #                 if not assignment.cleaning_day.task_set.all():
+    #                     assignment.cleaning_day.initiate_tasks()
+    #                     assignment.cleaning_day.save()
+    #
+    #                 return HttpResponseRedirect(reverse_lazy(
+    #                     'webinterface:clean-duty', kwargs={'assignment_pk': assignment.pk}))
+    #
+    #             except Assignment.DoesNotExist:
+    #                 raise SuspiciousOperation("Invalid Assignment PK")
+    #     else:
+    #         raise SuspiciousOperation("POST sent that didn't match a catchable case!")
+    #
+    #     return HttpResponseRedirect(reverse_lazy(
+    #         'webinterface:cleaner',
+    #         kwargs={'slug': kwargs['slug'], 'page': kwargs['page']}))
 
     def get(self, request, *args, **kwargs):
         if request.user.is_superuser:

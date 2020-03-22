@@ -10,7 +10,7 @@ from django.views.generic.base import RedirectView
 
 app_name = 'webinterface'
 urlpatterns = [
-    path('', RedirectView.as_view(url=reverse_lazy("webinterface:cleaner", kwargs={'page': 1})), name='welcome'),
+    path('', RedirectView.as_view(url=reverse_lazy("webinterface:cleaner-no-page")), name='welcome'),
 
     #url(r'^switch/(?P<pk>[\d]+)/(?P<answer>[\S]+)/$', DutySwitchView.as_view(), name='switch-duty-answer'),
     path('tauschen/<int:assignment_pk>/<int:page>', login_required(DutySwitchNewView.as_view()),
@@ -24,6 +24,10 @@ urlpatterns = [
 
     path('putzen/<int:assignment_pk>/', login_required(AssignmentTasksView.as_view()),
          name='assignment-tasks'),
+    path('putzen/<int:assignment_pk>/s<int:schedule_page>/', login_required(AssignmentTasksView.as_view()),
+         name='assignment-tasks-back-to-schedule'),
+    path('putzen/<int:assignment_pk>/p<int:cleaner_page>/', login_required(AssignmentTasksView.as_view()),
+         name='assignment-tasks-back-to-cleaner'),
 
     path('geputzt/<int:assignment_pk>/<int:task_pk>', login_required(TaskCleanedView.as_view()),
          name='task-cleaned'),
@@ -40,13 +44,6 @@ urlpatterns = [
     path('putzplan/<slug:slug>/', login_required(ScheduleView.as_view()), name='schedule-view-no-page'),
 
     path('config/', staff_member_required(ConfigView.as_view(), login_url=reverse_lazy("webinterface:login")), name='config'),
-    # path('results/', staff_member_required(RedirectView.as_view(
-    #      url=reverse_lazy('webinterface:results',
-    #                 kwargs={'from_date': (timezone.now().date() - timezone.timedelta(days=30)).strftime('%d-%m-%Y'),
-    #                         'to_date': (timezone.now().date() + timezone.timedelta(days=3*30)).strftime('%d-%m-%Y')}))),
-    #      name='results-now'),
-    #
-    # path('results/<from_date>/<to_date>/', staff_member_required(ResultsView.as_view()), name='results'),
 
     path('cleaning-week-tasks/<int:pk>/<int:page>/', staff_member_required(TaskCreateView.as_view()),
          name='cleaning-week-tasks'),
