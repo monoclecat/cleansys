@@ -275,24 +275,37 @@ class Cleaner(models.Model):
     def __str__(self):
         return self.name
 
-    def switchable_assignments_for_request(self, duty_switch):
+    def switchable_assignments_for_request(self, duty_switch, look_weeks_into_future=12):
         from_week = current_epoch_week()
-        switchable_assignments = self.assignment_set.filter(cleaning_week__week__range=(from_week, from_week+12))
+        schedule_from_request = duty_switch.requester_assignment.schedule
+        week_from_request = duty_switch.requester_assignment.cleaning_week.week
+
+        own_affiliation_during_request_week = self.affiliation_in_week(week_from_request)
+        if own_affiliation_during_request_week is None or \
+                schedule_from_request not in own_affiliation_during_request_week.group.schedules.all():
+            return Assignment.objects.none()
+
+        switchable_assignments = self.assignment_set.\
+            filter(cleaning_week__week__range=(from_week, from_week+look_weeks_into_future))
+
         requested = duty_switch.possible_acceptors()
         acceptable = switchable_assignments
         return requested & acceptable
 
-    def can_accept_duty_switch_request(self, duty_switch):
+    def can_accept_duty_switch_request(self, duty_switch) -> bool:
         return len(self.switchable_assignments_for_request(duty_switch)) != 0
 
-    def current_affiliation(self):
+    def affiliation_in_week(self, week):
         try:
             current_affiliation = self.affiliation_set.get(
-                beginning__lte=current_epoch_week(), end__gte=current_epoch_week()
+                beginning__lte=week, end__gte=week
             )
             return current_affiliation
         except Affiliation.DoesNotExist:
             return None
+
+    def current_affiliation(self):
+        return self.affiliation_in_week(current_epoch_week())
 
     def all_assignments_during_affiliation_with_schedule(self, schedule: Schedule) -> QuerySet:
         """
@@ -687,6 +700,7 @@ class DutySwitch(models.Model):
                        self.requester_assignment.assignment_date().strftime('%d-%b-%Y'))
 
     def possible_acceptors(self, pk_list=None):
+        # TODO must remove Assignments with same Cleaner as request_assignment
         candidates = Assignment.objects.eligible_switching_destination_candidates(self.requester_assignment)
         if pk_list:
             return candidates.filter(pk__in=pk_list)

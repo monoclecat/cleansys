@@ -74,10 +74,10 @@ class BaseFixture:
                 cls.garage_schedule: cls.dave
             },
             2503: {
-                cls.bathroom_schedule: cls.angie,
+                cls.bathroom_schedule: cls.chris,
                 cls.kitchen_schedule: None,  # Kitchen is only defined on even week numbers
                 cls.bedroom_schedule: cls.bob,
-                cls.garage_schedule: cls.dave
+                cls.garage_schedule: cls.bob
             },
         }
 
@@ -98,21 +98,12 @@ class BaseFixtureWithDutySwitch(BaseFixture):
     def setUpTestData(cls):
         super().setUpTestData()
 
-        angie_assignment_2500 = Assignment.objects.get(
+        angie_assignment_2502 = Assignment.objects.get(
             cleaner=cls.angie, schedule=cls.bathroom_schedule,
-            cleaning_week=cls.bathroom_schedule.cleaningweek_set.get(week=cls.start_week))
-        cls.rejected_dutyswitch = DutySwitch.objects.create(status=2, source_assignment=angie_assignment_2500)
+            cleaning_week=cls.bathroom_schedule.cleaningweek_set.get(week=cls.start_week+2))
+        cls.angie_bathroom_dutyswitch_2502 = DutySwitch.objects.create(requester_assignment=angie_assignment_2502)
 
-        bob_assignment_2500 = Assignment.objects.get(
-            cleaner=cls.bob, schedule=cls.kitchen_schedule,
-            cleaning_week=cls.kitchen_schedule.cleaningweek_set.get(week=cls.start_week))
-        angie_assignment_2501 = Assignment.objects.get(
-            cleaner=cls.angie, schedule=cls.bathroom_schedule,
-            cleaning_week=cls.bathroom_schedule.cleaningweek_set.get(week=cls.start_week+1))
-        cls.dutyswitch_request_received = DutySwitch.objects.create(source_assignment=bob_assignment_2500,
-                                                                    selected_assignment=angie_assignment_2501)
-
-        chris_assignment_2501 = Assignment.objects.get(
-            cleaner=cls.chris, schedule=cls.bedroom_schedule,
-            cleaning_week=cls.bedroom_schedule.cleaningweek_set.get(week=cls.start_week+1))
-        cls.pending_dutyswitch_request = DutySwitch.objects.create(status=1, source_assignment=chris_assignment_2501)
+        dave_assignment_2500 = Assignment.objects.get(
+            cleaner=cls.dave, schedule=cls.garage_schedule,
+            cleaning_week=cls.garage_schedule.cleaningweek_set.get(week=cls.start_week))
+        cls.dave_garage_dutyswitch_2500 = DutySwitch.objects.create(requester_assignment=dave_assignment_2500)

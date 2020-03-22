@@ -29,7 +29,7 @@ class AssignmentTest(TestCase):
             cleaner=cls.cleaner3, schedule=cls.schedule, cleaning_week=cls.cleaning_week2)
 
         # DutySwitch
-        cls.dutyswitch = DutySwitch.objects.create(source_assignment=cls.assignment1)
+        cls.dutyswitch = DutySwitch.objects.create(requester_assignment=cls.assignment1)
 
     def test__str(self):
         self.assertIn(self.schedule.name, self.assignment1.__str__())
@@ -48,6 +48,6 @@ class AssignmentTest(TestCase):
         self.assertIn(self.cleaner2, other_cleaners)
         self.assertNotIn(self.cleaner3, other_cleaners)
 
-    def test__is_source_of_dutyswitch(self):
-        self.assertEqual(self.assignment1.is_source_of_dutyswitch(), self.dutyswitch)
-        self.assertEqual(self.assignment2.is_source_of_dutyswitch(), None)
+    def test__switch_requested(self):
+        self.assertEqual(self.assignment1.switch_requested(), self.dutyswitch)
+        self.assertEqual(self.assignment2.switch_requested(), None)
