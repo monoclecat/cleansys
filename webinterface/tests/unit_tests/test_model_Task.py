@@ -24,6 +24,9 @@ class TaskTest(BaseFixtureWithTasks, TestCase):
         cleaning_week_2503 = self.bathroom_schedule.cleaningweek_set.get(week=self.end_week)
         self.task_bathroom_2503_1, self.task_bathroom_2503_2 = cleaning_week_2503.task_set.all()
 
+    def test__str(self):
+        self.assertEqual(self.task_bathroom_2500_1.__str__(), self.bathroom_task_template_1.task_name)
+
     def test__start_date(self):
         self.assertEqual(self.task_bathroom_2500_1.start_date(),
                          epoch_week_to_monday(self.start_week) + datetime.timedelta(days=1))

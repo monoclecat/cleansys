@@ -13,31 +13,6 @@ import calendar
 import time
 
 
-# def correct_dates_to_due_day(days):
-#     return correct_dates_to_weekday(days, 6)
-#
-#
-# def correct_dates_to_weekday(days, weekday):
-#     """
-#     Days is a date or list of timezone.date objects you want converted. 0 = Monday, 6 = Sunday
-#     The corrected weekday/s will always lie in the same week as days.
-#     """
-#     if isinstance(days, list):
-#         corrected_days = []
-#         for day in days:
-#             if isinstance(day, datetime.date):
-#                 # To prevent overflow of day over datetime.date.max
-#                 day = datetime.date(9999, 12, 26) if day > datetime.date(9999, 12, 26) else day
-#                 day += timezone.timedelta(days=weekday - day.weekday())
-#             corrected_days.append(day)
-#         return corrected_days
-#     elif isinstance(days, datetime.date):
-#         # To prevent overflow of day over datetime.date.max
-#         days = datetime.date(9999, 12, 26) if days > datetime.date(9999, 12, 26) else days
-#         return days + timezone.timedelta(days=weekday - days.weekday())
-#     return None
-
-
 def date_to_epoch_week(date: datetime.date) -> int:
     epoch_seconds = calendar.timegm(date.timetuple())
     return int(((epoch_seconds / 60 / 60 / 24) + 3) / 7)
@@ -224,14 +199,6 @@ class ScheduleGroup(models.Model):
 
     def __str__(self):
         return self.name
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        super().save(force_insert, force_update, using, update_fields)
-        if self.pk and self.__disabled != self.disabled:
-            for affiliation in self.affiliation_set.all():
-                if affiliation.end > timezone.now().date():
-                    affiliation.end = timezone.now().date()
-                    affiliation.save()
 
 
 class CleanerQuerySet(models.QuerySet):
@@ -436,46 +403,8 @@ class Affiliation(models.Model):
                                   "damit es zu keiner Überlappung kommt.")
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        # Does editable=False do this for us?
-        # if self.__previous_cleaner:  # and self.__previous_group:
-        #     if self.__previous_cleaner != self.cleaner:  # or self.__previous_group != self.group:
-        #         raise ValidationError("Cleaner of an Affiliation cannot be changed!")
-
         self.date_validator(affiliation_pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
-
-        # if self.pk:
-        #     # Modifying an already created object
-        #     beginning_was_set_before_beginning_of_these = \
-        #         self.cleaner.affiliation_set.filter(
-        #             beginning__lt=self.__previous_beginning, beginning__gte=self.beginning)
-        #     if beginning_was_set_before_beginning_of_these.exists():
-        #         raise ValidationError("You can't set the beginning before the beginning of another Affiliation of "
-        #                                "a Cleaner.")
-        # else:
-        #     # Creating a new object
-        #     if self.cleaner.affiliation_set.filter(beginning__gte=self.beginning).exclude(pk=self.pk).exists():
-        #         # The proposed Affiliation shall begin before an existing Affiliation begins -> Not allowed!
-        #         # Affiliations can only be chained behind each other in time
-        #         raise ValidationError("Affiliation with beginning before beginning of another Affiliation of "
-        #                                "a Cleaner cannot be created!")
-
-        super().save(force_insert, force_update, using, update_fields)
-
-        # I don't think we should do this here. I believe the generation of Assignments should be a triggered event.
-        # Because sometimes the admin wants to change many Affiliations at once which would affect each other.
-        # for (previous, current) in [(self.__previous_beginning, self.beginning), (self.__previous_end, self.end)]:
-        #     if not previous or previous == current:
-        #         continue
-        #     interval_start = min(previous, current)
-        #     interval_end = max(previous, current)
-        #     Assignment.objects. \
-        #         filter(cleaning_week__week__gte=interval_start). \
-        #         filter(cleaning_week__week__lte=interval_end). \
-        #         delete()
-        #     for schedule in self.group.schedules.all():
-        #         schedule.new_cleaning_duties(interval_start, interval_end, 3)
-
-        return
+        return super().save(force_insert, force_update, using, update_fields)
 
 
 class CleaningWeekQuerySet(models.QuerySet):
@@ -484,14 +413,6 @@ class CleaningWeekQuerySet(models.QuerySet):
 
     def disabled(self):
         return self.filter(disabled=True)
-
-    def with_assignments(self):
-        # We MUST use exclude here because filtering for __isnull=False will cause each CleaningDay to be as often
-        # in the QuerySet as it has Assignments in its assignment_set
-        return self.exclude(assignment__isnull=True)
-
-    def no_assignments(self):
-        return self.filter(assignment__isnull=True)
 
 
 class CleaningWeek(models.Model):
