@@ -411,14 +411,14 @@ class Affiliation(models.Model):
         return epoch_week_to_sunday(self.end)
 
     @staticmethod
-    def date_validator(pk, cleaner: Cleaner, beginning: int, end: int):
+    def date_validator(affiliation_pk, cleaner: Cleaner, beginning: int, end: int):
         if beginning > end:
             raise ValidationError("Das Ende einer Zugehörigkeit darf nicht vor dem Anfang liegen!")
 
         other_affiliations = cleaner.affiliation_set
 
-        if pk:
-            other_affiliations = other_affiliations.exclude(pk=pk)
+        if affiliation_pk:
+            other_affiliations = other_affiliations.exclude(pk=affiliation_pk)
 
         if other_affiliations.filter(beginning__range=(beginning, end)).exists():
             raise ValidationError("Der vogeschlagene Beginn dieser Zugehörigkeit überlappt "
@@ -438,7 +438,7 @@ class Affiliation(models.Model):
         #     if self.__previous_cleaner != self.cleaner:  # or self.__previous_group != self.group:
         #         raise ValidationError("Cleaner of an Affiliation cannot be changed!")
 
-        self.date_validator(pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
+        self.date_validator(affiliation_pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
 
         # if self.pk:
         #     # Modifying an already created object
