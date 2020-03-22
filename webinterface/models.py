@@ -666,21 +666,17 @@ class DutySwitch(models.Model):
         if self.acceptor_assignment:
             return "Requester: {} on {}  -  Acceptor: {} on {}".\
                 format(self.requester_assignment.cleaner.name,
-                       self.requester_assignment.assignment_date().strftime('%d-%b-%Y'),
+                       self.requester_assignment.assignment_date().strftime('%d. %b %Y'),
                        self.acceptor_assignment.cleaner.name,
-                       self.acceptor_assignment.assignment_date().strftime('%d-%b-%Y'))
+                       self.acceptor_assignment.assignment_date().strftime('%d. %b %Y'))
         else:
             return "Requester: {} on {}  -  Acceptor: none yet". \
                 format(self.requester_assignment.cleaner.name,
-                       self.requester_assignment.assignment_date().strftime('%d-%b-%Y'))
+                       self.requester_assignment.assignment_date().strftime('%d. %b %Y'))
 
-    def possible_acceptors(self, pk_list=None):
-        # TODO must remove Assignments with same Cleaner as request_assignment
-        candidates = Assignment.objects.eligible_switching_destination_candidates(self.requester_assignment)
-        if pk_list:
-            return candidates.filter(pk__in=pk_list)
-        else:
-            return candidates
+    def possible_acceptors(self):
+        return Assignment.objects.eligible_switching_destination_candidates(self.requester_assignment).\
+            exclude(cleaner=self.requester_assignment.cleaner)
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):

@@ -108,6 +108,15 @@ class BaseFixtureWithDutySwitch(BaseFixture):
             cleaning_week=cls.garage_schedule.cleaningweek_set.get(week=cls.start_week))
         cls.dave_garage_dutyswitch_2500 = DutySwitch.objects.create(requester_assignment=dave_assignment_2500)
 
+        dave_assignment_2502 = Assignment.objects.get(
+            cleaner=cls.dave, schedule=cls.garage_schedule,
+            cleaning_week=cls.garage_schedule.cleaningweek_set.get(week=cls.start_week+2))
+        bob_assignment_2503 = Assignment.objects.get(
+            cleaner=cls.bob, schedule=cls.garage_schedule,
+            cleaning_week=cls.garage_schedule.cleaningweek_set.get(week=cls.start_week + 3))
+        cls.completed_garage_dutyswitch = DutySwitch.objects.create(requester_assignment=dave_assignment_2502,
+                                                                    acceptor_assignment=bob_assignment_2503)
+
 
 class BaseFixtureWithTasks(BaseFixture):
     @classmethod
