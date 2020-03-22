@@ -9,7 +9,7 @@ class AssignmentTest(TestCase):
         cls.reference_week = 2500
 
         # Schedule
-        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=2)
+        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=2, frequency=2, weekday=3)
 
         # Cleaners
         cls.cleaner1 = Cleaner.objects.create(name="cleaner1")
@@ -34,7 +34,11 @@ class AssignmentTest(TestCase):
     def test__str(self):
         self.assertIn(self.schedule.name, self.assignment1.__str__())
         self.assertIn(self.cleaner1.name, self.assignment1.__str__())
-        self.assertIn(self.assignment1.assignment_date().strftime('%d-%b-%Y'), self.assignment1.__str__())
+        self.assertIn(self.assignment1.assignment_date().strftime('%d. %b %Y'), self.assignment1.__str__())
+
+    def test__assignment_date(self):
+        self.assertEqual(self.assignment1.assignment_date(),
+                         epoch_week_to_monday(self.reference_week) + datetime.timedelta(days=self.schedule.weekday))
 
     def test__all_cleaners_in_week_for_schedule(self):
         all_cleaners = self.assignment1.all_cleaners_in_week_for_schedule()

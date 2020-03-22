@@ -553,7 +553,7 @@ class Assignment(models.Model):
 
     def __str__(self):
         return "{}: {}, {} ".format(
-            self.cleaning_week.schedule.name, self.cleaner.name, self.assignment_date().strftime('%d-%b-%Y'))
+            self.cleaning_week.schedule.name, self.cleaner.name, self.assignment_date().strftime('%d. %b %Y'))
 
     def assignment_date(self):
         return epoch_week_to_monday(self.cleaning_week.week) + datetime.timedelta(days=self.schedule.weekday)
@@ -574,10 +574,10 @@ class Assignment(models.Model):
 
 class TaskTemplateQuerySet(models.QuerySet):
     def enabled(self):
-        return self.filter(disabled=False)
+        return self.filter(task_disabled=False)
 
     def disabled(self):
-        return self.filter(disabled=True)
+        return self.filter(task_disabled=True)
 
 
 class TaskTemplate(models.Model):
@@ -599,13 +599,6 @@ class TaskTemplate(models.Model):
 
     def end_day_to_weekday(self):
         return Schedule.WEEKDAYS[(self.schedule.weekday+self.end_days_after) % 7][1]
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        if self.start_days_before + self.end_days_after > 6:
-            raise OperationalError("The sum of start_days_before and end_days_after cannot be greater 6!")
-        super().save(force_insert, force_update, using, update_fields)
-
-        # TODO when newly created or changed, update tasks of upcoming CleaningDays
 
 
 class TaskQuerySet(models.QuerySet):
