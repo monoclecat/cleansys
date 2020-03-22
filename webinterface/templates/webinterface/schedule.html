@@ -43,7 +43,7 @@
         </tr>
 
         {% for cleaning_week in page %}
-                <tr {% if cleaning_week.disabled %}class="danger"{% endif %}>
+                <tr {% if cleaning_week.disabled or not cleaning_week.assignments_valid %}class="danger"{% endif %}>
                     <td>
                        {% if not cleaning_week.disabled %}
                            <div class="dropdown">
@@ -78,25 +78,30 @@
                     <td>{{ cleaning_week.week_start|date:"d. M y" }} - {{ cleaning_week.week_end|date:"d. M y" }}</td>
                     <td>
                         {% if not cleaning_week.disabled %}
-                            {% for assignment in cleaning_week.assignment_set.all %}
-                                <div class="btn-group btn-group-xs" role="group" aria-label="...">
-                                    <a class="btn btn-default"
-                                       href="{% url 'webinterface:assignment-tasks' assignment.pk %}"
-                                       role="button">
-                                    {{ assignment.cleaner.name }}
-                                    </a>
-                                    {% if user.is_superuser %}
+                            {% if not cleaning_week.assignments_valid %}
+                                <b>Wegen einer Änderung von Zugehörigkeiten in diesem Zeitraum müssen die
+                                Putzdienste in dieser Woche aktualisiert werden</b>
+                            {% else %}
+                                {% for assignment in cleaning_week.assignment_set.all %}
+                                    <div class="btn-group btn-group-xs" role="group" aria-label="...">
                                         <a class="btn btn-default"
-                                           href="{% url 'webinterface:assignment-edit' assignment.pk page.number %}"
+                                           href="{% url 'webinterface:assignment-tasks' assignment.pk %}"
                                            role="button">
-                                            <span class="glyphicon glyphicon-cog"></span>
+                                            {{ assignment.cleaner.name }}
                                         </a>
-                                    {% endif %}
-                                </div>
+                                        {% if user.is_superuser %}
+                                            <a class="btn btn-default"
+                                               href="{% url 'webinterface:assignment-edit' assignment.pk page.number %}"
+                                               role="button">
+                                                <span class="glyphicon glyphicon-cog"></span>
+                                            </a>
+                                        {% endif %}
+                                    </div>
 
-                            {% empty %}
-                                Keine Putzer festgelegt!
-                            {% endfor %}
+                                {% empty %}
+                                    Keine Putzer festgelegt!
+                                {% endfor %}
+                            {% endif %}
                         {% else %}
                             <b>In dieser Woche deaktiviert</b>
                         {% endif %}
@@ -107,7 +112,7 @@
                             <div class="btn-group">
                                 <button type="button"
                                         class="btn
-                                               {% if cleaning_week.tasks_valid %}btn-default
+                                               {% if cleaning_week.tasks_valid and cleaning_week.assignments_valid %}btn-default
                                                {% else %}btn-warning
                                                {% endif %}
                                               dropdown-toggle"
@@ -122,6 +127,14 @@
                                         <li class="bg-danger">
                                             <a href="{% url 'webinterface:cleaning-week-tasks' cleaning_week.pk page.number %}">
                                                 <span class="glyphicon glyphicon-plus"></span> Aufgaben aktualisieren
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    {% if not cleaning_week.assignments_valid %}
+                                        <li class="bg-danger">
+                                            <a href="
+{% url 'webinterface:assignment-create-init' schedule.pk page.number cleaning_week.week cleaning_week.week%}">
+                                                <span class="glyphicon glyphicon-refresh"></span> Putzdienste aktualisieren
                                             </a>
                                         </li>
                                     {% endif %}

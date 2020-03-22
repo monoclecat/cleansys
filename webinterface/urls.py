@@ -59,6 +59,9 @@ urlpatterns = [
 
     path('assignment-create/<int:schedule_pk>/<int:page>/', staff_member_required(AssignmentCreateView.as_view()),
          name='assignment-create'),
+    path('assignment-create/<int:schedule_pk>/<int:page>/<int:initial_begin>/<int:initial_end>/',
+         staff_member_required(AssignmentCreateView.as_view()),
+         name='assignment-create-init'),
 
     path('assignment-edit/<int:pk>/<int:page>/', staff_member_required(AssignmentUpdateView.as_view()),
          name='assignment-edit'),

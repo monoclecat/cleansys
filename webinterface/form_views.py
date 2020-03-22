@@ -264,6 +264,13 @@ class AssignmentCreateView(FormView):
             Http404('Putzplan, für den Zugehörigkeit geändert werden soll, existiert nicht!')
         return super().dispatch(request, *args, **kwargs)
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if 'initial_begin' in self.kwargs and 'initial_end' in self.kwargs:
+            kwargs['initial_begin'] = self.kwargs['initial_begin']
+            kwargs['initial_end'] = self.kwargs['initial_end']
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Erzeuge Putzdienste für {}".format(self.schedule.name)

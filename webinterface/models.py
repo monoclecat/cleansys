@@ -127,11 +127,12 @@ class Schedule(models.Model):
         cleaning_week, was_created = self.cleaningweek_set.get_or_create(week=week)
         if initiate_tasks:
             cleaning_week.create_missing_tasks()
+        cleaning_week.set_assignments_valid_field(True)
 
         if cleaning_week.assignment_set.count() >= self.cleaners_per_date:
             logging.debug("NO ASSIGNMENT CREATED [Code02]: There are no open cleaning positions for week {}. "
-                          "There are already {} Cleaners assigned for this week. ".
-                          format(self.cleaners_per_date, week))
+                          "All ({}/{}) positions have been filled.".
+                          format(week, self.cleaners_per_date, self.cleaners_per_date))
             return False
 
         ratios = self.deployment_ratios(week)
@@ -367,6 +368,9 @@ class Affiliation(models.Model):
     def __init__(self, *args, **kwargs):
         super(Affiliation, self).__init__(*args, **kwargs)
 
+        self.previous_beginning = self.beginning
+        self.previous_end = self.end
+
         if self.pk:
             self.__previous_cleaner = self.cleaner
             self.__previous_group = self.group
@@ -404,7 +408,27 @@ class Affiliation(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.date_validator(affiliation_pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
-        return super().save(force_insert, force_update, using, update_fields)
+
+        if self.previous_beginning != self.beginning or self.previous_end != self.end:
+            min_beginning = min(self.previous_beginning, self.beginning)
+            max_beginning = max(self.previous_beginning, self.beginning)
+            beginning_affects = CleaningWeek.objects.\
+                filter(week__range=(min_beginning, max_beginning)).\
+                exclude(week=max_beginning)
+
+            min_end = min(self.previous_end, self.end)
+            max_end = max(self.previous_end, self.end)
+            end_affects = CleaningWeek.objects.\
+                filter(week__range=(min_end, max_end)).\
+                exclude(week=min_end)
+
+            # XORing both sets deals with the case that the old and new affiliation week ranges don't overlap
+            cleaning_weeks_invalidated = set(beginning_affects) ^ set(end_affects)
+
+            for cleaning_week in cleaning_weeks_invalidated:
+                cleaning_week.set_assignments_valid_field(False)
+
+        super().save(force_insert, force_update, using, update_fields)
 
 
 class CleaningWeekQuerySet(models.QuerySet):
@@ -423,6 +447,7 @@ class CleaningWeek(models.Model):
     excluded = models.ManyToManyField(Cleaner)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
     tasks_valid = models.BooleanField(default=False)
+    assignments_valid = models.BooleanField(default=False)
     disabled = models.BooleanField(default=False)
 
     objects = CleaningWeekQuerySet.as_manager()
@@ -450,6 +475,10 @@ class CleaningWeek(models.Model):
 
     def week_end(self):
         return epoch_week_to_sunday(self.week)
+
+    def set_assignments_valid_field(self, value: bool):
+        self.assignments_valid = value
+        self.save()
 
 
 class AssignmentQuerySet(models.QuerySet):

@@ -285,16 +285,19 @@ class AssignmentCreateForm(forms.Form):
     to_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Die Kalenderwoche bis TT.MM.YYYY")
 
     # See definitions in model Schedule, method create_assignments_over_timespan()
-    # Only add mode 3 if there is a need
-    mode = forms.ChoiceField(choices=[(1, 'Bestehende Putzdienste komplett löschen und neu generieren. Dies löscht '
-                                          'aus der Putzwoche alle Information, wie z.B. welche Putzer dann in '
-                                          'Urlaub sind und nicht putzen können.'),
+    mode = forms.ChoiceField(choices=[(3, 'Bestehende Putzdienste komplett löschen und neu generieren.'),
                                       (2, 'Behalte vorhandene Putzdienste behalten und nur dort Putzdienste '
                                           'erzeugen wo welche fehlen.')],
                              widget=forms.RadioSelect, label="Modus")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, initial_begin=None, initial_end=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        if initial_begin:
+            self.fields['from_date'].initial = epoch_week_to_monday(initial_begin)
+
+        if initial_end:
+            self.fields['to_date'].initial = epoch_week_to_sunday(initial_end)
 
         self.helper = FormHelper()
         self.helper.layout = Layout(
@@ -544,33 +547,3 @@ class AuthFormWithSubmit(AuthenticationForm):
 
         if 'username' in kwargs['initial']:
             self.fields['username'].disabled = True
-
-
-class ResultsForm(forms.Form):
-    start_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Von TT.MM.YYYY")
-    end_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Bis TT.MM.YYYY")
-
-    # show_deviations = forms.BooleanField(widget=forms.CheckboxInput, required=False,
-    #                                      label="Show average absolute deviations (not really important)")
-
-    def __init__(self, *args, **kwargs):
-        initial = kwargs.get('initial', {})
-
-        start_date = timezone.now().date() - datetime.timedelta(days=30)
-        end_date = start_date + datetime.timedelta(days=3 * 30)
-        initial['start_date'] = start_date.strftime('%d.%m.%Y')
-        initial['end_date'] = end_date.strftime('%d.%m.%Y')
-
-        kwargs['initial'] = initial
-
-        super(ResultsForm, self).__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'start_date',
-            'end_date',
-            HTML(
-                "<button class=\"btn btn-success\" type=\"submit\" name=\"save\" "
-                "style=\"margin:0.5em 0.5em 0.5em 1em\">"
-                "<span class=\"glyphicon glyphicon-chevron-right\"></span> Weiter</button> "),
-            HTML("<br>"),
-        )

@@ -19,9 +19,8 @@ import logging
 import datetime
 
 
-class ConfigView(FormView):
+class ConfigView(TemplateView):
     template_name = 'webinterface/config.html'
-    form_class = ResultsForm
 
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
