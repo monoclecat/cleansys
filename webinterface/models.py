@@ -392,7 +392,10 @@ class Affiliation(models.Model):
     objects = AffiliationQuerySet.as_manager()
 
     def __str__(self):
-        return self.cleaner.name+" in "+self.group.name+" from week"+str(self.beginning)+" to week"+str(self.end)
+        return "Cleaner {} is affiliated with ScheduleGroup {} from {} (week nr. {}) to {} (week nr. {})".format(
+            self.cleaner.name, self.group.name, self.beginning_as_date().strftime("%d. %b %Y"),
+            self.beginning, self.end_as_date().strftime("%d. %b %Y"), self.end
+        )
 
     def __init__(self, *args, **kwargs):
         super(Affiliation, self).__init__(*args, **kwargs)
@@ -504,7 +507,9 @@ class CleaningWeek(models.Model):
     objects = CleaningWeekQuerySet.as_manager()
 
     def __str__(self):
-        return "{}: Week {}".format(self.schedule.name, self.week)
+        return "CleaningWeek in Schedule {}, week nr. {} ({} to {})".format(
+            self.schedule.name, self.week,
+            self.week_start().strftime("%d. %b %Y"), self.week_end().strftime("%d. %b %Y"))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -519,34 +524,11 @@ class CleaningWeek(models.Model):
     def task_templates_missing(self):
         return self.schedule.tasktemplate_set.exclude(pk__in=[x.template.pk for x in self.task_set.all()])
 
-    def has_tasks(self):
-        return self.task_set.exists()
-
-    def is_active(self):
-        return self.task_set.active().exists()
-
-    def is_passed(self):
-        return self.has_tasks() and not self.task_set.in_future().exists() and not self.is_active()
-
-    def is_in_future(self):
-        return self.task_set.in_future().exists() and not self.is_active()
-
     def week_start(self):
         return epoch_week_to_monday(self.week)
 
     def week_end(self):
         return epoch_week_to_sunday(self.week)
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        # TODO When created, populate task_set
-
-        # if self.date != self.__previous_date:
-        #     date_difference = self.__previous_date - self.date
-        #     for task in self.task_set.all():
-        #         task.start_date -= date_difference
-        #         task.end_date -= date_difference
-        #         task.save()
-        super().save(force_insert, force_update, using, update_fields)
 
 
 class AssignmentQuerySet(models.QuerySet):
