@@ -2,9 +2,7 @@ from .forms import *
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView, FormView
 from django.http import HttpResponseRedirect
-from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
-from django.core.exceptions import ValidationError
 
 
 class ScheduleNewView(CreateView):
@@ -317,14 +315,6 @@ class TaskTemplateNewView(CreateView):
         self.object = None
         super().__init__()
 
-    # def get(self, request, *args, **kwargs):
-    #     try:
-    #         self.schedule = Schedule.objects.get(pk=kwargs['pk'])
-    #     except Schedule.DoesNotExist:
-    #         Http404('Putzplan, für den die Aufgabe erstellt werden soll, existiert nicht!')
-    #     self.success_url = reverse_lazy('webinterface:schedule-task-list', kwargs={'pk': self.schedule.pk})
-    #     return super().get(request, *args, **kwargs)
-
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['schedule'] = Schedule.objects.get(pk=self.kwargs['pk'])
@@ -538,38 +528,3 @@ class AssignmentTasksView(UpdateView):
         else:
             context['cleaner_page'] = -1
         return context
-
-    # def post(self, request, *args, **kwargs):
-    #     try:
-    #         assignment = Assignment.objects.get(pk=kwargs['assignment_pk'])
-    #         self.success_url = reverse_lazy(
-    #                 'webinterface:clean-duty',
-    #                 kwargs={'assignment_pk': assignment.pk})
-    #     except Assignment.DoesNotExist:
-    #         raise SuspiciousOperation("Assignment does not exist.")
-    #     self.object = self.get_object()
-    #
-    #     if 'cleaned' in request.POST:
-    #         try:
-    #             assignment = Assignment.objects.get(pk=kwargs['assignment_pk'])
-    #             task = TaskTemplate.objects.get(pk=request.POST['task_pk'])
-    #
-    #             if task.cleaned_by:
-    #                 if task.cleaned_by == assignment:
-    #                     task.cleaned_by = None
-    #                 else:
-    #                     context = self.get_context_data(**kwargs)
-    #                     context['already_cleaned_error'] = "{} wurde in der Zwischenzeit schon von {} gemacht!".format(
-    #                         task.name, task.cleaned_by.cleaner)
-    #                     return self.render_to_response(context)
-    #             else:
-    #                 task.cleaned_by = assignment
-    #             task.save()
-    #             return HttpResponseRedirect(self.get_success_url())
-    #
-    #         except (TaskTemplate.DoesNotExist, Assignment.DoesNotExist):
-    #             raise SuspiciousOperation("TaskTemplate or Assignment does not exist.")
-    #     else:
-    #         return super().post(args, kwargs)
-
-

@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.utils import OperationalError
 from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
 from operator import itemgetter

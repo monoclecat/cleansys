@@ -4,11 +4,7 @@ from .models import *
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import *
 from crispy_forms.bootstrap import *
-from slackbot.slackbot import get_slack_users, slack_running
 from django.contrib.auth.forms import AuthenticationForm
-from django.core.exceptions import ValidationError
-
-import re
 
 
 class ScheduleForm(forms.ModelForm):
@@ -57,11 +53,6 @@ class ScheduleForm(forms.ModelForm):
                  "<span class=\"glyphicon glyphicon-remove\"></span> Abbrechen</a> "),
             'disabled',
         )
-
-        # if 'instance' in kwargs and kwargs['instance']:
-        #     self.fields['frequency'].disabled = True
-        #     self.fields['cleaners_per_date'].disabled = True
-        #     self.fields['weekday'].disabled = True
 
         if kwargs['instance']:
             self.helper.layout.fields.insert(-1, HTML(
@@ -150,14 +141,6 @@ class CleanerForm(forms.ModelForm):
                      "'<span class=\"glyphicon glyphicon-home\"></span> Zugehörigkeiten'.</p>"),
             )
 
-        # if slack_running():
-        #     self.fields['slack_id'].choices = get_slack_users()
-        #     self.helper.layout.fields.insert(5, 'slack_id')
-        # else:
-        #     self.Meta.exclude += ('slack_id',)
-        #     self.helper.layout.fields.insert(0, HTML("<p><i>Slack ist ausgeschaltet. Schalte Slack ein, um "
-        #                                              "dem Putzer eine Slack-ID zuordnen zu können.</i></p>"))
-
         if kwargs['instance']:
             self.helper.layout.fields.append(HTML(
                 "<a class=\"btn btn-danger pull-right\" style=\"color:whitesmoke;\""
@@ -224,10 +207,6 @@ class AffiliationForm(forms.ModelForm):
         if 'instance' in kwargs and kwargs['instance']:
             # We are in AffiliationUpdateView
 
-            # if kwargs['instance'].beginning < timezone.now().date():
-            #     self.fields['beginning'].disabled = True
-            # if kwargs['instance'].end < timezone.now().date():
-            #     self.fields['end'].disabled = True
             self.fields['beginning'].initial = kwargs['instance'].beginning_as_date
             self.fields['end'].initial = kwargs['instance'].end_as_date
             self.helper.layout.fields.insert(0, HTML("<h3>" + str(kwargs['instance'].group) + "</h3>"))
@@ -252,10 +231,6 @@ class CleaningWeekForm(forms.ModelForm):
             'disabled': "Putzdienst für diese Woche deaktivieren",
         }
 
-    # disabled = forms.BooleanField(label="Putzdienst für diese Woche deaktivieren", required=False)
-
-    # date = forms.ChoiceField(label="Datum")
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -271,13 +246,6 @@ class CleaningWeekForm(forms.ModelForm):
                 HTML("<button class=\"btn btn-success\" type=\"submit\" name=\"save\">"
                      "<span class=\"glyphicon glyphicon-ok\"></span> Speichern</button> "),
             )
-
-        # possible_dates = [cleaning_day.date + datetime.timedelta(days=x) for x in
-        #                   range(-1*cleaning_day.date.weekday(), -1*cleaning_day.date.weekday() + 7)]
-        #
-        # self.fields['date'].choices = [(date, "{} - {}".format(Schedule.WEEKDAYS[date.weekday()][1], date))
-        #                                for date in possible_dates]
-        # self.fields['date'].initial = cleaning_day.date
 
 
 class AssignmentCreateForm(forms.Form):
@@ -355,22 +323,6 @@ class TaskTemplateForm(forms.ModelForm):
         widgets = {
             'task_help_text': forms.Textarea
         }
-
-    # def clean(self):
-    #     cleaned_data = super().clean()
-    #
-    #     task_name = cleaned_data.get('task_name')
-    #     start_days_before = cleaned_data.get('start_days_before')
-    #     end_days_after = cleaned_data.get('end_days_after')
-    #
-    #     if task_name and not start_days_before or task_name and not end_days_after:
-    #         raise forms.ValidationError('Zu einer neuen Aufgabe müssen die Tage festgelegt sein, ab wann und bis wann '
-    #                                     'die Aufgabe erledigt werden kann!', code='incomplete_inputs')
-    #     if start_days_before + end_days_after > 6:
-    #         raise forms.ValidationError('Die Zeitspanne, in der die Aufgabe gemacht werden kann, darf '
-    #                                     'nicht eine Woche oder mehr umfassen!', code='span_gt_one_week')
-    #
-    #     return cleaned_data
 
     def __init__(self, schedule=None, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,22 +1,13 @@
 from django.shortcuts import redirect
-from django.urls import reverse_lazy, reverse
-from django.http import HttpResponseRedirect, QueryDict
-from django.http.response import HttpResponseForbidden
+from django.urls import reverse_lazy
+from django.http import HttpResponseRedirect
 from django.contrib.auth.views import LoginView
 from django.views.generic import TemplateView
-from django.views.generic.edit import FormView
 from django.core.paginator import Paginator
-from django.views.generic.detail import DetailView
-from django.core.exceptions import SuspiciousOperation
 from django.http import Http404
 from django.views.generic.list import ListView
-from slackbot.slackbot import start_slack, slack_running
 from .forms import *
 from .models import *
-
-import timeit
-import logging
-import datetime
 
 
 class ConfigView(TemplateView):
@@ -248,91 +239,6 @@ class CleanerView(TemplateView):
         return self.render_to_response(context)
 
 
-# class DutySwitchCreateView(DetailView):
-#     template_name = "webinterface/switch_duty.html"
-#     model = DutySwitch
-#
-#     def dispatch(self, request, *args, **kwargs):
-#         self.extra_context = dict()
-#         duty_switch = self.get_object()
-#         if request.user == duty_switch.source_assignment.cleaner.user:
-#             self.extra_context['perspective'] = 'source'
-#         elif request.user == duty_switch.selected_assignment.cleaner.user:
-#             self.extra_context['perspective'] = 'selected'
-#         else:
-#             return HttpResponseForbidden("Du hast keinen Zugriff auf diese Seite.")
-#         return super().dispatch(request, *args, **kwargs)
-#
-#     def post(self, request, *args, **kwargs):
-#         try:
-#             duty_switch = DutySwitch.objects.get(pk=kwargs['pk'])
-#         except DutySwitch.DoesNotExist:
-#             raise SuspiciousOperation("Diese Putzdienst-Tausch-Seite existiert nicht.")
-#
-#         if 'redirect_cleaner_slug' not in request.POST:
-#             raise SuspiciousOperation("Redirect_cleaner_slug not sent!")
-#
-#         if 'delete' in request.POST:
-#             duty_switch.delete()
-#         elif 'accept' in request.POST:
-#             duty_switch.selected_was_accepted()
-#         elif 'reject' in request.POST:
-#             duty_switch.selected_was_rejected()
-#             duty_switch.save()
-#         elif 'select' in request.POST:
-#             if 'selected' in request.POST:
-#                 try:
-#                     duty_switch.set_selected(Assignment.objects.get(pk=request.POST['selected']))
-#
-#                 except Assignment.DoesNotExist:
-#                     raise SuspiciousOperation("Invalid Assignment PK")
-#             else:
-#                 raise SuspiciousOperation("Selected not sent!")
-#         else:
-#             raise SuspiciousOperation("POST sent that didn't match a catchable case!")
-#
-#         return HttpResponseRedirect(reverse_lazy('webinterface:cleaner', kwargs={'page': 1}))
-
-
 class LoginByClickView(LoginView):
     template_name = "webinterface/login_byclick.html"
     extra_context = {'cleaner_list': Cleaner.objects.active()}
-
-#
-# class ResultsView(TemplateView):
-#     template_name = 'webinterface/results.html'
-#
-#     def post(self, request, *args, **kwargs):
-#         if 'regenerate_all' in request.POST:
-#             mode = 1
-#         else:
-#             mode = 2
-#
-#         time_start = timeit.default_timer()
-#         for schedule in Schedule.objects.enabled():
-#             schedule.new_cleaning_duties(
-#                 datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date(),
-#                 datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date(),
-#                 mode)
-#         time_end = timeit.default_timer()
-#         logging.info("Assigning cleaning schedules took {}s".format(round(time_end-time_start, 2)))
-#
-#         results_kwargs = {'from_date': kwargs['from_date'], 'to_date': kwargs['to_date']}
-#
-#         if 'options' in kwargs:
-#             results_kwargs['options'] = kwargs['options']
-#
-#         return HttpResponseRedirect(reverse_lazy('webinterface:results', kwargs=results_kwargs))
-#
-#     def get(self, request, *args, **kwargs):
-#         from_date = datetime.datetime.strptime(kwargs['from_date'], '%d-%m-%Y').date()
-#         to_date = datetime.datetime.strptime(kwargs['to_date'], '%d-%m-%Y').date()
-#
-#         context = dict()
-#         context['assignments_by_schedule'] = list()
-#         for schedule in Schedule.objects.enabled():
-#             context['assignments_by_schedule'].append(
-#                 schedule.assignment_set.filter(cleaning_day__date__range=(from_date, to_date)))
-#         return self.render_to_response(context)
-#
-
