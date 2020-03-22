@@ -54,13 +54,13 @@ class ScheduleTest(BaseFixture, TestCase):
         self.assertTrue(odd_week_schedule.occurs_in_week(odd_week))
 
     @patch('webinterface.models.Schedule.create_assignment', autospec=True,
-           side_effect=[x % 2 == 0 for x in range(1, 100)])
+           side_effect=[x % 2 == 0 for x in range(0, 100)])
     @patch('django.db.models.query.QuerySet.delete', autospec=True)
     def run_and_assert__create_assignments_over_timespan(
             self, mock_queryset_delete, mock_create_assignment,
             schedule: Schedule, start_week: int, end_week: int,
             mode: int, assignments_should_be_deleted: bool, cleaningweeks_should_be_deleted: bool,
-            expected_create_assignment_args: list):
+            expected_create_assignment_week_args: list):
 
         # Mocking create_assignment_directly means we are ignoring the cleaners_per_date property of Schedule
         schedule.create_assignments_over_timespan(start_week, end_week, mode)
@@ -71,11 +71,11 @@ class ScheduleTest(BaseFixture, TestCase):
         self.assertEqual(assignments_should_be_deleted, assignment_delete_called, msg="mode={}".format(mode))
         self.assertEqual(cleaningweeks_should_be_deleted, cleaningweek_delete_called, msg="mode={}".format(mode))
 
-        args_passed_to_create_assignment = [x[1] for x in [x[0] for x in mock_create_assignment.call_args_list]]
+        create_assignment_week_args = [x[1]['week'] for x in mock_create_assignment.call_args_list]
 
         # Note on [::2] : side_effect of mock_create_assignment causes it to be called twice
         # with the exact same arguments in while loop of create_assignments_over_timespan()
-        self.assertListEqual(args_passed_to_create_assignment[::2], expected_create_assignment_args,
+        self.assertListEqual(create_assignment_week_args[::2], expected_create_assignment_week_args,
                              msg="mode={}".format(mode))
 
     def test__create_assignments_over_timespan__mode_1(self):
@@ -83,28 +83,28 @@ class ScheduleTest(BaseFixture, TestCase):
             mode=1,  # Delete existing Assignments and CleaningDays and regenerate them throughout time frame
             schedule=self.bathroom_schedule, start_week=self.start_week, end_week=self.end_week,
             assignments_should_be_deleted=True, cleaningweeks_should_be_deleted=True,
-            expected_create_assignment_args=[x for x in range(self.start_week, self.end_week+1)])
+            expected_create_assignment_week_args=[x for x in range(self.start_week, self.end_week+1)])
 
     def test__create_assignments_over_timespan__mode_2(self):
         self.run_and_assert__create_assignments_over_timespan(
             mode=2,  # Keep existing Assignments and only create new ones where there are none already
             schedule=self.bathroom_schedule, start_week=self.start_week, end_week=self.end_week,
             assignments_should_be_deleted=False, cleaningweeks_should_be_deleted=False,
-            expected_create_assignment_args=[x for x in range(self.start_week, self.end_week+1)])
+            expected_create_assignment_week_args=[x for x in range(self.start_week, self.end_week+1)])
 
     def test__create_assignments_over_timespan__mode_3(self):
         self.run_and_assert__create_assignments_over_timespan(
             mode=3,  # Only reassign Assignments on existing CleaningDays, don't generate new CleaningDays
             schedule=self.bathroom_schedule, start_week=self.start_week, end_week=self.end_week,
             assignments_should_be_deleted=True, cleaningweeks_should_be_deleted=False,
-            expected_create_assignment_args=[x for x in range(self.start_week, self.end_week+1)])
+            expected_create_assignment_week_args=[x for x in range(self.start_week, self.end_week+1)])
 
     def test__create_assignments_over_timespan__only_one_week(self):
         self.run_and_assert__create_assignments_over_timespan(
             mode=2,
             schedule=self.bathroom_schedule, start_week=self.start_week, end_week=self.start_week,
             assignments_should_be_deleted=False, cleaningweeks_should_be_deleted=False,
-            expected_create_assignment_args=[self.start_week])
+            expected_create_assignment_week_args=[self.start_week])
 
     def test__create_assignments_over_timespan__invalid_mode(self):
         self.assertRaisesRegex(ValueError, 'create_assignments_over_timespan.*1.*2.*3.*',
