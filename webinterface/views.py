@@ -23,7 +23,7 @@ class ConfigView(TemplateView):
 
         context['active_schedule_group_list'] = ScheduleGroup.objects.enabled()
         context['disabled_schedule_group_list'] = ScheduleGroup.objects.disabled()
-        # context['slack_running'] = slack_running()
+        context['slack_running'] = slack_running()
         return context
 
     # def post(self, request, *args, **kwargs):
@@ -237,35 +237,6 @@ class CleanerView(TemplateView):
                 context['answerable_dutyswitch_requests'].append(dutyswitch)
 
         return self.render_to_response(context)
-
-
-class AssignmentTasksView(TemplateView):
-    template_name = "webinterface/assignment_tasks.html"
-
-    def get_context_data(self, **kwargs):
-
-        context = super().get_context_data(**kwargs)
-        try:
-            context['assignment'] = Assignment.objects.get(pk=self.kwargs['assignment_pk'])
-        except CleaningWeek.DoesNotExist:
-            raise Http404("Assignment doesn't exist!")
-
-        try:
-            context['tasks'] = context['assignment'].cleaning_week.task_set.all()
-        except CleaningWeek.DoesNotExist:
-            logging.error("CleaningWeek does not exist on date!")
-            raise Exception("CleaningWeek does not exist on date!")
-
-
-        if 'schedule_page' in self.kwargs:
-            context['schedule_page'] = self.kwargs['schedule_page']
-        else:
-            context['schedule_page'] = -1
-        if 'cleaner_page' in self.kwargs:
-            context['cleaner_page'] = self.kwargs['cleaner_page']
-        else:
-            context['cleaner_page'] = -1
-        return context
 
 
 class LoginByClickView(LoginView):

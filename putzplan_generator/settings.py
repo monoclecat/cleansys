@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'webinterface.apps.WebinterfaceConfig',
     'slackbot.apps.SlackbotConfig',
-    'bootstrap4',
+    'bootstrap3',
     'crispy_forms',
     'slack',
     'django_celery_beat',
@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     'coverage'
 ]
 
-CRISPY_TEMPLATE_PACK = 'bootstrap4'
+CRISPY_TEMPLATE_PACK = 'bootstrap3'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -135,15 +135,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-# Settings for django-bootstrap4
-BOOTSTRAP4 = {
-    "error_css_class": "bootstrap4-error",
-    "required_css_class": "bootstrap4-required",
-    "javascript_in_head": True,
-    "include_jquery": True,
-}
-
 # Celery settings
+
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers.DatabaseScheduler"
 CELERY_WORKER_CONCURRENCY = 1  # Alternative: Manual Routing: Only one worker for poll_slack queue
