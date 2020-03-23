@@ -65,7 +65,7 @@ Putzdienst erledigen
     </h4>
     <div class="row">
         {% for task in tasks.uncleaned %}
-            <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+            <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
                 <div class="panel panel-info">
                     <div class="panel-heading">
                         {% if user.username == assignment.cleaner.slug and task.my_time_has_come or user.is_superuser %}

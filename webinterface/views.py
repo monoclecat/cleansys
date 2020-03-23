@@ -23,32 +23,7 @@ class ConfigView(TemplateView):
 
         context['active_schedule_group_list'] = ScheduleGroup.objects.enabled()
         context['disabled_schedule_group_list'] = ScheduleGroup.objects.disabled()
-        # context['slack_running'] = slack_running()
         return context
-
-    # def post(self, request, *args, **kwargs):
-    #     """
-    #     Handles POST requests, instantiating a form instance with the passed
-    #     POST variables and then checked for validity.
-    #     """
-    #     if 'start_slack' in request.POST:
-    #         if not slack_running():
-    #             start_slack()
-    #             return HttpResponseRedirect(reverse_lazy('webinterface:config'))
-    #
-    #     form = self.get_form()
-    #
-    #     if form.is_valid():
-    #         start_date = datetime.datetime.strptime(request.POST['start_date'], '%d.%m.%Y').date()
-    #         end_date = datetime.datetime.strptime(request.POST['end_date'], '%d.%m.%Y').date()
-    #
-    #         results_kwargs = {'from_date': start_date.strftime('%d-%m-%Y'),
-    #                           'to_date': end_date.strftime('%d-%m-%Y')}
-    #
-    #         if 'show_deviations' in request.POST:
-    #             results_kwargs['options'] = 'stats'
-    #         return HttpResponseRedirect(reverse_lazy('webinterface:results', kwargs=results_kwargs))
-    #     return self.form_invalid(form)
 
 
 class ScheduleView(TemplateView):
@@ -167,39 +142,6 @@ class ScheduleTaskList(ListView):
 class CleanerView(TemplateView):
     template_name = "webinterface/cleaner.html"
 
-    # def post(self, request, *args, **kwargs):
-    #     if 'switch' in request.POST:
-    #         if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
-    #             try:
-    #                 source_assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
-    #                 duty_to_switch = DutySwitch.objects.create(source_assignment=source_assignment)
-    #                 duty_to_switch.look_for_destinations()
-    #                 return HttpResponseRedirect(reverse_lazy(
-    #                     'webinterface:switch-duty', kwargs={'pk': duty_to_switch.pk}))
-    #             except (Cleaner.DoesNotExist, Assignment.DoesNotExist):
-    #                 raise SuspiciousOperation("Invalid PKs")
-    #         else:
-    #             raise SuspiciousOperation("Invalid POST data sent by client")
-    #     elif 'clean' in request.POST:
-    #         if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
-    #             try:
-    #                 assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
-    #                 if not assignment.cleaning_day.task_set.all():
-    #                     assignment.cleaning_day.initiate_tasks()
-    #                     assignment.cleaning_day.save()
-    #
-    #                 return HttpResponseRedirect(reverse_lazy(
-    #                     'webinterface:clean-duty', kwargs={'assignment_pk': assignment.pk}))
-    #
-    #             except Assignment.DoesNotExist:
-    #                 raise SuspiciousOperation("Invalid Assignment PK")
-    #     else:
-    #         raise SuspiciousOperation("POST sent that didn't match a catchable case!")
-    #
-    #     return HttpResponseRedirect(reverse_lazy(
-    #         'webinterface:cleaner',
-    #         kwargs={'slug': kwargs['slug'], 'page': kwargs['page']}))
-
     def get(self, request, *args, **kwargs):
         if request.user.is_superuser:
             return HttpResponseRedirect(reverse_lazy('webinterface:config'))
@@ -263,6 +205,7 @@ class AssignmentTasksView(TemplateView):
         else:
             context['cleaner_page'] = -1
         return context
+
 
 class LoginByClickView(LoginView):
     template_name = "webinterface/login_byclick.html"

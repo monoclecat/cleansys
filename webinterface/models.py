@@ -243,6 +243,9 @@ class Cleaner(models.Model):
         return self.name
 
     def switchable_assignments_for_request(self, duty_switch, look_weeks_into_future=12):
+        if duty_switch.requester_assignment.has_passed():
+            return Assignment.objects.none()
+
         from_week = current_epoch_week()
         schedule_from_request = duty_switch.requester_assignment.schedule
         week_from_request = duty_switch.requester_assignment.cleaning_week.week
@@ -515,6 +518,11 @@ class Assignment(models.Model):
 
     def tasks_are_ready_to_be_done(self):
         return self.cleaning_week.tasks_are_ready_to_be_done()
+
+    def has_passed(self):
+        # We check if tasks are not ready to be done because while the assignment_date may be in the past,
+        # the Tasks can possibly be done a few days after that date
+        return self.assignment_date() < timezone.now().date() and not self.tasks_are_ready_to_be_done()
 
     def all_cleaners_in_week_for_schedule(self):
         return Cleaner.objects.filter(assignment__cleaning_week=self.cleaning_week)

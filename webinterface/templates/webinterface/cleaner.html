@@ -48,17 +48,23 @@ Deine Putzdienste
                         {% include "webinterface_snippets/assignment_table_row.html" %}
                         <div class="row">
                             <div class="col-xs-6">
-                                {% if assignment.switch_requested %}
-                                    <a class="btn btn-warning btn-sm"
-                                       href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page.number %}"
-                                       role="button" style="white-space: normal; margin: 0.5em">
+                                {% if not assignment.has_passed %}
+                                    {% if assignment.switch_requested %}
+                                        <a class="btn btn-warning btn-sm"
+                                           href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page.number %}"
+                                           role="button" style="white-space: normal; margin: 0.5em">
                                             Tauschanfrage löschen <span class="glyphicon glyphicon-remove"></span>
-                                    </a>
-                                {% else %}
-                                    <a class="btn btn-default btn-sm"
-                                       href="{% url 'webinterface:dutyswitch-create' assignment.pk page.number %}"
-                                       role="button" style="white-space: normal; margin: 0.5em">
+                                        </a>
+                                    {% else %}
+                                        <a class="btn btn-default btn-sm"
+                                            href="{% url 'webinterface:dutyswitch-create' assignment.pk page.number %}"
+                                            role="button" style="white-space: normal; margin: 0.5em">
                                             Tauschen <span class="glyphicon glyphicon-random"></span>
+                                        </a>
+                                    {% endif %}
+                                {% else %}
+                                    <a class="btn btn-default btn-sm disabled" href="#" role="button" style="white-space: normal; margin: 0.5em">
+                                        Tauschen nicht mehr möglich
                                     </a>
                                 {% endif %}
                             </div>
