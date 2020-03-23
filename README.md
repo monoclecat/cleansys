@@ -9,7 +9,7 @@ the house itself has several biweekly-repeating schedules.
 While the cleaning schedules on each floor must only be cleaned by those living on that floor, the household-wide 
 cleaning schedules must be cleaned by all inhabitants. 
 
-Another example is this visualisation of a more simple household:
+Another example is this visualisation of a simplified household:
 ![Example of a multi-person household with cleaning schedules](diagrams/CleanSys1.svg)
 
 When assigning cleaning duties you might want to follow these guidelines to keep the peace in your household:
