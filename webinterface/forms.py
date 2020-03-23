@@ -230,6 +230,9 @@ class TaskCleanedForm(forms.ModelForm):
         labels = {
             'cleaned_by': "Putzer, der diese Aufgabe erledigt hat",
         }
+        widgets = {
+            'cleaned_by': forms.RadioSelect
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,0 +1,63 @@
+{% extends "webinterface/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+{{ schedule.name }}
+{% endblock %}
+
+{% block body %}
+    <style>
+        th.rotate {
+            /* Something you can count on */
+            height: 140px;
+            white-space: nowrap;
+        }
+
+        th.rotate > div {
+            transform:
+                /* Magic Numbers */
+                    translate(0px, 100px)
+                        /* 45 is really 360 - 45 */
+                    rotate(315deg);
+            width: 30px;
+        }
+
+        th.text_bottom > div {
+            transform:
+                translate(0px, 100px);
+        }
+
+        th.rotate > div > span {
+            border-bottom: 1px solid #ccc;
+            padding: 5px 10px;
+        }
+    </style>
+
+    <table class="table table-condensed table-bordered table-striped">
+        <tr>
+            <th class="text_bottom"><div><span>Datum</span></div></th>
+            <th class="text_bottom"><div><span>Putzer</span></div></th>
+            {% for task_template in task_templates %}
+                <th class="rotate"><div><span>{{ task_template }}</span></div></th>
+            {% endfor %}
+        </tr>
+        {% for cleaning_week in cleaning_weeks %}
+            <tr>
+                <td>{{ cleaning_week.assignment_date|date:"d. M Y" }}</td>
+                <td>
+                    {% for cleaner in cleaning_week.assigned_cleaners %}
+                        {{ cleaner }}
+                        {% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                {% for task_template in task_templates %}
+                    {% if task_template in cleaning_week.completed_tasks__as_templates %}
+                        <td><span class="glyphicon glyphicon-ok"></span></td>
+                    {% else %}
+                        <td> </td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

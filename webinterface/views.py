@@ -64,38 +64,16 @@ class ScheduleView(TemplateView):
 
         return self.render_to_response(context)
 
-    def post(self, request, *args, **kwargs):
-        if 'toggle_cleaning_week_active_status' in request.POST:
-            pass
-            # if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
-            #     try:
-            #         source_assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
-            #         duty_to_switch = DutySwitch.objects.create(source_assignment=source_assignment)
-            #         duty_to_switch.look_for_destinations()
-            #         return HttpResponseRedirect(reverse_lazy(
-            #             'webinterface:switch-duty', kwargs={'pk': duty_to_switch.pk}))
-            #     except (Cleaner.DoesNotExist, Assignment.DoesNotExist):
-            #         raise SuspiciousOperation("Invalid PKs")
-            # else:
-            #     raise SuspiciousOperation("Invalid POST data sent by client")
-        # elif 'clean' in request.POST:
-        #     if 'source_assignment_pk' in request.POST and request.POST['source_assignment_pk']:
-        #         try:
-        #             assignment = Assignment.objects.get(pk=request.POST['source_assignment_pk'])
-        #             if not assignment.cleaning_day.task_set.all():
-        #                 assignment.cleaning_day.initiate_tasks()
-        #                 assignment.cleaning_day.save()
-        #
-        #             return HttpResponseRedirect(reverse_lazy(
-        #                 'webinterface:clean-duty', kwargs={'assignment_pk': assignment.pk}))
-        #
-        #         except Assignment.DoesNotExist:
-        #             raise SuspiciousOperation("Invalid Assignment PK")
-        # else:
-        #     raise SuspiciousOperation("POST sent that didn't match a catchable case!")
 
-        return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view', kwargs={'slug': kwargs['slug'],
-                                                                                       'page': kwargs['page']}))
+class SchedulePrintView(TemplateView):
+    template_name = "webinterface/schedule_print.html"
+
+    def get_context_data(self, **kwargs):
+        schedule = Schedule.objects.get(slug=kwargs['slug'])
+        context = {'schedule': schedule,
+                   'cleaning_weeks': schedule.cleaningweek_set.filter(week__gte=kwargs['week']).order_by('week'),
+                   'task_templates': schedule.tasktemplate_set.enabled()}
+        return context
 
 
 class ScheduleList(ListView):

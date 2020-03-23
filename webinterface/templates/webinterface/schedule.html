@@ -153,25 +153,15 @@
         {% endfor %}
     </table>
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
-    {% comment %}<div class="row" style="padding: 1em">
-        <h4>Hebe Putzer hervor</h4>
-        <div class="col-xs-12 col-sm-4 col-md-3" style="padding: 5px">
-            <a class="btn btn-default btn-sm btn-block {% if not highlighted_cleaner %} active {% endif %}"
-                style="white-space: normal"
-                role="button" href="{% url 'webinterface:schedule-view' schedule.slug page.number %}">
-                <span class="glyphicon glyphicon-home"></span> Zurücksetzen
-            </a>
-        </div>
 
-        {% for cleaner in cleaners %}
-            <div class="col-xs-6 col-sm-4 col-md-3" style="padding: 5px">
-                <a class="btn btn-default btn-sm btn-block
-                    {% ifequal highlighted_cleaner.name cleaner.name %} active {% endifequal %}"
-                    role="button"
-                    href="{% url 'webinterface:schedule-view-highlight' schedule.slug page.number cleaner.slug %}">
-                    <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
+    {% if page.0.week %}
+        <div class="row">
+            <div class="col-xs-12">
+                <a href="{% url 'webinterface:schedule-print-view' schedule.slug page.0.week %}"
+                   class="btn btn-default btn-xs" role="button">
+                    <span class="glyphicon glyphicon-print"></span> Druckansicht (ab erstem Datum dieser Seite)
                 </a>
             </div>
-        {% endfor %}
-    </div>{% endcomment %}
+        </div>
+    {% endif %}
 {% endblock %}

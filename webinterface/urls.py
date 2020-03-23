@@ -38,10 +38,13 @@ urlpatterns = [
 
     path('putzplan-liste/', login_required(ScheduleList.as_view()), name='schedule-list'),
 
+    path('putzplan/<slug:slug>/ab<int:week>/druckansicht/', login_required(SchedulePrintView.as_view()),
+         name='schedule-print-view'),
     path('putzplan/<slug:slug>/seite<int:page>/<slug:highlight_slug>/', login_required(ScheduleView.as_view()),
          name='schedule-view-highlight'),
     path('putzplan/<slug:slug>/seite<int:page>/', login_required(ScheduleView.as_view()), name='schedule-view'),
     path('putzplan/<slug:slug>/', login_required(ScheduleView.as_view()), name='schedule-view-no-page'),
+
 
     path('config/', staff_member_required(ConfigView.as_view(), login_url=reverse_lazy("webinterface:login")), name='config'),
 

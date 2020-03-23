@@ -471,6 +471,9 @@ class CleaningWeek(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def assignment_date(self):
+        return epoch_week_to_monday(self.week) + datetime.timedelta(days=self.schedule.weekday)
+
     def tasks_are_ready_to_be_done(self):
         for task in self.task_set.all():
             if task.my_time_has_come():
@@ -483,6 +486,21 @@ class CleaningWeek(models.Model):
             self.task_set.create(template=task_template)
         self.tasks_valid = True
         self.save()
+
+    def completed_tasks(self) -> QuerySet:
+        return self.task_set.exclude(cleaned_by__isnull=True)
+
+    def completed_tasks__as_templates(self) -> list:
+        return [x.template for x in self.completed_tasks()]
+
+    def open_tasks(self) -> QuerySet:
+        return self.task_set.filter(cleaned_by__isnull=True)
+
+    def open_tasks__as_templates(self) -> list:
+        return [x.template for x in self.open_tasks()]
+
+    def assigned_cleaners(self) -> list:
+        return [x.cleaner for x in self.assignment_set.all()]
 
     def task_templates_missing(self):
         return self.schedule.tasktemplate_set.enabled().exclude(pk__in=[x.template.pk for x in self.task_set.all()])
@@ -527,7 +545,7 @@ class Assignment(models.Model):
             self.cleaning_week.schedule.name, self.cleaner.name, self.assignment_date().strftime('%d. %b %Y'))
 
     def assignment_date(self):
-        return epoch_week_to_monday(self.cleaning_week.week) + datetime.timedelta(days=self.schedule.weekday)
+        return self.cleaning_week.assignment_date()
 
     def tasks_are_ready_to_be_done(self):
         return self.cleaning_week.tasks_are_ready_to_be_done()
