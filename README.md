@@ -1,17 +1,20 @@
 # Cleaning schedule management system (CleanSys)
 
 CleanSys is a *cleaning schedule management system* written in Python (using the Django framework) which is built for 
-non-stationary relationships between Cleaners and Schedules. 
+medium-sized organizations with many cleaning schedules and complex relationships between Cleaners and Schedules. 
 
-In particular, CleanSys was built for a 15-person household with 4 floors. Each floor has its own weekly repeating 
-cleaning schedules (such as for the bathroom), and the house itself has several biweekly-occurring schedules. 
+An example is its current use-case, CleanSys was built for a 15-person household with 4 floors. 
+Each floor has its own weekly repeating cleaning schedules and the house itself has several biweekly-repeating schedules. 
 While the cleaning schedules on each floor must only be cleaned by those living on that floor, the household-wide 
 cleaning schedules must be cleaned by all inhabitants. 
 
-The tricky part is (a) to make sure every Cleaner cleans his/her fair share in each cleaning schedule he is assigned
- to *(not cleaning too much or too little)*
-and (b) to make sure a Cleaner isn't assigned 10 cleaning duties on one week-end, which would sure kill his/her free 
-time and lead to frustration. 
+![Example of a multi-person household with cleaning schedules](diagrams/CleanSys1.svg)
+
+To keep the peace in the household you might also want to follow these guidelines:
+- (a) Make sure every Cleaner cleans his/her fair share in each cleaning schedule he is assigned
+ to *(not cleaning too much or too little)*.
+- (b) Make sure a Cleaner isn't assigned too many duties at once, which is sure to kill his/her free 
+time and frustrate the Cleaner. 
 
 Such a complex cleaning schedule system can either be planned on paper 
 _(paper cleaning schedules were the way we did it prior to CleanSys, and 
@@ -36,12 +39,12 @@ CleanSys is built for german cleaners, so the interface language is german. If y
 ## Installation
 
 ## Playing around an exploring features
-To start the CSG, run 'python manage.py runserver' and open 127.0.0.1:8000 in your browser. 
+To start CleanSys, run 'python manage.py runserver' and open 127.0.0.1:8000 in your browser. 
 The admin area can be accessed with the credentials of the Django superuser: 
 
 *Username:*admin  
 *Password:*CleaningAdmin  
 
-> WARNING: Make sure to change the superuser password when deploying the CSG! 
+> WARNING: Make sure to change the superuser password when deploying CleanSys! 
 
 ### First steps
