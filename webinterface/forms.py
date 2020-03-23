@@ -14,21 +14,26 @@ def html_alert_banner(content: str, alert_level='info'):
 class ScheduleForm(forms.ModelForm):
     class Meta:
         model = Schedule
-        exclude = ('slug',)
+        fields = ['name', 'weekday', 'cleaners_per_date', 'frequency', 'disabled']
         labels = {
             'name': "Name des Putzplans",
-            'cleaners_per_date': "Anzahl der Putzer pro Woche",
             'weekday': "Wochentag, an dem sich der Dienst wiederholen soll.",
-            'frequency': "Häufigkeit der Putzdienste",
+            'cleaners_per_date': "Anzahl der Putzer pro Woche (Warnung beachten!)",
+            'frequency': "Häufigkeit der Putzdienste (Warnung beachten!)",
             'disabled': "Putzplan deaktivieren"
         }
         help_texts = {
             'weekday': "Dieser Wochentag sagt noch nichts darüber aus, wie viel Zeit die Putzer zum "
                        "Erledigen des Dienstes haben.",
+            'cleaners_per_date': "<b>Achtung! Nicht leichtfertig ändern!</b> Wenn die Anzahl an Putzern pro Woche "
+                                 "geändert wird, müssen alle zukünftigen Putzdienste neu verteilt werden!",
+            'frequency': "<b>Achtung! Nicht leichtfertig ändern!</b> Wenn die Häufigkeit des Putzdienstes "
+                         "geändert wird, müssen alle zukünftigen Putzdienste neu verteilt werden!"
         }
 
     schedule_group = forms. \
-        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.enabled(), label="Zugehörigkeit zur Putzgruppe",
+        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.enabled(),
+                                 label="Zugehörigkeit zu Putzgruppen (mehrere möglich)",
                                  help_text="Alle Putzer einer Putzgruppe sind allen Putzplänen dieser "
                                            "Gruppe zugewiesen. Ein Putzer kann nur einer Putzgruppe auf "
                                            "einmal zugewiesen sein. Ein Putzplan kann jedoch mehreren Putzgruppen "
@@ -41,19 +46,7 @@ class ScheduleForm(forms.ModelForm):
         if 'instance' in kwargs and kwargs['instance']:
             initial['schedule_group'] = ScheduleGroup.objects.filter(schedules=kwargs['instance'])
             kwargs['initial'] = initial
-
         super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-
-        self.helper.layout = Layout(
-            'name',
-            'weekday',
-            'schedule_group',
-
-            'cleaners_per_date',
-            'frequency',
-            'disabled',
-        )
 
 
 class ScheduleGroupForm(forms.ModelForm):
@@ -201,10 +194,12 @@ class TaskTemplateForm(forms.ModelForm):
             'start_days_before': "Kann ab diesem Wochentag angefangen werden",
             'end_days_after': "Darf bis zu diesem Wochentag gemacht werden",
             'task_help_text': "Hilfetext",
-            'task_disabled': "Aufgabe deaktiviert"
+            'task_disabled': "Aufgabe deaktiviert (beachte Warnung!)"
         }
         help_texts = {
-            'task_help_text': "Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können."
+            'task_help_text': "Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können.",
+            'task_disabled': "<b>Achtung!</b> Wenn dieser Wert geändert wird, müssen die Aufgaben aller zukünfigen "
+                             "Putzdienste aktualisiert werden!"
         }
         widgets = {
             'task_help_text': forms.Textarea
