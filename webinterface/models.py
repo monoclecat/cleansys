@@ -64,8 +64,8 @@ class Schedule(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(Schedule, self).__init__(*args, **kwargs)
-        self.__last_cleaners_per_date = self.cleaners_per_date
-        self.__last_frequency = self.frequency
+        self.previous_cleaners_per_date = self.cleaners_per_date
+        self.previous_frequency = self.frequency
 
     def deployment_ratios(self, week: int) -> list:
         """week must be a epoch week number as returned by date_to_epoch_week()"""
@@ -166,6 +166,11 @@ class Schedule(models.Model):
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
         super(Schedule, self).save(force_insert, force_update, using, update_fields)
+
+        if self.previous_frequency != self.frequency \
+                or self.previous_cleaners_per_date != self.cleaners_per_date:
+            [x.set_assignments_valid_field(False)
+             for x in self.cleaningweek_set.filter(week__gt=current_epoch_week()).all()]
 
 
 class ScheduleGroupQuerySet(models.QuerySet):

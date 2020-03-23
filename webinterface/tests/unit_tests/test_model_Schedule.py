@@ -183,3 +183,33 @@ class ScheduleTest(BaseFixture, TestCase):
         self.assertTrue(str(mock_queryset_create.call_args[1]).find("'cleaner': <Cleaner: dave>") != -1)
         self.assertTrue(str(mock_queryset_create.call_args[1]).find(
             "'cleaning_week': <CleaningWeek: kitchen: Week 2500>") != -1)
+
+
+class ScheduleDatabaseTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.week = 2500
+        cls.schedule = Schedule.objects.create(name="schedule", cleaners_per_date=1, frequency=1)
+        cls.schedule2 = Schedule.objects.create(name="schedule2")
+        cls.cleaning_week = CleaningWeek.objects.create(schedule=cls.schedule, week=cls.week,
+                                                        assignments_valid=True)
+        cls.future_cleaning_week = CleaningWeek.objects.create(schedule=cls.schedule, week=cls.week+1,
+                                                               assignments_valid=True)
+        cls.cleaning_week2 = CleaningWeek.objects.create(schedule=cls.schedule2, week=cls.week+1,
+                                                         assignments_valid=True)
+
+    @patch('webinterface.models.current_epoch_week', autospec=True)
+    def invalidation_test_runner(self, mock_curr_epoch_week, field_name: str, new_value: int):
+        mock_curr_epoch_week.return_value = self.week
+
+        setattr(self.schedule, field_name, new_value)
+        self.schedule.save()
+        self.assertFalse(CleaningWeek.objects.get(pk=self.future_cleaning_week.pk).assignments_valid)
+        self.assertTrue(CleaningWeek.objects.get(pk=self.cleaning_week.pk).assignments_valid)
+        self.assertTrue(CleaningWeek.objects.get(pk=self.cleaning_week2.pk).assignments_valid)
+
+    def test_future_cleaning_weeks_invalidated_on_cleaners_per_date_change(self):
+        self.invalidation_test_runner(field_name='cleaners_per_date', new_value=2)
+
+    def test_future_cleaning_weeks_invalidated_on_frequency_change(self):
+        self.invalidation_test_runner(field_name='frequency', new_value=2)
