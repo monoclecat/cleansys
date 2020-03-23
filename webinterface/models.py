@@ -583,7 +583,8 @@ class TaskTemplate(models.Model):
              update_fields=None):
         super().save(force_insert, force_update, using, update_fields)
         if self.previous_disabled != self.task_disabled:
-            [x.set_tasks_valid_field(False) for x in self.schedule.cleaningweek_set.all()]
+            [x.set_tasks_valid_field(False)
+             for x in self.schedule.cleaningweek_set.filter(week__gt=current_epoch_week()).all()]
 
 
 class TaskQuerySet(models.QuerySet):
@@ -641,7 +642,8 @@ class DutySwitch(models.Model):
         ordering = ('created',)
     created = models.DateField(auto_now_add=timezone.now().date())
 
-    requester_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="requester", editable=False)
+    requester_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="requester",
+                                             editable=False)
     acceptor_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="acceptor")
 
     objects = DutySwitchQuerySet.as_manager()
