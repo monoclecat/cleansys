@@ -7,8 +7,24 @@
 
 {% block main %}
     <h1>{{ title }}</h1>
-    <form method="POST" class="form">
+    {% if info_banner %}
+        <div class="alert alert-info" role="alert">{{ info_banner.text|safe }}</div>
+    {% endif %}
+    <form method="POST" class="form" id="main_form">
         {% crispy form %}
     </form>
-    <br>
+    {% if submit_button %}
+            <button class="btn btn-success" type="submit" form="main_form" name="save">
+                 <span class="glyphicon glyphicon-ok"></span> {{ submit_button.text }}</button>
+        {% endif %}
+        {% if cancel_button %}
+            <a class="btn btn-warning" href="{{ cancel_button.url }}" role="button">
+                 <span class="glyphicon glyphicon-remove"></span> {{ cancel_button.text }}</a>
+        {% endif %}
+        {% if delete_button %}
+            <a class="btn btn-danger pull-right" style="color:whitesmoke;"
+               href="{{ delete_button.url }}"
+               role="button"><span class="glyphicon glyphicon-trash"></span> {{ delete_button.text }}</a>
+        {% endif %}
+    <br><br><br>
 {% endblock %}

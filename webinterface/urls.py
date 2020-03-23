@@ -77,6 +77,8 @@ urlpatterns = [
          name='schedule-group-new'),
     path('schedule-group-edit/<int:pk>/', staff_member_required(ScheduleGroupUpdateView.as_view()),
          name='schedule-group-edit'),
+    path('schedule-group-delete/<int:pk>/', staff_member_required(ScheduleGroupDeleteView.as_view()),
+         name='schedule-group-delete'),
 
     path('putzer/neu/', staff_member_required(CleanerNewView.as_view()), name='cleaner-new'),
     path('putzer/<int:pk>/', staff_member_required(CleanerUpdateView.as_view()),
@@ -93,6 +95,7 @@ urlpatterns = [
          name='affiliation-delete'),
 
     path('task-edit/<int:pk>/', staff_member_required(TaskTemplateUpdateView.as_view()), name='task-edit'),
+    path('task-delete/<int:pk>/', staff_member_required(TaskTemplateDeleteView.as_view()), name='task-delete'),
 
 
     path('login/', LoginView.as_view(template_name="webinterface/generic_form.html", extra_context={'title': "Login"},

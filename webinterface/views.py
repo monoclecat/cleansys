@@ -23,7 +23,7 @@ class ConfigView(TemplateView):
 
         context['active_schedule_group_list'] = ScheduleGroup.objects.enabled()
         context['disabled_schedule_group_list'] = ScheduleGroup.objects.disabled()
-        context['slack_running'] = slack_running()
+        # context['slack_running'] = slack_running()
         return context
 
     # def post(self, request, *args, **kwargs):
