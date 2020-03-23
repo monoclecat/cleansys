@@ -32,6 +32,7 @@ class TaskTemplateTest(TestCase):
     def setUpTestData(cls):
         cls.reference_week = 2500
         cls.schedule = Schedule.objects.create(name="schedule", weekday=2)
+        cls.cleaning_week = CleaningWeek.objects.create(schedule=cls.schedule, week=2000, tasks_valid=True)
         cls.task_template = TaskTemplate.objects.create(schedule=cls.schedule, start_days_before=1, end_days_after=1)
 
     def test__str(self):
@@ -42,3 +43,9 @@ class TaskTemplateTest(TestCase):
 
     def test__end_day_to_weekday(self):
         self.assertEqual(self.task_template.end_day_to_weekday(), Schedule.WEEKDAYS[3][1])
+
+    def test__changing_disabled_invalidates_tasks_on_all_cleaning_weeks(self):
+        self.assertTrue(CleaningWeek.objects.get(pk=self.cleaning_week.pk).tasks_valid)
+        self.task_template.task_disabled = True
+        self.task_template.save()
+        self.assertFalse(CleaningWeek.objects.get(pk=self.cleaning_week.pk).tasks_valid)

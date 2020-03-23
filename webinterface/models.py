@@ -484,8 +484,12 @@ class CleaningWeek(models.Model):
     def week_end(self):
         return epoch_week_to_sunday(self.week)
 
-    def set_assignments_valid_field(self, value: bool):
+    def set_assignments_valid_field(self, value: bool) -> None:
         self.assignments_valid = value
+        self.save()
+
+    def set_tasks_valid_field(self, value: bool) -> None:
+        self.tasks_valid = value
         self.save()
 
 
@@ -557,6 +561,10 @@ class TaskTemplate(models.Model):
 
     objects = TaskTemplateQuerySet.as_manager()
 
+    def __init__(self, *args, **kwargs):
+        super(TaskTemplate, self).__init__(*args, **kwargs)
+        self.previous_disabled = self.task_disabled
+
     def __str__(self):
         return self.task_name
 
@@ -565,6 +573,12 @@ class TaskTemplate(models.Model):
 
     def end_day_to_weekday(self):
         return Schedule.WEEKDAYS[(self.schedule.weekday+self.end_days_after) % 7][1]
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        super().save(force_insert, force_update, using, update_fields)
+        if self.previous_disabled != self.task_disabled:
+            [x.set_tasks_valid_field(False) for x in self.schedule.cleaningweek_set.all()]
 
 
 class TaskQuerySet(models.QuerySet):
