@@ -180,7 +180,7 @@ class AffiliationForm(forms.ModelForm):
         try:
             beginning = date_to_epoch_week(cleaned_data.get('beginning'))
             end = date_to_epoch_week(cleaned_data.get('end'))
-            Affiliation.date_validator(affiliation_pk=pk, cleaner=self.cleaner, beginning=beginning, end=end)
+            Affiliation.date_validator(pk=pk, cleaner=self.cleaner, beginning=beginning, end=end)
         except TypeError:
             pass
 
@@ -463,24 +463,24 @@ class DutySwitchAcceptForm(forms.ModelForm):
         )
 
 
-# class AssignmentCleaningForm(forms.ModelForm):
-#     class Meta:
-#         model = Assignment
-#         fields = ('cleaners_comment',)
-#
-#     cleaners_comment = forms.CharField(widget=forms.Textarea, max_length=200,
-#                                        label="Kommentare, Auffälligkeiten, ... (speichern nicht vergessen)",
-#                                        help_text="Max. 200 Zeichen",
-#                                        required=False)
-#
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.helper = FormHelper()
-#
-#         self.helper.layout = Layout(
-#             Div('cleaners_comment'),
-#             Submit('save_comment', 'Kommentar speichern', css_class="btn btn-block"),
-#         )
+class AssignmentCleaningForm(forms.ModelForm):
+    class Meta:
+        model = Assignment
+        fields = ('cleaners_comment',)
+
+    cleaners_comment = forms.CharField(widget=forms.Textarea, max_length=200,
+                                       label="Kommentare, Auffälligkeiten, ... (speichern nicht vergessen)",
+                                       help_text="Max. 200 Zeichen",
+                                       required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+
+        self.helper.layout = Layout(
+            Div('cleaners_comment'),
+            Submit('save_comment', 'Kommentar speichern', css_class="btn btn-block"),
+        )
 
 
 class AuthFormWithSubmit(AuthenticationForm):
