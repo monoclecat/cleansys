@@ -239,6 +239,31 @@ class CleanerView(TemplateView):
         return self.render_to_response(context)
 
 
+class AssignmentTasksView(TemplateView):
+    template_name = "webinterface/assignment_tasks.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context['assignment'] = Assignment.objects.get(pk=self.kwargs['assignment_pk'])
+        except CleaningWeek.DoesNotExist:
+            raise Http404("Assignment doesn't exist!")
+        try:
+            context['tasks'] = context['assignment'].cleaning_week.task_set.all()
+        except CleaningWeek.DoesNotExist:
+            logging.error("CleaningWeek does not exist on date!")
+            raise Exception("CleaningWeek does not exist on date!")
+
+        if 'schedule_page' in self.kwargs:
+            context['schedule_page'] = self.kwargs['schedule_page']
+        else:
+            context['schedule_page'] = -1
+        if 'cleaner_page' in self.kwargs:
+            context['cleaner_page'] = self.kwargs['cleaner_page']
+        else:
+            context['cleaner_page'] = -1
+        return context
+
 class LoginByClickView(LoginView):
     template_name = "webinterface/login_byclick.html"
     extra_context = {'cleaner_list': Cleaner.objects.active()}
