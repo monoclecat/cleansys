@@ -32,7 +32,9 @@ class TaskTemplateTest(TestCase):
     def setUpTestData(cls):
         cls.reference_week = 2500
         cls.schedule = Schedule.objects.create(name="schedule", weekday=2)
+        cls.schedule2 = Schedule.objects.create(name="schedule2", weekday=2)
         cls.cleaning_week = CleaningWeek.objects.create(schedule=cls.schedule, week=2000, tasks_valid=True)
+        cls.cleaning_week2 = CleaningWeek.objects.create(schedule=cls.schedule2, week=2000, tasks_valid=True)
         cls.task_template = TaskTemplate.objects.create(schedule=cls.schedule, start_days_before=1, end_days_after=1)
 
     def test__str(self):
@@ -49,3 +51,4 @@ class TaskTemplateTest(TestCase):
         self.task_template.task_disabled = True
         self.task_template.save()
         self.assertFalse(CleaningWeek.objects.get(pk=self.cleaning_week.pk).tasks_valid)
+        self.assertTrue(CleaningWeek.objects.get(pk=self.cleaning_week2.pk).tasks_valid)
