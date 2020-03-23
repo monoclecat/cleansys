@@ -501,30 +501,3 @@ class DutySwitchDeleteView(DeleteView):
         context['title'] = "Lösche Tauschanfrage"
         context['cancel_url'] = self.success_url
         return context
-
-
-class AssignmentTasksView(UpdateView):
-    template_name = "webinterface/assignment_tasks.html"
-    model = Assignment
-    form_class = AssignmentCleaningForm
-    pk_url_kwarg = "assignment_pk"
-
-    def get_context_data(self, **kwargs):
-        self.object = self.get_object()
-        context = super().get_context_data(**kwargs)
-        try:
-            context['tasks'] = self.object.cleaning_week.task_set.all()
-        except CleaningWeek.DoesNotExist:
-            logging.error("CleaningWeek does not exist on date!")
-            raise Exception("CleaningWeek does not exist on date!")
-
-        context['assignment'] = self.object
-        if 'schedule_page' in self.kwargs:
-            context['schedule_page'] = self.kwargs['schedule_page']
-        else:
-            context['schedule_page'] = -1
-        if 'cleaner_page' in self.kwargs:
-            context['cleaner_page'] = self.kwargs['cleaner_page']
-        else:
-            context['cleaner_page'] = -1
-        return context
