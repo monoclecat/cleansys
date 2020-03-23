@@ -118,6 +118,10 @@ class Schedule(models.Model):
 
     def create_assignment(self, week: int, bypass_check_if_occurs_in_week=False, initiate_tasks=True):
         if not self.occurs_in_week(week) and not bypass_check_if_occurs_in_week:
+            cleaning_week_where_there_shouldnt_be_one = self.cleaningweek_set.filter(week=week)
+            if cleaning_week_where_there_shouldnt_be_one.exists():
+                cleaning_week_where_there_shouldnt_be_one.first().delete()
+
             logging.debug("NO ASSIGNMENT CREATED [Code01]: This schedule does not occur "
                           "in week {} as frequency is set to {}".
                           format(week, self.frequency))
