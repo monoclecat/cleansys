@@ -19,7 +19,7 @@ Deine Putzdienste
                 <div class="panel panel-info" style="margin-bottom: 0">
                     <div class="panel-body">
                         <p>
-                            {{ dutyswitch.requester_assignment.cleaner }} möchte seinen Putzdienst am
+                            {{ dutyswitch.requester_assignment.cleaner }} möchte einen Putzdienst am
                             {{ dutyswitch.requester_assignment.assignment_date }} tauschen und <b>du</b> kannst helfen!
                         </p>
                         <a class="btn btn-info btn-sm"
@@ -69,20 +69,15 @@ Deine Putzdienste
                                 {% endif %}
                             </div>
                             <div class="col-xs-6">
-                                {% if assignment.tasks_are_ready_to_be_done %}
-                                    <a class="btn btn-success btn-sm"
-                                       href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.pk page.number %}"
-                                       role="button" style="white-space: normal; margin: 0.5em">
-                                        <span class="glyphicon glyphicon-play-circle"></span> Putzen
+                                    <a role="button" style="white-space: normal; margin: 0.5em"
+            class="btn {% if assignment.tasks_are_ready_to_be_done %}btn-success{% else %}btn-default{% endif %} btn-sm"
+            href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.cleaning_week.pk page.number %}">
+                                        {% if assignment.tasks_are_ready_to_be_done %}
+                                            <span class="glyphicon glyphicon-play-circle"></span> Putzen
+                                        {% else %}
+                                            Aufgaben ansehen
+                                        {% endif %}
                                     </a>
-                                {% else %}
-                                    <a class="btn btn-default btn-sm"
-                                       href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.pk page.number %}"
-                                       role="button" style="white-space: normal; margin: 0.5em">
-                                        Aufgaben ansehen
-                                    </a>
-                                {% endif %}
-
                             </div>
                         </div>
                     </div>

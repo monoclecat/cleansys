@@ -17,10 +17,6 @@ class Command(BaseCommand):
                                                           "objects (to have an empty database) before running.")
 
     def handle(self, *args, **options):
-        # if Schedule.objects.exists() or ScheduleGroup.objects.exists() or Cleaner.objects.exists():
-        #     raise CommandError("The database needs to be empty of CleanSys objects "
-        #                        "in order to create the demo database!")
-
         if options['timeframe'] is not None and options['timeframe'] and options['timeframe'] >= 4:
             demo_length = options['timeframe'][0]
         else:
@@ -63,6 +59,8 @@ class Command(BaseCommand):
         sch7 = Schedule.objects.create(name="Um Katze kümmern", cleaners_per_date=2, weekday=3, frequency=1)
         sch8 = Schedule.objects.create(name="Garten", cleaners_per_date=2, weekday=4, frequency=2)
         sch9 = Schedule.objects.create(name="Keller", cleaners_per_date=2, weekday=4, frequency=3)
+        schd = Schedule.objects.create(name="Alter Plan", cleaners_per_date=2, weekday=4, frequency=3)
+
 
         self.stdout.write("Creating ScheduleGroups...")
         eg = ScheduleGroup.objects.create(name="Erdgeschoss")
@@ -71,6 +69,8 @@ class Command(BaseCommand):
         og1.schedules.add(sch2, sch4, sch6, sch7, sch8, sch9)
         og2 = ScheduleGroup.objects.create(name="2. Obergeschoss")
         og2.schedules.add(sch3, sch5, sch6, sch7, sch8, sch9)
+        dis_group = ScheduleGroup.objects.create(name="Alte Gruppe", disabled=True)
+        dis_group.schedules.add(schd)
 
         self.stdout.write("Creating Cleaners...")
         cl_a = Cleaner.objects.create(name="Anne", preference=1)
@@ -88,6 +88,7 @@ class Command(BaseCommand):
         cl_m = Cleaner.objects.create(name="Marlene", preference=1)
         cl_n = Cleaner.objects.create(name="Nina", preference=2)
         cl_o = Cleaner.objects.create(name="Olaf", preference=3)
+        cl_moved_out = Cleaner.objects.create(name="Ehemaliger")
 
         self.stdout.write("Creating TaskTemplates...")
 
@@ -180,6 +181,7 @@ class Command(BaseCommand):
         affiliate_multiple_cleaners(cleaners=[cl_a, cl_b, cl_c, cl_d, cl_e], group_sequence=[eg, og1, og2, eg])
         affiliate_multiple_cleaners(cleaners=[cl_f, cl_g, cl_h, cl_i, cl_j], group_sequence=[og1, og2, eg, og1])
         affiliate_multiple_cleaners(cleaners=[cl_k, cl_l, cl_m, cl_n, cl_o], group_sequence=[og1, og2, eg, og1])
+        Affiliation.objects.create(cleaner=cl_moved_out, group=dis_group, beginning=now-10, end=now-1)
 
         self.stdout.write("Creating Assignments (this can take some time)...")
         for sch in Schedule.objects.all():

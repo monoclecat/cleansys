@@ -34,10 +34,10 @@ Putzdienst erledigen
 
     <div class="panel panel-primary">
         <div class="panel-heading">
-            {% ifequal user.username assignment.cleaner.slug %}
-                <h4>Hallo {{ assignment.cleaner }}!
-                    Du bist am {{ assignment.assignment_date|date:"d. M, y" }} für den Putzdienst
-                    {{ assignment.schedule.name }} eingetragen
+            {% if cleaner in cleaning_week.assigned_cleaners %}
+                <h4>Hallo {{ cleaner }}!
+                    Du bist am {{ cleaning_week.assignment_date|date:"d. M, y" }} für den Putzdienst
+                    {{ cleaning_week.schedule }} eingetragen
                 {% if assignment.cleaning_buddies %}
                      zusammen mit
                     {% for other_cleaner in assignment.cleaning_buddies %}
@@ -46,29 +46,29 @@ Putzdienst erledigen
                 {% endif %}!</h4>
             {% else %}
                 <h4>
-                    {% for cleaner in assignment.all_cleaners_in_week_for_schedule %}
+                    {% for cleaner in cleaning_week.assigned_cleaners %}
                         {{ cleaner }}{% if not forloop.last %},{% endif %}
                     {% endfor %}
-                    {{ assignment.all_cleaners_in_week_for_schedule.count|pluralize:"ist,sind" }}
-                    am {{ assignment.assignment_date|date:"d. M, y" }} für den Putzdienst
-                    {{ assignment.schedule.name }} eingetragen. </h4>
-            {% endifequal %}
+                    {{ cleaning_week.assigned_cleaners.count|pluralize:"ist,sind" }}
+                    am {{ cleaning_week.assignment_date|date:"d. M, y" }} für den Putzdienst
+                    {{ cleaning_week.schedule }} eingetragen. </h4>
+            {% endif %}
 
         </div>
     </div>
 
     <h4>Folgende Aufgaben stehen an.
-        {% ifequal user.username assignment.cleaner.slug %}
+        {% if cleaner in cleaning_week.assigned_cleaners %}
             Wenn du einen Teil geputzt hast, klicke auf die entsprechende
             Aufgabe, um sie abzuschließen.
-        {% endifequal %}
+        {% endif %}
     </h4>
     <div class="row">
         {% for task in tasks.uncleaned %}
             <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
                 <div class="panel panel-info">
                     <div class="panel-heading">
-                        {% if user.username == assignment.cleaner.slug and task.my_time_has_come or user.is_superuser %}
+                        {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come or user.is_superuser %}
                             <a class="btn btn-warning"
                                href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
                                role="button">
@@ -91,7 +91,7 @@ Putzdienst erledigen
     <div class="row">
         {% for task in tasks.cleaned %}
             <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
-                {% if user.username == assignment.cleaner.slug or user.is_superuser %}
+                {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come or user.is_superuser %}
                     <a class="btn btn-success btn-block"
                        href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
                        role="button">

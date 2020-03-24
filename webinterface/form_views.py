@@ -543,7 +543,7 @@ class TaskCleanedView(UpdateView):
         except Cleaner.DoesNotExist:
             Http404('Putzdienst, für dessen eine Aufgabe als geputzt gesetzt werden soll, existiert nicht!')
         self.success_url = reverse_lazy('webinterface:assignment-tasks',
-                                        kwargs={'assignment_pk': self.assignment.pk})
+                                        kwargs={'cleaning_week_pk': self.assignment.cleaning_week.pk})
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -555,12 +555,6 @@ class TaskCleanedView(UpdateView):
         context['cancel_button'] = {'text': "Abbrechen",
                                     'url': self.success_url}
         return context
-
-    def form_valid(self, form):
-        self.object = form.save()
-        return HttpResponseRedirect(
-            reverse_lazy('webinterface:assignment-tasks', kwargs={'assignment_pk': self.assignment.pk}))
-
 
 class DutySwitchNewView(CreateView):
     form_class = DutySwitchCreateForm

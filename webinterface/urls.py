@@ -22,11 +22,11 @@ urlpatterns = [
     path('tauschanfrage-loeschen/<int:pk>/<int:page>', login_required(DutySwitchDeleteView.as_view()),
          name='dutyswitch-delete'),
 
-    path('putzen/<int:assignment_pk>/', login_required(AssignmentTasksView.as_view()),
+    path('putzen/<int:cleaning_week_pk>/', login_required(AssignmentTasksView.as_view()),
          name='assignment-tasks'),
-    path('putzen/<int:assignment_pk>/s<int:schedule_page>/', login_required(AssignmentTasksView.as_view()),
+    path('putzen/<int:cleaning_week_pk>/s<int:schedule_page>/', login_required(AssignmentTasksView.as_view()),
          name='assignment-tasks-back-to-schedule'),
-    path('putzen/<int:assignment_pk>/p<int:cleaner_page>/', login_required(AssignmentTasksView.as_view()),
+    path('putzen/<int:cleaning_week_pk>/p<int:cleaner_page>/', login_required(AssignmentTasksView.as_view()),
          name='assignment-tasks-back-to-cleaner'),
 
     path('geputzt/<int:assignment_pk>/<int:task_pk>', login_required(TaskCleanedView.as_view()),

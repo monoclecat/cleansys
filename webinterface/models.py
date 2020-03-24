@@ -317,6 +317,13 @@ class Cleaner(models.Model):
     def nr_assignments_in_week(self, week: int):
         return self.assignment_set.filter(cleaning_week__week=week).count()
 
+    def assignment_in_cleaning_week(self, cleaning_week):
+        query = self.assignment_set.filter(cleaning_week__pk=cleaning_week.pk)
+        if query.exists():
+            return query.first()
+        else:
+            return None
+
     def is_eligible_for_week(self, week: int):
         nr_assignments_on_day = self.nr_assignments_in_week(week)
         return nr_assignments_on_day == 0 or nr_assignments_on_day == 1 and self.preference == 2 \
@@ -496,11 +503,11 @@ class CleaningWeek(models.Model):
     def open_tasks(self) -> QuerySet:
         return self.task_set.filter(cleaned_by__isnull=True)
 
-    def open_tasks__as_templates(self) -> list:
-        return [x.template for x in self.open_tasks()]
+    def open_tasks__as_templates(self) -> QuerySet:
+        return TaskTemplate.objects.filter(pk__in=[x.template.pk for x in self.open_tasks()])
 
-    def assigned_cleaners(self) -> list:
-        return [x.cleaner for x in self.assignment_set.all()]
+    def assigned_cleaners(self) -> QuerySet:
+        return Cleaner.objects.filter(pk__in=[x.cleaner.pk for x in self.assignment_set.all()])
 
     def task_templates_missing(self):
         return self.schedule.tasktemplate_set.enabled().exclude(pk__in=[x.template.pk for x in self.task_set.all()])

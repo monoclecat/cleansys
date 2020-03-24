@@ -54,38 +54,14 @@ Einstellungen
                 <div class="well">
                     <div class="row">
                         {% for schedule in active_schedule_list %}
-                            <div class="col-xs-12 col-sm-6" style="padding: 5px">
-                                <div class="btn-group btn-group-lg">
-                                    <a class="btn btn-primary" role="button"
-                                        href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
-                                        <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
-                                    </a>
-                                    <button type="button" class="btn btn-primary dropdown-toggle"
-                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <span class="caret"></span>
-                                        <span class="sr-only">Toggle Dropdown</span>
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a href="{% url 'webinterface:schedule-edit' schedule.pk %}">
-                                            <span class="glyphicon glyphicon-cog"></span> Bearbeiten</a></li>
-                                        <li role="separator" class="divider"></li>
-                                        <li><a href="{% url 'webinterface:schedule-task-list' schedule.pk %}">
-                                            <span class="glyphicon glyphicon-tags"></span> Aufgaben</a></li>
-                                    </ul>
-                                </div>
-                            </div>
+                            {% include 'webinterface_snippets/schedule_dropdown_button.html' %}
                         {% empty %}
                             <p>Keine Putzpläne zu Zeigen...</p>
                         {% endfor %}
                         {% if disabled_schedule_list %}
                             <h3>Deaktivierte Putzpläne</h3>
                             {% for schedule in disabled_schedule_list %}
-                            <div class="col-xs-12 col-sm-6" style="padding: 5px">
-                                <a class="btn btn-default btn-lg btn-block" role="button"
-                                   href="{% url 'webinterface:schedule-edit' schedule.pk %}">
-                                    <span class="glyphicon glyphicon-cog"></span> {{ schedule.name }}
-                                </a>
-                            </div>
+                                {% include 'webinterface_snippets/schedule_dropdown_button.html' %}
                             {% endfor %}
                         {% endif %}
                     </div>
@@ -99,7 +75,7 @@ Einstellungen
                     <div class="row">
                         {% for group in active_schedule_group_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
-                                <a class="btn btn-primary btn-lg btn-block" role="button" style="white-space: normal"
+                                <a class="btn btn-primary btn-block" role="button" style="white-space: normal"
                                    href="{% url 'webinterface:schedule-group-edit' group.pk %}">
                                     <span class="glyphicon glyphicon-cog"></span> {{ group.name }}
                                 </a>
@@ -111,7 +87,7 @@ Einstellungen
                             <h3>Deaktivierte Putzplan-Gruppen</h3>
                             {% for group in disabled_schedule_group_list %}
                             <div class="col-xs-12 col-sm-6" style="padding: 5px">
-                                <a class="btn btn-default btn-lg btn-block" role="button" style="white-space: normal"
+                                <a class="btn btn-default btn-block" role="button" style="white-space: normal"
                                    href="{% url 'webinterface:schedule-group-edit' group.pk %}">
                                     <span class="glyphicon glyphicon-cog"></span> {{ group.name }}
                                 </a>

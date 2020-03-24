@@ -165,14 +165,12 @@ class AssignmentTasksView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         try:
-            context['assignment'] = Assignment.objects.get(pk=self.kwargs['assignment_pk'])
-        except CleaningWeek.DoesNotExist:
-            raise Http404("Assignment doesn't exist!")
-        try:
-            context['tasks'] = context['assignment'].cleaning_week.task_set.all()
+            cleaning_week = CleaningWeek.objects.get(pk=self.kwargs['cleaning_week_pk'])
         except CleaningWeek.DoesNotExist:
             logging.error("CleaningWeek does not exist on date!")
             raise Exception("CleaningWeek does not exist on date!")
+        context['cleaning_week'] = cleaning_week
+        context['tasks'] = cleaning_week.task_set.all()
 
         if 'schedule_page' in self.kwargs:
             context['schedule_page'] = self.kwargs['schedule_page']
@@ -182,6 +180,17 @@ class AssignmentTasksView(TemplateView):
             context['cleaner_page'] = self.kwargs['cleaner_page']
         else:
             context['cleaner_page'] = -1
+
+        cleaner_for_user = context['view'].request.user.cleaner_set
+        if cleaner_for_user.exists():
+            context['cleaner'] = cleaner_for_user.first()
+            context['assignment'] = context['cleaner'].assignment_in_cleaning_week(cleaning_week)
+        else:
+            context['cleaner'] = None
+            if cleaning_week.assignment_set.exists():
+                context['assignment'] = cleaning_week.assignment_set.first()
+            else:
+                context['assignment'] = None
         return context
 
 

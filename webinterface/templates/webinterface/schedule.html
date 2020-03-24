@@ -82,22 +82,13 @@
                                 <b>Wegen einer Änderung von Zugehörigkeiten in diesem Zeitraum müssen die
                                 Putzdienste in dieser Woche aktualisiert werden</b>
                             {% else %}
+                                <a class="btn btn-default"
+                                   href="
+{% url 'webinterface:assignment-tasks-back-to-schedule' cleaning_week.pk page.number %}"
+                                   role="button">
                                 {% for assignment in cleaning_week.assignment_set.all %}
-                                    <div class="btn-group btn-group-xs" role="group" aria-label="...">
-                                        <a class="btn btn-default"
-                                           href="
-{% url 'webinterface:assignment-tasks-back-to-schedule' assignment.pk page.number %}"
-                                           role="button">
                                             {{ assignment.cleaner.name }}
-                                        </a>
-                                        {% if user.is_superuser %}
-                                            <a class="btn btn-default"
-                                               href="{% url 'webinterface:assignment-edit' assignment.pk page.number %}"
-                                               role="button">
-                                                <span class="glyphicon glyphicon-cog"></span>
-                                            </a>
-                                        {% endif %}
-                                    </div>
+                                    </a>
 
                                 {% empty %}
                                     Keine Putzer festgelegt!
@@ -121,6 +112,13 @@
                                     <span class="glyphicon glyphicon-cog"></span> <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu">
+                                    {% for assignment in cleaning_week.assignment_set.all %}
+                                        <li><a href="{% url 'webinterface:assignment-edit' assignment.pk page.number %}">
+                                            <span class="glyphicon glyphicon-cog"></span>
+                                            {{ assignment.cleaner }}'s Dienst bearbeiten
+                                        </a></li>
+                                    {% endfor %}
+                                    <li role="separator" class="divider"></li>
                                     <li><a href="{% url 'webinterface:cleaning-week-edit' cleaning_week.pk page.number %}">
                                         <span class="glyphicon glyphicon-off"></span> Aktivieren/Deaktivieren
                                     </a></li>
