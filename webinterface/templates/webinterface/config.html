@@ -29,7 +29,7 @@ Einstellungen
                 <div class="well">
                 {% if active_cleaner_list %}
                     <div class="row">
-                        <h4>Putzer, die zur Zeit eine aktive Zugehörigkeit haben</h4>
+                        <h4>Putzer, die zur Zeit eine aktive Zugehörigkeit haben <span class="badge">{{ active_cleaner_list.count }}</span></h4>
                         {% for cleaner in active_cleaner_list %}
                             {% include "webinterface_snippets/cleaner_panel.html" %}
                         {% empty %}
@@ -39,7 +39,7 @@ Einstellungen
                 {% endif %}
                 {% if inactive_cleaner_list %}
                     <div class="row">
-                        <h4>Putzer, die ausgezogen sind</h4>
+                        <h4>Putzer, die ausgezogen sind <span class="badge">{{ inactive_cleaner_list.count }}</span></h4>
                         {% for cleaner in inactive_cleaner_list %}
                             {% include "webinterface_snippets/cleaner_panel.html" %}
                         {% endfor %}

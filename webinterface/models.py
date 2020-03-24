@@ -641,8 +641,11 @@ class Task(models.Model):
         return self.start_date() <= timezone.now().date() <= self.end_date()
 
     def possible_cleaners(self):
-        return Cleaner.objects.filter(
-            pk__in=[x.cleaner.pk for x in self.cleaning_week.assignment_set.all()])
+        return self.cleaning_week.assigned_cleaners()
+
+    def set_cleaned_by(self, cleaner: Cleaner):
+        self.cleaned_by = Cleaner
+        self.save()
 
 
 class DutySwitchQuerySet(models.QuerySet):
