@@ -204,9 +204,10 @@ class Command(BaseCommand):
         self.stdout.write("Last tweaks...")
         # Of course the Cleaners were diligent and did all tasks until now
         for task in Task.objects.filter(cleaning_week__week__range=(now - 3, now)):
-            possible_cl = task.possible_cleaners()
-            if len(possible_cl) != 0:
-                task.set_cleaned_by(random.choice(possible_cl))
+            if task.has_passed() or task.my_time_has_come():
+                possible_cl = task.possible_cleaners()
+                if len(possible_cl) != 0:
+                    task.set_cleaned_by(random.choice(possible_cl))
 
         # Except a couple of tasks which are chosen by random
         cleaned_tasks = Task.objects.exclude(cleaned_by__isnull=True)

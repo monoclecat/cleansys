@@ -13,8 +13,8 @@ Putzdienst erledigen
         {% if schedule_page > 0 %}
             <div class="btn btn-group btn-group-md btn-group-justified" role="group">
                 <a class="btn btn-default btn-block" role="button"
-                   href="{% url 'webinterface:schedule-view' assignment.schedule.slug schedule_page %}">
-                    Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ assignment.schedule.name }}
+                   href="{% url 'webinterface:schedule-view' cleaning_week.schedule.slug schedule_page %}">
+                    Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ cleaning_week.schedule.name }}
                 </a>
             </div>
         {% endif %}

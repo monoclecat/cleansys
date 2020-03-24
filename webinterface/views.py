@@ -37,7 +37,7 @@ class ScheduleView(TemplateView):
             Http404("Putzplan existiert nicht.")
 
         cleaning_weeks = context['schedule'].cleaningweek_set.order_by('week')
-        elements_per_page = 5
+        elements_per_page = 10
 
         if 'page' not in kwargs:
             if cleaning_weeks.filter(week__gt=current_epoch_week()).exists():

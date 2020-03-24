@@ -478,8 +478,11 @@ class CleaningWeek(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def assignment_date(self):
+    def assignment_date(self) -> datetime.date:
         return epoch_week_to_monday(self.week) + datetime.timedelta(days=self.schedule.weekday)
+
+    def is_current_week(self) -> bool:
+        return current_epoch_week() == self.week
 
     def tasks_are_ready_to_be_done(self):
         for task in self.task_set.all():
@@ -506,8 +509,14 @@ class CleaningWeek(models.Model):
     def open_tasks__as_templates(self) -> QuerySet:
         return TaskTemplate.objects.filter(pk__in=[x.template.pk for x in self.open_tasks()])
 
+    def ratio_of_completed_tasks(self) -> float:
+        return self.completed_tasks().count() / self.task_set.count()
+
     def assigned_cleaners(self) -> QuerySet:
         return Cleaner.objects.filter(pk__in=[x.cleaner.pk for x in self.assignment_set.all()])
+
+    def is_in_future(self) -> bool:
+        return current_epoch_week() < self.week
 
     def task_templates_missing(self):
         return self.schedule.tasktemplate_set.enabled().exclude(pk__in=[x.template.pk for x in self.task_set.all()])
@@ -646,6 +655,9 @@ class Task(models.Model):
 
     def my_time_has_come(self):
         return self.start_date() <= timezone.now().date() <= self.end_date()
+
+    def has_passed(self):
+        return self.end_date() < timezone.now().date()
 
     def possible_cleaners(self):
         return self.cleaning_week.assigned_cleaners()
