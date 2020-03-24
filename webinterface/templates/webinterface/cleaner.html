@@ -102,10 +102,22 @@ Deine Putzdienste
                 {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
             </div>
         </div>
+        <br>
+        <div class="row" style="padding: 5px">
+            <div class="col-xs-12">
+                <a class="btn btn-default btn-sm btn-block"
+                   href="{% url 'webinterface:affiliation-list' cleaner.pk %}"
+                   role="button">
+                    <span class="glyphicon glyphicon-th-list"></span> Deine Zugehörigkeiten
+                </a>
+            </div>
+        </div>
 
-        <div class="row" style="padding: 20px 0px">
-            <a class="btn btn-default btn-sm" role="button" href="{% url 'webinterface:logout' %}">
-                 Du bist nicht {{ cleaner.name }}? <span class="glyphicon glyphicon-arrow-right"></span> Logout
-            </a>
+        <div class="row" style="padding: 5px">
+            <div class="col-xs-12">
+                <a class="btn btn-default btn-sm btn-block" role="button" href="{% url 'webinterface:logout' %}">
+                    Du bist nicht {{ cleaner.name }}? <span class="glyphicon glyphicon-arrow-right"></span> Logout
+                </a>
+            </div>
         </div>
 {% endblock %}

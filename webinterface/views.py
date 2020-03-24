@@ -6,6 +6,7 @@ from django.views.generic import TemplateView
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.views.generic.list import ListView
+from django.shortcuts import get_object_or_404
 from .forms import *
 from .models import *
 
@@ -193,6 +194,16 @@ class AssignmentTasksView(TemplateView):
                 context['assignment'] = None
         return context
 
+
+# class AffiliationView(ListView):
+#     template_name = "webinterface/affiliation_list.html"
+#     model = Affiliation
+#
+#     def get_queryset(self):
+#         cleaner = self.request.user.cleaner_set
+#         if cleaner.exists():
+#
+#         print(1)
 
 class LoginByClickView(LoginView):
     template_name = "webinterface/login_byclick.html"

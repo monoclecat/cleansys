@@ -86,7 +86,7 @@ urlpatterns = [
     path('putzer/neu/', staff_member_required(CleanerNewView.as_view()), name='cleaner-new'),
     path('putzer/<int:pk>/', staff_member_required(CleanerUpdateView.as_view()),
          name='cleaner-edit'),
-    path('putzer/<int:pk>/zugehoerigkeiten/', staff_member_required(AffiliationNewView.as_view()),
+    path('putzer/<int:pk>/zugehoerigkeiten/', login_required(AffiliationNewView.as_view()),
          name='affiliation-list'),
 
 

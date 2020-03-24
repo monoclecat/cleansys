@@ -204,7 +204,7 @@ class AffiliationNewView(CreateView):
         context['title'] = "Zugehörigkeiten von {}".format(self.cleaner.name)
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:affiliation-list',
+                                    'url': reverse_lazy('affiliation-new',
                                                         kwargs={'pk': self.cleaner.pk})}
         context['cleaner'] = self.cleaner
         return context
@@ -224,7 +224,7 @@ class AffiliationNewView(CreateView):
                                   beginning=date_to_epoch_week(beginning_date),
                                   end=date_to_epoch_week(end_date))
         self.object.save()
-        return HttpResponseRedirect(reverse_lazy('webinterface:affiliation-list', kwargs={'pk': cleaner.pk}))
+        return HttpResponseRedirect(reverse_lazy('affiliation-new', kwargs={'pk': cleaner.pk}))
 
 
 class AffiliationUpdateView(UpdateView):
@@ -244,7 +244,7 @@ class AffiliationUpdateView(UpdateView):
                                             self.object.end_as_date().strftime("%d. %b %Y"))}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:affiliation-list',
+                                    'url': reverse_lazy('affiliation-new',
                                                         kwargs={'pk': self.object.cleaner.pk})}
         context['delete_button'] = {'text': "Lösche Zugehörigkeit",
                                     'url': reverse_lazy('webinterface:affiliation-delete',
@@ -257,7 +257,7 @@ class AffiliationUpdateView(UpdateView):
         self.object.beginning = date_to_epoch_week(beginning_date)
         self.object.end = date_to_epoch_week(end_date)
         self.object.save()
-        return HttpResponseRedirect(reverse_lazy('webinterface:affiliation-list',
+        return HttpResponseRedirect(reverse_lazy('affiliation-new',
                                                  kwargs={'pk': self.object.cleaner.pk}))
 
 
@@ -273,7 +273,7 @@ class AffiliationDeleteView(DeleteView):
 
     def delete(self, request, *args, **kwargs):
         affiliation = Affiliation.objects.get(pk=kwargs['pk'])
-        self.success_url = reverse_lazy('webinterface:affiliation-list', kwargs={'pk': affiliation.cleaner.pk})
+        self.success_url = reverse_lazy('affiliation-new', kwargs={'pk': affiliation.cleaner.pk})
         return super().delete(request, *args, **kwargs)
 
 
@@ -555,6 +555,7 @@ class TaskCleanedView(UpdateView):
         context['cancel_button'] = {'text': "Abbrechen",
                                     'url': self.success_url}
         return context
+
 
 class DutySwitchNewView(CreateView):
     form_class = DutySwitchCreateForm
