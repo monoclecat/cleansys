@@ -16,7 +16,7 @@
         th.rotate > div {
             transform:
                 /* Magic Numbers */
-                    translate(0px, 100px)
+                    translate(20px, 105px)
                         /* 45 is really 360 - 45 */
                     rotate(315deg);
             width: 30px;
@@ -24,37 +24,56 @@
 
         th.text_bottom > div {
             transform:
-                translate(0px, 100px);
+                translate(20px, 105px);
         }
 
         th.rotate > div > span {
             border-bottom: 1px solid #ccc;
-            padding: 5px 10px;
+            border-top: 1px solid #ccc;
+            padding: 5px 0px;
         }
+
+        .checkmark {
+            width: 1em;
+        }
+
+        .date {
+            width: 8em;
+        }
+
+        .cleaner {
+            width: 12em;
+        }
+
+
     </style>
 
-    <table class="table table-condensed table-bordered table-striped">
-        <tr>
-            <th class="text_bottom"><div><span>Datum</span></div></th>
-            <th class="text_bottom"><div><span>Putzer</span></div></th>
+    <table id="printtable" class="table table-condensed table-bordered table-striped"
+           style="width: auto; border:none; margin-right: 100px">
+        <tr style="background: #ffffff">
+            <th class="text_bottom date" style="border: none"><div><span>Datum</span></div></th>
+            <th class="text_bottom cleaner" style="border: none"><div><span>Putzer</span></div></th>
             {% for task_template in task_templates %}
-                <th class="rotate"><div><span>{{ task_template }}</span></div></th>
+                <th class="rotate checkmark" style="border: none">
+                    <div>
+                        <span {% if forloop.first %}style="border-top: none;"{% endif %}>{{ task_template }}</span>
+                    </div>
+                </th>
             {% endfor %}
         </tr>
         {% for cleaning_week in cleaning_weeks %}
             <tr>
-                <td>{{ cleaning_week.assignment_date|date:"d. M Y" }}</td>
-                <td>
+                <td class="date">{{ cleaning_week.assignment_date|date:"d. M Y" }}</td>
+                <td class="cleaner">
                     {% for cleaner in cleaning_week.assigned_cleaners %}
-                        {{ cleaner }}
-                        {% if not forloop.last %}, {% endif %}
+                        {{ cleaner }}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
                 </td>
                 {% for task_template in task_templates %}
                     {% if task_template in cleaning_week.completed_tasks__as_templates %}
-                        <td><span class="glyphicon glyphicon-ok"></span></td>
+                        <td class="checkmark"><span class="glyphicon glyphicon-ok"></span></td>
                     {% else %}
-                        <td> </td>
+                        <td class="checkmark"> </td>
                     {% endif %}
                 {% endfor %}
             </tr>
