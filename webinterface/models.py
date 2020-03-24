@@ -644,7 +644,7 @@ class Task(models.Model):
         return self.cleaning_week.assigned_cleaners()
 
     def set_cleaned_by(self, cleaner: Cleaner):
-        self.cleaned_by = Cleaner
+        self.cleaned_by = cleaner
         self.save()
 
 
