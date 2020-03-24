@@ -19,8 +19,9 @@ Deine Putzdienste
                 <div class="panel panel-info" style="margin-bottom: 0">
                     <div class="panel-body">
                         <p>
-                            {{ dutyswitch.requester_assignment.cleaner }} möchte einen Putzdienst am
-                            {{ dutyswitch.requester_assignment.assignment_date }} tauschen und <b>du</b> kannst helfen!
+                            <strong>{{ dutyswitch.requester_assignment.cleaner }}</strong> möchte einen Putzdienst am
+                            <strong>{{ dutyswitch.requester_assignment.assignment_date }}</strong> tauschen und
+                            <strong>du</strong> kannst helfen!
                         </p>
                         <a class="btn btn-info btn-sm"
                            href="{% url 'webinterface:dutyswitch-accept' dutyswitch.pk page.number %}"
@@ -45,7 +46,24 @@ Deine Putzdienste
                 {% for assignment in page %}
                     <div class="row" style="background-color: {% cycle "#FFFFFF" "#EEEEEE" %};">
                     <div class="col-xs-12">
-                        {% include "webinterface_snippets/assignment_table_row.html" %}
+                        <div class="row" style="padding: 0.25em">
+                            <div class="col-xs-12">
+                                Putzplan <span class="glyphicon glyphicon-play"></span> <b>{{ assignment.schedule.name }}</b>
+                            </div>
+
+                            <div class="col-xs-6">
+                                <span class="glyphicon glyphicon-calendar"></span> {{ assignment.assignment_date|date:"d. M y" }}
+                            </div>
+
+                            <div class="col-xs-6">
+                                {% if assignment.other_cleaners_in_week_for_schedule.exists %}
+                                    <span class="glyphicon glyphicon-user"></span> Mit
+                                    {% for cleaner in assignment.other_cleaners_in_week_for_schedule.all %}
+                                        {{ cleaner.name }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="col-xs-6">
                                 {% if not assignment.has_passed %}
@@ -62,10 +80,6 @@ Deine Putzdienste
                                             Tauschen <span class="glyphicon glyphicon-random"></span>
                                         </a>
                                     {% endif %}
-                                {% else %}
-                                    <a class="btn btn-default btn-sm disabled" href="#" role="button" style="white-space: normal; margin: 0.5em">
-                                        Tauschen nicht mehr möglich
-                                    </a>
                                 {% endif %}
                             </div>
                             <div class="col-xs-6">

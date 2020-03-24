@@ -32,10 +32,11 @@
     {% endif %}
 
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
+
     <table class="table table-striped" style="margin-bottom: 0">
         <tr>
             <td> </td>
-            <td><span class="glyphicon glyphicon-calendar"></span> Datum</td>
+            <td><span class="glyphicon glyphicon-calendar"></span> Woche</td>
             <td><span class="glyphicon glyphicon-user"></span> Putzer</td>
             {% if user.is_superuser %}
                 <td> </td>
@@ -56,17 +57,18 @@
                                            margin: 0 0.5em
                                        }
                                    </style>
-                                   <li>Geputzt</li>
-                                   {% for task in cleaning_week.task_set.cleaned %}
-
+                                   <li><strong>Offene Aufgaben</strong></li>
+                                   {% for task in cleaning_week.task_set.uncleaned.all %}
+                                       <li>{{ task }}</li>
                                    {% empty %}
-                                       <li><i>Noch nichts.</i></li>
+                                       <li><i>Nichts mehr.</i></li>
                                    {% endfor %}
 
                                    <li role="separator" class="divider"></li>
 
-                                   <li>Offene Aufgaben</li>
-                                   {% for task in cleaning_week.task_set.cleaned %}
+                                   <li><strong>Abgeschlossen</strong></li>
+                                   {% for task in cleaning_week.task_set.cleaned.all %}
+                                       <li>{{ task }}</li>
                                    {% empty %}
                                        <li><i>Noch nichts.</i></li>
                                    {% endfor %}
@@ -75,24 +77,24 @@
                        {% endif %}
                     </td>
 
-                    <td>{{ cleaning_week.week_start|date:"d. M y" }} - {{ cleaning_week.week_end|date:"d. M y" }}</td>
+                    <td>{{ cleaning_week.week_start|date:"d. M y" }} - <br>{{ cleaning_week.week_end|date:"d. M y" }}</td>
                     <td>
                         {% if not cleaning_week.disabled %}
                             {% if not cleaning_week.assignments_valid %}
                                 <b>Wegen einer Änderung von Zugehörigkeiten in diesem Zeitraum müssen die
                                 Putzdienste in dieser Woche aktualisiert werden</b>
                             {% else %}
-                                <a class="btn btn-default"
-                                   href="
-{% url 'webinterface:assignment-tasks-back-to-schedule' cleaning_week.pk page.number %}"
+                                <a class="btn btn-default btn-sm btn-block"
+                                   href="{% url 'webinterface:assignment-tasks-back-to-schedule' cleaning_week.pk page.number %}"
                                    role="button">
-                                {% for assignment in cleaning_week.assignment_set.all %}
-                                            {{ assignment.cleaner.name }}
-                                    </a>
-
-                                {% empty %}
-                                    Keine Putzer festgelegt!
-                                {% endfor %}
+                                    <strong>
+                                    {% for assignment in cleaning_week.assignment_set.all %}
+                                        {{ assignment.cleaner.name }}{% if not forloop.last %} & {% endif %}
+                                    {% empty %}
+                                        Keine Putzer festgelegt!
+                                    {% endfor %}
+                                    </strong>
+                                </a>
                             {% endif %}
                         {% else %}
                             <b>In dieser Woche deaktiviert</b>

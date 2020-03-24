@@ -10,7 +10,7 @@ Putzdienst erledigen
         <div class="btn btn-group btn-group-md btn-group-justified" role="group">
             {% include "webinterface_snippets/button_to_cleaner_page.html" %}
         </div>
-        {% if schedule_page > 1 %}
+        {% if schedule_page > 0 %}
             <div class="btn btn-group btn-group-md btn-group-justified" role="group">
                 <a class="btn btn-default btn-block" role="button"
                    href="{% url 'webinterface:schedule-view' assignment.schedule.slug schedule_page %}">
@@ -18,7 +18,7 @@ Putzdienst erledigen
                 </a>
             </div>
         {% endif %}
-        {% if cleaner_page > 1 %}
+        {% if cleaner_page > 0 %}
             <div class="btn btn-group btn-group-md btn-group-justified" role="group">
                 <a class="btn btn-default btn-block" role="button"
                    href="{% url 'webinterface:cleaner' cleaner_page %}">
