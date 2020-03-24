@@ -16,6 +16,7 @@ keys/
 
 # Django
 migrations/
+*.sqlite3
 
 # C extensions
 *.so
