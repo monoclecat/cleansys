@@ -89,9 +89,7 @@ class Schedule(models.Model):
                self.frequency == 3 and week % 2 == 1
 
     """
-    Over a defined timeframe in epoch weeks, create Assignments for CleaningWeeks where there are 
-    ones to be created and recreate Assignments in CleaningWeeks where cleaning_week.assignments_valid==False. 
-    All while updating Tasks where cleaning_week.tasks_valid==False.  
+    Calls create_assignment() for every week between (and including) start_week to end_week 
     
     Week numbers must be epoch week numbers as returned by date_to_epoch_week().
     @param start_week: First week number on which a new Assignment will be created.
@@ -116,6 +114,10 @@ class Schedule(models.Model):
     @param week: Week number to update Assignments and Tasks on
     """
     def create_assignment(self, week: int):
+        if self.disabled:
+            logging.debug("NO ASSIGNMENT CREATED: This schedule is disabled!")
+            return False
+
         if not self.occurs_in_week(week):
             cleaning_week_where_there_shouldnt_be_one = self.cleaningweek_set.filter(week=week)
             if cleaning_week_where_there_shouldnt_be_one.exists():
@@ -131,7 +133,7 @@ class Schedule(models.Model):
         if not cleaning_week.tasks_valid:
             cleaning_week.create_missing_tasks()
         if not cleaning_week.assignments_valid:
-            cleaning_week.assignment_set.delete()
+            cleaning_week.assignment_set.all().delete()
             cleaning_week.set_assignments_valid_field(True)
 
         if cleaning_week.assignment_set.count() >= self.cleaners_per_date:

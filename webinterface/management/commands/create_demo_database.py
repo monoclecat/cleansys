@@ -59,7 +59,7 @@ class Command(BaseCommand):
         sch7 = Schedule.objects.create(name="Um Katze kümmern", cleaners_per_date=2, weekday=3, frequency=1)
         sch8 = Schedule.objects.create(name="Garten", cleaners_per_date=2, weekday=4, frequency=2)
         sch9 = Schedule.objects.create(name="Keller", cleaners_per_date=2, weekday=4, frequency=3)
-        schd = Schedule.objects.create(name="Alter Plan", cleaners_per_date=2, weekday=4, frequency=3)
+        schd = Schedule.objects.create(name="Alter Plan", cleaners_per_date=2, weekday=4, frequency=3, disabled=True)
 
 
         self.stdout.write("Creating ScheduleGroups...")
@@ -165,9 +165,12 @@ class Command(BaseCommand):
         def affiliate_cleaner(cleaner: Cleaner, groups: list):
             weeks_in_each_group = demo_length // len(groups)
             for j, group in enumerate(groups):
-                Affiliation.objects.create(cleaner=cleaner, group=group,
-                                           beginning=now + j * weeks_in_each_group - 3,
-                                           end=now + ((j + 1) * weeks_in_each_group - 1) - 3)
+                beginning = now + j * weeks_in_each_group - 3
+                end =       now + ((j + 1) * weeks_in_each_group - 1) - 3
+                self.stdout.write("    Creating Affiliation for {} in {} from {} to {} (current week is {})".format(
+                    cleaner, group, beginning, end, current_epoch_week()
+                ))
+                Affiliation.objects.create(cleaner=cleaner, group=group, beginning=beginning, end=end)
 
         def affiliate_multiple_cleaners(cleaners: list, group_sequence: list):
             max_pow_of_2 = math.floor(math.log2(len(group_sequence)))
@@ -180,7 +183,7 @@ class Command(BaseCommand):
         # We have 15 cleaners which we split into 3 groups which will have similar Affiliation patterns
         affiliate_multiple_cleaners(cleaners=[cl_a, cl_b, cl_c, cl_d, cl_e], group_sequence=[eg, og1, og2, eg])
         affiliate_multiple_cleaners(cleaners=[cl_f, cl_g, cl_h, cl_i, cl_j], group_sequence=[og1, og2, eg, og1])
-        affiliate_multiple_cleaners(cleaners=[cl_k, cl_l, cl_m, cl_n, cl_o], group_sequence=[og1, og2, eg, og1])
+        affiliate_multiple_cleaners(cleaners=[cl_k, cl_l, cl_m, cl_n, cl_o], group_sequence=[og2, eg, og1, og2])
         Affiliation.objects.create(cleaner=cl_moved_out, group=dis_group, beginning=now-10, end=now-1)
 
         self.stdout.write("Creating Assignments (this can take some time)...")
@@ -204,10 +207,14 @@ class Command(BaseCommand):
         self.stdout.write("Last tweaks...")
         # Of course the Cleaners were diligent and did all tasks until now
         for task in Task.objects.filter(cleaning_week__week__range=(now - 3, now)):
-            if task.has_passed() or task.my_time_has_come():
-                possible_cl = task.possible_cleaners()
-                if len(possible_cl) != 0:
-                    task.set_cleaned_by(random.choice(possible_cl))
+            possible_cl = task.possible_cleaners()
+            if len(possible_cl) != 0:
+                selected_cleaner = random.choice(possible_cl)
+                if task.my_time_has_come():
+                    if random.random() > 0.5:
+                        task.set_cleaned_by(selected_cleaner)
+                elif task.has_passed():
+                    task.set_cleaned_by(selected_cleaner)
 
         # Except a couple of tasks which are chosen by random
         cleaned_tasks = Task.objects.exclude(cleaned_by__isnull=True)
