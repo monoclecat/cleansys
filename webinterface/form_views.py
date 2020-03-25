@@ -3,6 +3,7 @@ from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView, FormView
 from django.http import HttpResponseRedirect
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 
 
 class ScheduleNewView(CreateView):
@@ -320,15 +321,14 @@ class AssignmentCreateView(FormView):
     template_name = 'webinterface/generic_form.html'
     form_class = AssignmentCreateForm
 
-    def __init__(self):
-        self.schedule = None
-        super().__init__()
-
     def dispatch(self, request, *args, **kwargs):
-        try:
-            self.schedule = Schedule.objects.get(pk=kwargs['schedule_pk'])
-        except Cleaner.DoesNotExist:
-            Http404('Putzplan, für den Zugehörigkeit geändert werden soll, existiert nicht!')
+        if 'schedule_pk' in kwargs:
+            self.schedule = get_object_or_404(Schedule, pk=kwargs['schedule_pk'])
+            self.success_url = reverse_lazy('webinterface:schedule-view', kwargs={'slug': self.schedule.slug,
+                                                                                  'page': kwargs['page']})
+        else:
+            self.schedule = None
+            self.success_url = reverse_lazy('webinterface:config')
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -336,27 +336,38 @@ class AssignmentCreateView(FormView):
         if 'initial_begin' in self.kwargs and 'initial_end' in self.kwargs:
             kwargs['initial_begin'] = self.kwargs['initial_begin']
             kwargs['initial_end'] = self.kwargs['initial_end']
+        if self.schedule:
+            kwargs['initial_schedules'] = self.schedule
+        else:
+            kwargs['initial_schedules'] = Schedule.objects.enabled()
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = "Erzeuge Putzdienste für {}".format(self.schedule.name)
-        context['submit_button'] = {'text': "Speichern"}
-        context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:schedule-view',
-                                                        kwargs={'slug': self.schedule.slug,
-                                                                'page': self.kwargs['page']})}
+        context['title'] = "Erzeuge Putzdienste und aktualisiere Aufgaben"
+        context['info_banner'] = {'text': "<p>Mit diesem Formular kannst du Putzdienste erzeugen und aktualisieren. "
+                                          "Dabei werden auch die Aufgaben erzeugt bzw. aktualisiert. </p>"
+                                          "<p>Folgendes geschieht im angegebenen Zeitraum "
+                                          "in allen angekreuzten Putzdiensten: </p>"
+                                          "<ul>"
+                                          "<li>Fehlende Putzdienste werden neu erzeugt.</li>"
+                                          "<li>Aufgaben werden aktualisiert.</li>"
+                                          "<li>Ungültige Putzdienste werden gelöscht "
+                                          "(Putzdienste werden auf ungültig gesetzt"
+                                          "wenn wichtige Eigenschaften der Putzdienste verändert werden).</li>"
+                                          "<li><strong>Gültige Putzdienste werden in Ruhe gelassen!</strong></li>"
+                                          "</ul>"}
+        context['submit_button'] = {'text': "Ausführen (Kann eine Weile dauern)"}
+        context['cancel_button'] = {'text': "Abbrechen", 'url': self.success_url}
         return context
 
     def form_valid(self, form):
         from_week = date_to_epoch_week(form.cleaned_data['from_date'])
         to_week = date_to_epoch_week(form.cleaned_data['to_date'])
-        mode = form.cleaned_data['mode']
-
-        self.schedule.create_assignments_over_timespan(start_week=from_week, end_week=to_week, mode=int(mode))
-
-        return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view', kwargs={'slug': self.schedule.slug,
-                                                                                       'page': self.kwargs['page']}))
+        schedules = form.cleaned_data['schedules']
+        for schedule in schedules:
+            schedule.create_assignments_over_timespan(start_week=from_week, end_week=to_week)
+        return HttpResponseRedirect(self.success_url)
 
 
 class AssignmentUpdateView(UpdateView):
@@ -538,10 +549,7 @@ class TaskCleanedView(UpdateView):
         super().__init__()
 
     def dispatch(self, request, *args, **kwargs):
-        try:
-            self.assignment = Assignment.objects.get(pk=kwargs['assignment_pk'])
-        except Cleaner.DoesNotExist:
-            Http404('Putzdienst, für dessen eine Aufgabe als geputzt gesetzt werden soll, existiert nicht!')
+        self.assignment = get_object_or_404(Assignment, pk=kwargs['assignment_pk'])
         self.success_url = reverse_lazy('webinterface:assignment-tasks',
                                         kwargs={'cleaning_week_pk': self.assignment.cleaning_week.pk})
         return super().dispatch(request, *args, **kwargs)

@@ -89,29 +89,17 @@ class Schedule(models.Model):
                self.frequency == 3 and week % 2 == 1
 
     """
-    Creates assignments cover a timespan and has several more options.
+    Over a defined timeframe in epoch weeks, create Assignments for CleaningWeeks where there are 
+    ones to be created and recreate Assignments in CleaningWeeks where cleaning_week.assignments_valid==False. 
+    All while updating Tasks where cleaning_week.tasks_valid==False.  
     
     Week numbers must be epoch week numbers as returned by date_to_epoch_week().
     @param start_week: First week number on which a new Assignment will be created.
     @param end_week: Last week number on which a new Assignment will be created
-    @param mode Sets the mode of creation:
-    - 1(default): Delete existing Assignments and CleaningDays and regenerate them throughout time frame
-    - 2: Keep existing Assignments and only create new ones where there are none already
-    - 3: Only reassign Assignments on existing CleaningDays, don't generate new CleaningDays
     """
-    def create_assignments_over_timespan(self, start_week: int, end_week: int, mode=1) -> None:
-        """Generates new cleaning duties between week1 and week2."""
-        if mode not in [1, 2, 3]:
-            raise ValueError("In create_assignments_over_timespan: mode must be either 1,2 or 3!")
-
+    def create_assignments_over_timespan(self, start_week: int, end_week: int) -> None:
         min_week = min(start_week, end_week)
         max_week = max(start_week, end_week)
-        cleaning_weeks = self.cleaningweek_set.enabled().filter(week__range=[min_week, max_week])
-
-        if mode == 3 or mode == 1:
-            self.assignment_set.filter(cleaning_week__in=cleaning_weeks).delete()
-            if mode == 1:
-                cleaning_weeks.delete()
 
         for week in range(min_week, max_week + 1):
             while self.create_assignment(week=week):
@@ -119,11 +107,20 @@ class Schedule(models.Model):
                 # call to create_assignment only assigns one Cleaner
                 pass
 
-    def create_assignment(self, week: int, bypass_check_if_occurs_in_week=False, initiate_tasks=True):
-        if not self.occurs_in_week(week) and not bypass_check_if_occurs_in_week:
+    """
+    On a given epoch week, create Assignments for CleaningWeeks where there are 
+    ones to be created and recreate Assignments in CleaningWeeks where cleaning_week.assignments_valid==False. 
+    All while updating Tasks where cleaning_week.tasks_valid==False.  
+
+    The week must be an epoch week number as returned by date_to_epoch_week().
+    @param week: Week number to update Assignments and Tasks on
+    """
+    def create_assignment(self, week: int):
+        if not self.occurs_in_week(week):
             cleaning_week_where_there_shouldnt_be_one = self.cleaningweek_set.filter(week=week)
             if cleaning_week_where_there_shouldnt_be_one.exists():
                 cleaning_week_where_there_shouldnt_be_one.first().delete()
+                logging.debug("CLEANING_WEEK DELETED: Found a CleaningWeek where the Schedule doesn't occur. ")
 
             logging.debug("NO ASSIGNMENT CREATED [Code01]: This schedule does not occur "
                           "in week {} as frequency is set to {}".
@@ -131,9 +128,11 @@ class Schedule(models.Model):
             return False
 
         cleaning_week, was_created = self.cleaningweek_set.get_or_create(week=week)
-        if initiate_tasks:
+        if not cleaning_week.tasks_valid:
             cleaning_week.create_missing_tasks()
-        cleaning_week.set_assignments_valid_field(True)
+        if not cleaning_week.assignments_valid:
+            cleaning_week.assignment_set.delete()
+            cleaning_week.set_assignments_valid_field(True)
 
         if cleaning_week.assignment_set.count() >= self.cleaners_per_date:
             logging.debug("NO ASSIGNMENT CREATED [Code02]: There are no open cleaning positions for week {}. "
@@ -489,7 +488,7 @@ class CleaningWeek(models.Model):
 
     def tasks_are_ready_to_be_done(self):
         for task in self.task_set.all():
-            if task.my_time_has_come():
+            if task.my_time_has_come() and task.cleaned_by is None:
                 return True
         return False
 
@@ -514,6 +513,9 @@ class CleaningWeek(models.Model):
 
     def ratio_of_completed_tasks(self) -> float:
         return self.completed_tasks().count() / self.task_set.count()
+
+    def all_tasks_are_completed(self):
+        return self.ratio_of_completed_tasks() == 1.0
 
     def assigned_cleaners(self) -> QuerySet:
         return Cleaner.objects.filter(pk__in=[x.cleaner.pk for x in self.assignment_set.all()])

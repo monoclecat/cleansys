@@ -66,12 +66,12 @@ Deine Putzdienste
                         </div>
                         <div class="row">
                             <div class="col-xs-6">
-                                {% if not assignment.has_passed %}
+                                {% if not assignment.has_passed and not assignment.cleaning_week.all_tasks_are_completed %}
                                     {% if assignment.switch_requested %}
                                         <a class="btn btn-warning btn-sm"
                                            href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page_obj.number %}"
                                            role="button" style="white-space: normal; margin: 0.5em">
-                                            Tauschanfrage löschen <span class="glyphicon glyphicon-remove"></span>
+                                            Tauschanfrage <span class="glyphicon glyphicon-cog"></span>
                                         </a>
                                     {% else %}
                                         <a class="btn btn-default btn-sm"
@@ -87,9 +87,15 @@ Deine Putzdienste
             class="btn {% if assignment.tasks_are_ready_to_be_done %}btn-success{% else %}btn-default{% endif %} btn-sm"
             href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.cleaning_week.pk page_obj.number %}">
                                         {% if assignment.tasks_are_ready_to_be_done %}
-                                            <span class="glyphicon glyphicon-play-circle"></span> Putzen
+                                            Los <span class="glyphicon glyphicon-play-circle"></span>
                                         {% else %}
-                                            Aufgaben ansehen
+                                            <span class="glyphicon glyphicon-list"></span>
+                                        {% endif %}
+                                        {% if not assignment.cleaning_week.is_in_future %}
+                                            <span class="label label-default">
+                                                {{ assignment.cleaning_week.completed_tasks.count }} /
+                                                {{ assignment.cleaning_week.task_set.count }}
+                                            </span>
                                         {% endif %}
                                     </a>
                             </div>

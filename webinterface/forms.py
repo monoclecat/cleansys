@@ -160,20 +160,35 @@ class AssignmentCreateForm(forms.Form):
     from_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Die Kalenderwoche von TT.MM.YYYY")
     to_date = forms.DateField(input_formats=['%d.%m.%Y'], label="Die Kalenderwoche bis TT.MM.YYYY")
 
-    # See definitions in model Schedule, method create_assignments_over_timespan()
-    mode = forms.ChoiceField(choices=[(3, 'Bestehende Putzdienste komplett löschen und neu generieren.'),
-                                      (2, 'Behalte vorhandene Putzdienste behalten und nur dort Putzdienste '
-                                          'erzeugen wo welche fehlen.')],
-                             widget=forms.RadioSelect, label="Modus")
+    schedules = forms.ModelMultipleChoiceField(queryset=Schedule.objects.enabled(), widget=forms.CheckboxSelectMultiple,
+                                               label="Putzpläne, die im angegebenen Zeitraum bearbeitet werden sollen")
 
-    def __init__(self, initial_begin=None, initial_end=None, *args, **kwargs):
+    def __init__(self, initial_begin=None, initial_end=None, initial_schedules=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if initial_schedules:
+            self.fields['schedules'].initial = initial_schedules
 
         if initial_begin:
             self.fields['from_date'].initial = epoch_week_to_monday(initial_begin)
 
         if initial_end:
             self.fields['to_date'].initial = epoch_week_to_sunday(initial_end)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        max_time_frame = 30  # Weeks
+
+        if cleaned_data['from_date'] and cleaned_data['to_date']:
+            from_week = date_to_epoch_week(cleaned_data['from_date'])
+            to_week = date_to_epoch_week(cleaned_data['to_date'])
+
+            if to_week < from_week:
+                raise forms.ValidationError("Die Kalenderwoche 'von' darf nicht nach der Kalenderwoche 'bis' liegen!")
+
+            if to_week - from_week > max_time_frame:
+                raise forms.ValidationError("Die angegebene Zeitspanne darf nicht "
+                                            "mehr als {} Wochen betragen!".format(max_time_frame))
+        return cleaned_data
 
 
 class AssignmentForm(forms.ModelForm):

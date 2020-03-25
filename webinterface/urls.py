@@ -58,7 +58,7 @@ urlpatterns = [
          name='cleaning-week-delete'),
 
     path('assignment-create/<int:schedule_pk>/<int:page>/', staff_member_required(AssignmentCreateView.as_view()),
-         name='assignment-create'),
+         name='assignment-create-back-to-schedule'),
     path('assignment-create/<int:schedule_pk>/<int:page>/<int:initial_begin>/<int:initial_end>/',
          staff_member_required(AssignmentCreateView.as_view()),
          name='assignment-create-init'),

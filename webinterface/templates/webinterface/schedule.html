@@ -24,11 +24,15 @@
     </div>
 
     {% if user.is_superuser %}
-        <a class="btn btn-warning" style="margin: 10px"
-           href="{% url 'webinterface:assignment-create' schedule.pk page_obj.number %}"
-           role="button">
-        Erzeuge Putzdienste
-        </a>
+        <div class="row" style="padding: 5px">
+            <div class="col-xs-12">
+                <a class="btn btn-info btn-sm btn-block"
+                   href="{% url 'webinterface:assignment-create-back-to-schedule' schedule.pk page_obj.number %}"
+                   role="button">
+                    Erzeuge Putzdienste oder aktualisiere Aufgaben
+                </a>
+            </div>
+        </div>
     {% endif %}
 
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}

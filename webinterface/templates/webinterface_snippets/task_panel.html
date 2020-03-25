@@ -1,0 +1,48 @@
+<div class="panel {% if task.cleaned_by %}panel-success{% else %}panel-info{% endif %}">
+    <div class="panel-heading">
+        {% if assignment %}
+            {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come and not task.cleaned_by or user.is_superuser %}
+                <a class="btn {% if task.my_time_has_come and not task.cleaned_by %}btn-success{% else %}btn-default{% endif %}"
+                   href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
+                   role="button">
+                    {% if not task.cleaned_by %}
+                        <span class="glyphicon glyphicon-saved"></span> Abhaken
+                    {% else %}
+                        Bearbeiten
+                    {% endif %}
+                </a>
+            {% endif %}
+        {% endif %}
+        <b>{{ task }}</b>
+    </div>
+    <div class="panel-footer">
+        {% if not task.cleaned_by %}
+            Bearbeitbar von <b>{{ task.start_date|date:"l, d. M Y" }}</b> bis
+            <b>{{ task.end_date|date:"l, d. M Y" }}</b>.
+        {% else %}
+            Abgehakt von <span class="glyphicon glyphicon-user"></span> {{ task.cleaned_by }}
+        {% endif %}
+    </div>
+</div>
+{% comment %}
+
+{% if assignment %}
+    {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come or user.is_superuser %}
+        <a class="btn btn-warning"
+           href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
+           role="button">
+            <span class="glyphicon glyphicon-saved"></span> Abhaken
+        </a>
+    {% endif %}
+{% endif %}
+{% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come or user.is_superuser %}
+    <a class="btn btn-success btn-block"
+       href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
+       role="button">
+        {{ task }} -> <span class="glyphicon glyphicon-user"></span> {{ task.cleaned_by }}
+    </a>
+{% else %}
+    <a class="btn btn-success btn-block disabled" href="#" role="button">
+        {{ task }} -> <span class="glyphicon glyphicon-user"></span> {{ task.cleaned_by }}
+    </a>
+{% endif %}{% endcomment %}

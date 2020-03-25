@@ -66,22 +66,7 @@ Putzdienst erledigen
     <div class="row">
         {% for task in tasks.uncleaned %}
             <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
-                <div class="panel panel-info">
-                    <div class="panel-heading">
-                        {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come or user.is_superuser %}
-                            <a class="btn btn-warning"
-                               href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
-                               role="button">
-                                <span class="glyphicon glyphicon-saved"></span> Abhaken
-                            </a>
-                        {% endif %}
-                        <b>{{ task }}</b>
-                    </div>
-                    <div class="panel-footer">
-                        Bearbeitbar von <b>{{ task.start_date|date:"l, d. M Y" }}</b> bis
-                        <b>{{ task.end_date|date:"l, d. M Y" }}</b>.
-                    </div>
-                </div>
+                {% include 'webinterface_snippets/task_panel.html' %}
             </div>
         {% empty %}
             <i>Es gibt keine Aufgaben...</i>
@@ -91,17 +76,7 @@ Putzdienst erledigen
     <div class="row">
         {% for task in tasks.cleaned %}
             <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
-                {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come or user.is_superuser %}
-                    <a class="btn btn-success btn-block"
-                       href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
-                       role="button">
-                        {{ task }} -> <span class="glyphicon glyphicon-user"></span> {{ task.cleaned_by }}
-                    </a>
-                {% else %}
-                    <a class="btn btn-success btn-block disabled" href="#" role="button">
-                        {{ task }} -> <span class="glyphicon glyphicon-user"></span> {{ task.cleaned_by }}
-                    </a>
-                {% endif %}
+                {% include 'webinterface_snippets/task_panel.html' %}
             </div>
         {% empty %}
             <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
