@@ -176,7 +176,7 @@ class AssignmentCreateForm(forms.Form):
 
     def clean(self):
         cleaned_data = super().clean()
-        max_time_frame = 30  # Weeks
+        max_time_frame = 52  # Weeks
 
         if cleaned_data['from_date'] and cleaned_data['to_date']:
             from_week = date_to_epoch_week(cleaned_data['from_date'])

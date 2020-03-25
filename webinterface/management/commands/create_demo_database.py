@@ -1,14 +1,13 @@
 from django.core.management.base import BaseCommand, CommandError
 from webinterface.models import *
-import math
 import random
 
 
 class Command(BaseCommand):
     help = 'Populates an empty database with a rich demonstration ' \
            'featuring all types of objects and functionalities.' \
-           'By default, the total timeframe of the demo spans 16 weeks (from <this week minus 3 weeks> up to ' \
-           '<this week plus 12 weeks>).'
+           'By default, the total timeframe of the demo spans 32 weeks (from <this week minus 7 weeks> up to ' \
+           '<this week plus 24 weeks>).'
 
     def add_arguments(self, parser):
         parser.add_argument('-timeframe', nargs='*', type=int, help="Length of the demo time frame in weeks (integer). "
@@ -20,7 +19,8 @@ class Command(BaseCommand):
         if options['timeframe'] is not None and options['timeframe'] and options['timeframe'] >= 4:
             demo_length = options['timeframe'][0]
         else:
-            demo_length = 16
+            demo_length = 32
+        start_before = demo_length // 4 - 1
 
         if options['clear_db'] is not None:
             clear_db = True
@@ -167,30 +167,40 @@ class Command(BaseCommand):
             for j, group in enumerate(groups):
                 if group is None:
                     continue
-                beginning = now + j * weeks_in_each_group - 3
-                end =       now + ((j + 1) * weeks_in_each_group - 1) - 3
+                beginning = now + j * weeks_in_each_group - start_before
+                end =       now + ((j + 1) * weeks_in_each_group - 1) - start_before
                 self.stdout.write("    Creating Affiliation for {} in {} from {} to {} (current week is {})".format(
                     cleaner, group, beginning, end, current_epoch_week()
                 ))
                 Affiliation.objects.create(cleaner=cleaner, group=group, beginning=beginning, end=end)
 
-        def affiliate_multiple_cleaners(cleaners: list, group_sequence: list):
-            max_pow_of_2 = math.floor(math.log2(len(group_sequence)))
-            for i, cleaner in enumerate(cleaners):
-                groups_for_cleaner = group_sequence[:int(math.pow(2, (i % (max_pow_of_2 + 1))))]
-                # We get [0:1], [0:2], [0:4], [0:1], [0:2],  [0:4], [0:1], etc.  when len(group_sequence)==4
+        affiliate_cleaner(cl_a, groups=[eg])
+        affiliate_cleaner(cl_b, groups=[eg])
+        affiliate_cleaner(cl_c, groups=[eg])
 
-                affiliate_cleaner(cleaner=cleaner, groups=groups_for_cleaner)
+        affiliate_cleaner(cl_d, groups=[og1])
+        affiliate_cleaner(cl_e, groups=[og1])
+        affiliate_cleaner(cl_f, groups=[og1])
 
-        # We have 15 cleaners which we split into 3 groups which will have similar Affiliation patterns
-        affiliate_multiple_cleaners(cleaners=[cl_a, cl_b, cl_c, cl_d, cl_e], group_sequence=[eg, og1, og2, eg])
-        affiliate_multiple_cleaners(cleaners=[cl_f, cl_g, cl_h, cl_i, cl_j], group_sequence=[og1, og2, eg, og1])
-        affiliate_multiple_cleaners(cleaners=[cl_k, cl_l, cl_m, cl_n, cl_o], group_sequence=[og2, eg, og1, og2])
+        affiliate_cleaner(cl_g, groups=[og2])
+        affiliate_cleaner(cl_h, groups=[og2])
+        affiliate_cleaner(cl_i, groups=[og2])
+
+        affiliate_cleaner(cl_j, groups=[eg, og1])
+        affiliate_cleaner(cl_k, groups=[og1, eg])
+
+        affiliate_cleaner(cl_l, groups=[eg, og2])
+        affiliate_cleaner(cl_m, groups=[og2, eg])
+
+        affiliate_cleaner(cl_n, groups=[og1, og2])
+        affiliate_cleaner(cl_o, groups=[og2, og1])
+
         Affiliation.objects.create(cleaner=cl_moved_out, group=dis_group, beginning=now-10, end=now-1)
 
         self.stdout.write("Creating Assignments (this can take some time)...")
         for sch in Schedule.objects.all():
-            sch.create_assignments_over_timespan(start_week=now - 3, end_week=now - 3 + demo_length)
+            sch.create_assignments_over_timespan(start_week=now - start_before,
+                                                 end_week=now - start_before + demo_length)
 
         self.stdout.write("Creating Tasks...")
         for cleaning_week in CleaningWeek.objects.all():
@@ -200,15 +210,16 @@ class Command(BaseCommand):
         # Sprinkle some dutyswitch requests over the cleaning_weeks
         for cl in [cl_a, cl_d, cl_g, cl_j, cl_m]:
             assignments = Assignment.objects.filter(cleaner=cl,
-                                                    cleaning_week__week__range=(now, now + demo_length - 3 - 4))
-            for i in range(0, 2):
-                choice = random.choice(assignments)
-                DutySwitch.objects.create(requester_assignment=choice)
-                assignments = assignments.exclude(pk=choice.pk)
+                                                    cleaning_week__week__range=(now, now+demo_length-start_before-4))
+            if assignments:
+                for i in range(0, 2):
+                    choice = random.choice(assignments)
+                    DutySwitch.objects.create(requester_assignment=choice)
+                    assignments = assignments.exclude(pk=choice.pk)
 
         self.stdout.write("Last tweaks...")
         # Of course the Cleaners were diligent and did all tasks until now
-        for task in Task.objects.filter(cleaning_week__week__range=(now - 3, now)):
+        for task in Task.objects.filter(cleaning_week__week__range=(now - start_before, now)):
             possible_cl = task.possible_cleaners()
             if len(possible_cl) != 0:
                 selected_cleaner = random.choice(possible_cl)

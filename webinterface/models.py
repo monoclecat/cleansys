@@ -9,6 +9,7 @@ import logging
 from django.contrib.auth.models import User
 from django.utils import timezone
 import calendar
+import random
 import time
 
 
@@ -70,15 +71,43 @@ class Schedule(models.Model):
     def weekday_as_name(self):
         return Schedule.WEEKDAYS[self.weekday][1]
 
+    def constant_affiliation_timespan(self, week: int) -> dict:
+        """
+        Find minimal timespan during which all currently active Affiliations exist at the same time
+
+        :param week: Epoch week number
+        :return: dict with keys 'beginning' and 'end'
+        """
+        minimal_week_set = {}
+
+        active_affiliations = Affiliation.objects.active_in_week_for_schedule(week, self)
+        if active_affiliations.exists():
+
+            for affiliation in active_affiliations:
+                if not minimal_week_set:
+                    minimal_week_set = {'beginning': affiliation.beginning, 'end': affiliation.end}
+                else:
+                    if affiliation.beginning > minimal_week_set['beginning']:
+                        minimal_week_set['beginning'] = affiliation.beginning
+                    if affiliation.end < minimal_week_set['end']:
+                        minimal_week_set['end'] = affiliation.end
+
+        return minimal_week_set
+
     def deployment_ratios(self, week: int) -> list:
         """week must be a epoch week number as returned by date_to_epoch_week()"""
         ratios = []
 
+        minimal_week_set = self.constant_affiliation_timespan(week=week)
+
         active_affiliations = Affiliation.objects.active_in_week_for_schedule(week, self)
         if active_affiliations.exists():
-            for active_affiliation in active_affiliations:
-                cleaner = active_affiliation.cleaner
-                ratios.append([cleaner, cleaner.deployment_ratio_for_schedule(self)])
+            for affiliation in active_affiliations:
+                cleaner = affiliation.cleaner
+                ratios.append([cleaner,
+                               cleaner.deployment_ratio(schedule=self,
+                                                        from_week=minimal_week_set['beginning'],
+                                                        to_week=minimal_week_set['end'])])
             return sorted(ratios, key=itemgetter(1), reverse=False)
         else:
             return []
@@ -88,14 +117,14 @@ class Schedule(models.Model):
                self.frequency == 2 and week % 2 == 0 or \
                self.frequency == 3 and week % 2 == 1
 
-    """
-    Calls create_assignment() for every week between (and including) start_week to end_week 
-    
-    Week numbers must be epoch week numbers as returned by date_to_epoch_week().
-    @param start_week: First week number on which a new Assignment will be created.
-    @param end_week: Last week number on which a new Assignment will be created
-    """
     def create_assignments_over_timespan(self, start_week: int, end_week: int) -> None:
+        """
+        Calls create_assignment() for every week between (and including) start_week to end_week
+
+        :param start_week: First week number on which a new Assignment will be created.
+        :param end_week: Last week number on which a new Assignment will be created
+        :return: None
+        """
         min_week = min(start_week, end_week)
         max_week = max(start_week, end_week)
 
@@ -105,15 +134,18 @@ class Schedule(models.Model):
                 # call to create_assignment only assigns one Cleaner
                 pass
 
-    """
-    On a given epoch week, create Assignments for CleaningWeeks where there are 
-    ones to be created and recreate Assignments in CleaningWeeks where cleaning_week.assignments_valid==False. 
-    All while updating Tasks where cleaning_week.tasks_valid==False.  
-
-    The week must be an epoch week number as returned by date_to_epoch_week().
-    @param week: Week number to update Assignments and Tasks on
-    """
     def create_assignment(self, week: int):
+        """
+        On a given epoch week, create Assignments for CleaningWeeks where there are
+        ones to be created and recreate Assignments in CleaningWeeks where cleaning_week.assignments_valid==False.
+        All while updating Tasks where cleaning_week.tasks_valid==False.
+
+        :param week: Epoch week number to update Assignments and Tasks on
+        :return: True if Assignment was created, else False
+        """
+        logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} in week {} -------------'
+                      .format(self.name, week))
+
         if self.disabled:
             logging.debug("NO ASSIGNMENT CREATED: This schedule is disabled!")
             return False
@@ -148,28 +180,43 @@ class Schedule(models.Model):
             return False
 
         if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
-            logging.debug('------------- CREATING NEW CLEANING DUTY FOR {} in week {} -------------'
-                          .format(self.name, week))
             logging_text = "All cleaners' ratios: "
             for cleaner, ratio in ratios:
                 logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
             logging.debug(logging_text)
 
-        for cleaner, ratio in ratios:
-            if cleaner in cleaning_week.excluded.all():
-                logging.debug("   {} is excluded for this week. [Code11]".format(cleaner.name))
-                continue
-            if cleaner.is_eligible_for_week(week):
-                logging.debug("   {} inserted! [Code21]".format(cleaner.name))
-                return self.assignment_set.create(cleaner=cleaner, cleaning_week=cleaning_week)
-            else:
-                logging.debug("   {} already has {} duties today. [Code12]".format(
-                    cleaner.name, cleaner.nr_assignments_in_week(week)))
+        distinct_ratio_values = list(set(x[1] for x in ratios))
+        distinct_ratio_values.sort()
+        cleaners_grouped_by_ratios = [[x[0] for x in ratios if x[1] == val] for val in distinct_ratio_values]
+        for cleaner_group in cleaners_grouped_by_ratios:
+            non_excluded = [x for x in cleaner_group if x not in cleaning_week.excluded.all()]
+            eligible = [x for x in non_excluded if x.is_eligible_for_week(week=week)]
+            if eligible:
+                choice = random.choice(eligible)
+                logging.debug("   {} inserted! [Code21]".format(choice.name))
+                return self.assignment_set.create(cleaner=choice, cleaning_week=cleaning_week)
         else:
             logging.debug("   All Cleaners are excluded or are already cleaning as much as they like. "
                           "We must choose {} [Code22]"
                           .format(ratios[0][0]))
             return self.assignment_set.create(cleaner=ratios[0][0], cleaning_week=cleaning_week)
+
+        # for cleaner, ratio in ratios:
+        #     if cleaner in cleaning_week.excluded.all():
+        #         logging.debug("   {} is excluded for this week. [Code11]".format(cleaner.name))
+        #         continue
+        #     if cleaner.is_eligible_for_week(week):
+        #         logging.debug("   {} inserted! [Code21]".format(cleaner.name))
+        #         return self.assignment_set.create(cleaner=cleaner, cleaning_week=cleaning_week)
+        #     else:
+        #         logging.debug("   {} already has {} duties today. [Code12]".format(
+        #             cleaner.name, cleaner.nr_assignments_in_week(week)))
+        # else:
+        #
+        #     logging.debug("   All Cleaners are excluded or are already cleaning as much as they like. "
+        #                   "We must choose {} [Code22]"
+        #                   .format(ratios[0][0]))
+        #     return self.assignment_set.create(cleaner=ratios[0][0], cleaning_week=cleaning_week)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
@@ -290,28 +337,16 @@ class Cleaner(models.Model):
     def current_affiliation(self):
         return self.affiliation_in_week(current_epoch_week())
 
-    def all_assignments_during_affiliation_with_schedule(self, schedule: Schedule) -> QuerySet:
-        """
-        Finds all Assignments that a Schedule has during the time this Cleaner is affiliated with it
-
-        :param schedule: The Schedule object to consider
-        :return: A QuerySet with Assignments
-        """
-        assignments_while_affiliated = Assignment.objects.none()
-        for affiliation in self.affiliation_set.filter(group__schedules=schedule).all():
-            assignments_while_affiliated |= Assignment.objects.filter(
-                cleaning_week__week__gte=affiliation.beginning, cleaning_week__week__lte=affiliation.end,
+    def deployment_ratio(self, schedule: Schedule, from_week: int, to_week: int) -> float:
+        all_assignments = Assignment.objects.filter(
+                cleaning_week__week__gte=from_week, cleaning_week__week__lte=to_week,
                 cleaning_week__schedule=schedule)
-        return assignments_while_affiliated
 
-    def own_assignments_during_affiliation_with_schedule(self, schedule: Schedule) -> QuerySet:
-        return self.all_assignments_during_affiliation_with_schedule(schedule).filter(cleaner=self)
+        all_assignment_count = all_assignments.count()
+        own_assignment_count = all_assignments.filter(cleaner=self).count()
 
-    def deployment_ratio_for_schedule(self, schedule) -> float:
-        nr_all_assignments = self.all_assignments_during_affiliation_with_schedule(schedule).count()
-        nr_own_assignments = self.own_assignments_during_affiliation_with_schedule(schedule).count()
-        if nr_all_assignments != 0:
-            return nr_own_assignments / nr_all_assignments
+        if all_assignment_count != 0:
+            return own_assignment_count / all_assignment_count
         else:
             return 0.0
 

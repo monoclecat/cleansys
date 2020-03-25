@@ -14,7 +14,6 @@ from .forms import *
 from .models import *
 
 
-
 class ConfigView(TemplateView):
     template_name = 'webinterface/config.html'
 
@@ -70,29 +69,28 @@ class ScheduleAnalyticsView(DetailView):
         weeks = [x['week'] for x in self.object.cleaningweek_set.values("week")]
         weeks.sort()
 
-        groups = self.object.schedulegroup_set.all()
-        affiliations = Affiliation.objects.none()
-        for group in groups:
-            affiliations |= group.affiliation_set.all()
+        data = {}
+        for week in weeks:
+            cleaners__ratios = self.object.deployment_ratios(week=week)
+            for cleaner, ratio in cleaners__ratios:
+                if cleaner.name not in data:
+                    data[cleaner.name] = {'weeks': [], 'ratios': []}
+                data[cleaner.name]['weeks'].append(week)
+                data[cleaner.name]['ratios'].append(ratio)
 
         fig = go.Figure()
-        for cleaner in Cleaner.objects.all():
-            if cleaner.all_assignments_during_affiliation_with_schedule(self.object) != 0:
-                ratio = cleaner.deployment_ratio_for_schedule(self.object)
-                affiliations = cleaner.affiliation_set.filter(group__schedules__pk=self.object.pk)
-                for affiliation in affiliations:
-                    fig.add_trace(go.Scatter(
-                        x=[affiliation.beginning_as_date(), affiliation.end_as_date()],
-                        y=[ratio, ratio],
-                        name="{}: {} bis {}".format(
-                            cleaner.name,
-                            affiliation.beginning_as_date().strftime("%d.%m.%y"),
-                            affiliation.end_as_date().strftime("%d.%m.%y")),
-                        mode='lines+markers'))
+        for cleaner, weeks__ratios in data.items():
+            fig.add_trace(go.Scatter(
+                x=[epoch_week_to_sunday(x) for x in weeks__ratios['weeks']],
+                y=weeks__ratios['ratios'],
+                name=cleaner,
+                connectgaps=True
+            ))
 
         fig.update_layout(title='Besetzungsverhältnisse',
                           xaxis_title='Wochen',
-                          yaxis_title='Besetzungsverhältnis')
+                          yaxis={'title': 'Besetzungsverhältnis',
+                                 'range': [0.0, 1.0]})
 
         div = opy.plot(fig, auto_open=False, output_type='div')
 
