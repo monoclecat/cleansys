@@ -1,0 +1,52 @@
+{% extends "webinterface/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+Analytics - {{ schedule }}
+{% endblock %}
+
+{% block bootstrap_meta_tags %}
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta content='width=device-width, initial-scale=1, maximum-scale=1' name='viewport' />
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+{% endblock %}
+
+{% block body %}
+    <div class="row">
+        <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+            <h1>Analytics - {{ schedule }}</h1>
+            <i>Bitte auf einem großen Bildschirm betrachten!</i>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+            <h2>Besetzungsverhältnisse für alle Zugehörigkeiten</h2>
+            <p>
+                Ist ein Putzer jemals einem Putzplan zugewiesen gewesen, so lässt sich ein Besetzungsverhältnis
+                für diesen Putzer berechnen. Es berechnet sich wie folgt:
+            </p>
+            <p>
+                <i>[besetzungsverhältnis]</i> <strong>=</strong> <br>
+                <i>[gesamte Anzahl an Putzdiensten während der Putzer dem Putzplan zugewiesen war]</i> <br>
+                <strong>durch</strong> <i>[gesamte Anzahl an Putzdiensten die der Putzer selbst während dieser Zeit hatte]</i>
+            </p>
+            <p>
+                Ein Besetzungsverhältnis von <strong>1</strong> würde bedeuten, dass der Putzer <strong>jedem</strong>
+                Putzdienst von {{ schedule }}
+                zugewiesen war, der während seiner Zugehörigkeit zu {{ schedule }} vorgekommen ist.
+            </p>
+            <p>
+                Ein Besetzungsverhältnis von <strong>0</strong> würde bedeuten, dass der Putzer <strong>keinem</strong>
+                Putzdienst von {{ schedule }}
+                zugewiesen war, der während seiner Zugehörigkeit zu {{ schedule }} vorgekommen ist.
+            </p>
+            <p>
+                Aufgrund dieses Besetzungsverhältnisses werden die Putzdienste verteilt.
+            </p>
+        </div>
+        <div class="col-xs-12">
+            {{ ratios|safe }}
+        </div>
+    </div>
+{% endblock %}

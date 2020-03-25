@@ -73,20 +73,20 @@ class Command(BaseCommand):
         dis_group.schedules.add(schd)
 
         self.stdout.write("Creating Cleaners...")
-        cl_a = Cleaner.objects.create(name="Anne", preference=1)
-        cl_b = Cleaner.objects.create(name="Bernd", preference=2)
+        cl_a = Cleaner.objects.create(name="Anne", preference=3)
+        cl_b = Cleaner.objects.create(name="Bernd", preference=3)
         cl_c = Cleaner.objects.create(name="Clara", preference=3)
-        cl_d = Cleaner.objects.create(name="Daniel", preference=1)
-        cl_e = Cleaner.objects.create(name="Eric", preference=2)
+        cl_d = Cleaner.objects.create(name="Daniel", preference=3)
+        cl_e = Cleaner.objects.create(name="Eric", preference=3)
         cl_f = Cleaner.objects.create(name="Franziska", preference=3)
-        cl_g = Cleaner.objects.create(name="Gero", preference=1)
-        cl_h = Cleaner.objects.create(name="Hannah", preference=2)
+        cl_g = Cleaner.objects.create(name="Gero", preference=3)
+        cl_h = Cleaner.objects.create(name="Hannah", preference=3)
         cl_i = Cleaner.objects.create(name="Ina", preference=3)
-        cl_j = Cleaner.objects.create(name="Justin", preference=1)
-        cl_k = Cleaner.objects.create(name="Kim", preference=2)
+        cl_j = Cleaner.objects.create(name="Justin", preference=3)
+        cl_k = Cleaner.objects.create(name="Kim", preference=3)
         cl_l = Cleaner.objects.create(name="Luisa", preference=3)
-        cl_m = Cleaner.objects.create(name="Marlene", preference=1)
-        cl_n = Cleaner.objects.create(name="Nina", preference=2)
+        cl_m = Cleaner.objects.create(name="Marlene", preference=3)
+        cl_n = Cleaner.objects.create(name="Nina", preference=3)
         cl_o = Cleaner.objects.create(name="Olaf", preference=3)
         cl_moved_out = Cleaner.objects.create(name="Ehemaliger")
 
@@ -165,6 +165,8 @@ class Command(BaseCommand):
         def affiliate_cleaner(cleaner: Cleaner, groups: list):
             weeks_in_each_group = demo_length // len(groups)
             for j, group in enumerate(groups):
+                if group is None:
+                    continue
                 beginning = now + j * weeks_in_each_group - 3
                 end =       now + ((j + 1) * weeks_in_each_group - 1) - 3
                 self.stdout.write("    Creating Affiliation for {} in {} from {} to {} (current week is {})".format(
