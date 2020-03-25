@@ -9,34 +9,43 @@ Aufgaben für {{ schedule }}
 {% block main %}
     <h2>Aufgaben für <b>{{ schedule }}</b></h2>
 
-    <p><a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:config' %}">
-        <span class="glyphicon glyphicon-home"></span> Zur Admin-Übersicht
-    </a></p>
-    <p><a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:schedule-task-new' schedule.pk %}">
-        <span class="glyphicon glyphicon-send"></span> Neue Aufgabe erstellen
-    </a></p>
+    <p>
+        <a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:config' %}">
+            <span class="glyphicon glyphicon-home"></span> Zur Admin-Übersicht
+        </a>
+    </p>
+    <p>
+        <a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:schedule-task-new' schedule.pk %}">
+            <span class="glyphicon glyphicon-send"></span> Neue Aufgabe erstellen
+        </a>
+    </p>
 
-    {% for task in object_list.all %}
-        {% if task.task_disabled %}
+    <div class="alert alert-info" role="alert">
+        Putzplan <strong>{{ schedule }}</strong> wiederholt sich am
+        Wochentag <strong>{{ schedule.weekday_as_name }}</strong>.
+    </div>
+
+    {% for tasktemplate in schedule.tasktemplate_set.all %}
+        {% if tasktemplate.task_disabled %}
             <div class="panel panel-default">
         {% else %}
             <div class="panel panel-primary">
         {% endif %}
             <!-- Default panel contents -->
             <div class="panel-heading">
-                <a class="btn btn-default btn-sm" role="button" href="{% url 'webinterface:task-edit' task.pk %}">
+                <a class="btn btn-default btn-sm" role="button" href="{% url 'webinterface:task-edit' tasktemplate.pk %}">
                         <span class="glyphicon glyphicon-cog"></span>
                 </a>
-                {{ task.task_name }} {% if task.task_disabled %}<span class="label label-warning">Disabled</span>{% endif %}
+                {{ tasktemplate.task_name }} {% if tasktemplate.task_disabled %}<span class="label label-warning">Disabled</span>{% endif %}
             </div>
             <div class="panel-body">
-                <i>Hilfetext: </i>{{ task.task_help_text }}
+                <i>Hilfetext: </i>{{ tasktemplate.task_help_text }}
             </div>
 
             <!-- List group -->
             <div class="panel-footer">
-                Muss zwischen <b>{{ task.start_day_to_weekday }}</b> und
-                    <b>{{ task.end_day_to_weekday }}</b> erledigt werden.
+                Muss zwischen <b>{{ tasktemplate.start_day_to_weekday }}</b> und
+                    <b>{{ tasktemplate.end_day_to_weekday }}</b> erledigt werden.
             </div>
         </div>
     {% empty %}

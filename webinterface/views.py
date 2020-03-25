@@ -6,6 +6,7 @@ from django.views.generic import TemplateView
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.views.generic.list import ListView
+from django.views.generic.detail import DetailView
 from django.shortcuts import get_object_or_404
 from .forms import *
 from .models import *
@@ -85,37 +86,17 @@ class ScheduleList(ListView):
         if request.user.is_superuser:
             self.queryset = Schedule.objects.enabled()
         else:
-            try:
-                current_affiliation = Cleaner.objects.get(user=request.user).current_affiliation()
-                if current_affiliation:
-                    self.queryset = current_affiliation.group.schedules.enabled()
-                else:
-                    return Http404("Putzer ist nicht aktiv.")
-            except Cleaner.DoesNotExist:
-                return Http404("Putzer existiert nicht!")
+            current_affiliation = get_object_or_404(Cleaner, user=request.user).current_affiliation()
+            if current_affiliation:
+                self.queryset = current_affiliation.group.schedules.enabled()
+            else:
+                return Http404("Putzer ist nicht aktiv.")
         return super().get(request, *args, **kwargs)
 
 
-class ScheduleTaskList(ListView):
+class ScheduleTaskList(DetailView):
     template_name = "webinterface/schedule_task_list.html"
-    model = Task
-
-    def __init__(self, *args, **kwargs):
-        self.schedule = None
-        super().__init__(*args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        if 'pk' in kwargs:
-            try:
-                self.schedule = Schedule.objects.get(pk=kwargs['pk'])
-                self.queryset = self.schedule.tasktemplate_set
-            except Schedule.DoesNotExist:
-                return Http404('Putzplan existiert nicht!')
-        return super().get(request, *args, **kwargs)
-
-    def render_to_response(self, context, **response_kwargs):
-        context['schedule'] = self.schedule
-        return super().render_to_response(context, **response_kwargs)
+    model = Schedule
 
 
 class CleanerView(TemplateView):
@@ -194,16 +175,6 @@ class AssignmentTasksView(TemplateView):
                 context['assignment'] = None
         return context
 
-
-# class AffiliationView(ListView):
-#     template_name = "webinterface/affiliation_list.html"
-#     model = Affiliation
-#
-#     def get_queryset(self):
-#         cleaner = self.request.user.cleaner_set
-#         if cleaner.exists():
-#
-#         print(1)
 
 class LoginByClickView(LoginView):
     template_name = "webinterface/login_byclick.html"

@@ -67,6 +67,9 @@ class Schedule(models.Model):
         self.previous_cleaners_per_date = self.cleaners_per_date
         self.previous_frequency = self.frequency
 
+    def weekday_as_name(self):
+        return Schedule.WEEKDAYS[self.weekday][1]
+
     def deployment_ratios(self, week: int) -> list:
         """week must be a epoch week number as returned by date_to_epoch_week()"""
         ratios = []
