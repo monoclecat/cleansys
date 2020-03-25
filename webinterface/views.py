@@ -82,7 +82,7 @@ class ScheduleList(ListView):
     template_name = "webinterface/schedule_list.html"
     model = Schedule
 
-    def get(self, request, *args, **kwargs):
+    def dispatch(self, request, *args, **kwargs):
         if request.user.is_superuser:
             self.queryset = Schedule.objects.enabled()
         else:
@@ -91,7 +91,7 @@ class ScheduleList(ListView):
                 self.queryset = current_affiliation.group.schedules.enabled()
             else:
                 return Http404("Putzer ist nicht aktiv.")
-        return super().get(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
 
 
 class ScheduleTaskList(DetailView):
@@ -99,46 +99,37 @@ class ScheduleTaskList(DetailView):
     model = Schedule
 
 
-class CleanerView(TemplateView):
+class CleanerView(ListView):
     template_name = "webinterface/cleaner.html"
+    model = Assignment
+    paginate_by = 10
 
-    def get(self, request, *args, **kwargs):
+    def dispatch(self, request, *args, **kwargs):
         if request.user.is_superuser:
             return HttpResponseRedirect(reverse_lazy('webinterface:config'))
-        try:
-            cleaner = Cleaner.objects.get(user=request.user)
-        except Cleaner.DoesNotExist:
-            return Http404("Putzer existiert nicht")
-
-        timezone.activate(cleaner.time_zone)
-
-        context = dict()
-        context['table_header'] = Schedule.objects.all().order_by('frequency')
-        context['cleaner'] = cleaner
-
-        assignments = context['cleaner'].assignment_set.order_by('cleaning_week__week')
-        elements_per_page = 5
+        self.cleaner = get_object_or_404(Cleaner, user=request.user)
+        self.assignments = self.cleaner.assignment_set.order_by('cleaning_week__week', 'schedule__weekday')
 
         if 'page' not in kwargs:
-            if assignments.filter(cleaning_week__week__gt=current_epoch_week()).exists():
+            if self.assignments.filter(cleaning_week__week__gt=current_epoch_week()).exists():
                 index_of_current_cleaning_week = next(i for i, v
-                                                      in enumerate(assignments)
+                                                      in enumerate(self.assignments)
                                                       if v.cleaning_week.week >= current_epoch_week())
-                page_nr_with_current_assignments = 1 + (index_of_current_cleaning_week // elements_per_page)
+                page_nr_with_current_assignments = 1 + (index_of_current_cleaning_week // self.paginate_by)
             else:
                 page_nr_with_current_assignments = 1
             return redirect(reverse_lazy('webinterface:cleaner',
                                          kwargs={'page': page_nr_with_current_assignments}))
 
-        pagination = Paginator(assignments, elements_per_page)
-        context['page'] = pagination.get_page(kwargs['page'])
+        return super().dispatch(request, *args, **kwargs)
 
-        context['answerable_dutyswitch_requests'] = []
-        for dutyswitch in DutySwitch.objects.open().all():
-            if cleaner.can_accept_duty_switch_request(dutyswitch):
-                context['answerable_dutyswitch_requests'].append(dutyswitch)
+    def get_queryset(self):
+        return self.assignments
 
-        return self.render_to_response(context)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cleaner'] = self.cleaner
+        return context
 
 
 class AssignmentTasksView(TemplateView):

@@ -24,7 +24,7 @@ Deine Putzdienste
                             <strong>du</strong> kannst helfen!
                         </p>
                         <a class="btn btn-info btn-sm"
-                           href="{% url 'webinterface:dutyswitch-accept' dutyswitch.pk page.number %}"
+                           href="{% url 'webinterface:dutyswitch-accept' dutyswitch.pk page_obj.number %}"
                            role="button" style="white-space: normal; margin: 0.5em">
                                 Tauschanfrage ansehen <span class="glyphicon glyphicon-eye-open"></span>
                         </a>
@@ -43,7 +43,7 @@ Deine Putzdienste
             </div>
             <div class="col-xs-12">
                 {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
-                {% for assignment in page %}
+                {% for assignment in assignment_list %}
                     <div class="row" style="background-color: {% cycle "#FFFFFF" "#EEEEEE" %};">
                     <div class="col-xs-12">
                         <div class="row" style="padding: 0.25em">
@@ -69,13 +69,13 @@ Deine Putzdienste
                                 {% if not assignment.has_passed %}
                                     {% if assignment.switch_requested %}
                                         <a class="btn btn-warning btn-sm"
-                                           href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page.number %}"
+                                           href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page_obj.number %}"
                                            role="button" style="white-space: normal; margin: 0.5em">
                                             Tauschanfrage löschen <span class="glyphicon glyphicon-remove"></span>
                                         </a>
                                     {% else %}
                                         <a class="btn btn-default btn-sm"
-                                            href="{% url 'webinterface:dutyswitch-create' assignment.pk page.number %}"
+                                            href="{% url 'webinterface:dutyswitch-create' assignment.pk page_obj.number %}"
                                             role="button" style="white-space: normal; margin: 0.5em">
                                             Tauschen <span class="glyphicon glyphicon-random"></span>
                                         </a>
@@ -85,7 +85,7 @@ Deine Putzdienste
                             <div class="col-xs-6">
                                     <a role="button" style="white-space: normal; margin: 0.5em"
             class="btn {% if assignment.tasks_are_ready_to_be_done %}btn-success{% else %}btn-default{% endif %} btn-sm"
-            href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.cleaning_week.pk page.number %}">
+            href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.cleaning_week.pk page_obj.number %}">
                                         {% if assignment.tasks_are_ready_to_be_done %}
                                             <span class="glyphicon glyphicon-play-circle"></span> Putzen
                                         {% else %}
