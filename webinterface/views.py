@@ -28,43 +28,34 @@ class ConfigView(TemplateView):
         return context
 
 
-class ScheduleView(TemplateView):
+class ScheduleView(ListView):
     template_name = "webinterface/schedule.html"
+    model = CleaningWeek
+    paginate_by = 10
 
-    def get(self, request, *args, **kwargs):
-        context = {}
-        try:
-            context['schedule'] = Schedule.objects.get(slug=kwargs['slug'])
-        except Schedule.DoesNotExist:
-            Http404("Putzplan existiert nicht.")
-
-        cleaning_weeks = context['schedule'].cleaningweek_set.order_by('week')
-        elements_per_page = 10
+    def dispatch(self, request, *args, **kwargs):
+        self.schedule = get_object_or_404(Schedule, slug=kwargs['slug'])
+        self.cleaning_weeks = self.schedule.cleaningweek_set.order_by('week')
 
         if 'page' not in kwargs:
-            if cleaning_weeks.filter(week__gt=current_epoch_week()).exists():
+            if self.cleaning_weeks.filter(week__gt=current_epoch_week()).exists():
                 index_of_current_cleaning_week = next(i for i, v
-                                                      in enumerate(cleaning_weeks)
+                                                      in enumerate(self.cleaning_weeks)
                                                       if v.week >= current_epoch_week())
-                page_nr_with_current_cleaning_week = 1 + (index_of_current_cleaning_week // elements_per_page)
+                page_nr_with_current_cleaning_week = 1 + (index_of_current_cleaning_week // self.paginate_by)
             else:
                 page_nr_with_current_cleaning_week = 1
             return redirect(reverse_lazy('webinterface:schedule-view',
                                          kwargs={'slug': kwargs['slug'], 'page': page_nr_with_current_cleaning_week}))
+        return super().dispatch(request, *args, **kwargs)
 
-        pagination = Paginator(cleaning_weeks, elements_per_page)
-        context['page'] = pagination.get_page(kwargs['page'])
+    def get_queryset(self):
+        return self.cleaning_weeks
 
-        if 'highlight_slug' in kwargs and kwargs['highlight_slug']:
-            context['highlight_slug'] = kwargs['highlight_slug']
-
-        if not request.user.is_superuser and 'highlight_slug' not in context:
-            try:
-                context['highlight_slug'] = Cleaner.objects.get(user=request.user)
-            except Cleaner.DoesNotExist:
-                pass
-
-        return self.render_to_response(context)
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['schedule'] = self.schedule
+        return context
 
 
 class SchedulePrintView(TemplateView):

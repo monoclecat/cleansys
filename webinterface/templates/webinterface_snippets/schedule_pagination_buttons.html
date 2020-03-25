@@ -1,16 +1,16 @@
 <div class="row">
     <div class="col-xs-6" style="padding: 5px">
-        {% if page.has_previous %}
+        {% if page_obj.has_previous %}
             <a class="btn btn-default btn-block btn-sm" role="button"
-                href="{% url 'webinterface:schedule-view' schedule.slug page.previous_page_number %}">
+                href="{% url 'webinterface:schedule-view' schedule.slug page_obj.previous_page_number %}">
                         <span class="glyphicon glyphicon-arrow-left"></span> Vorherige Seite
             </a>
         {% endif %}
     </div>
     <div class="col-xs-6" style="padding: 5px">
-        {% if page.has_next %}
+        {% if page_obj.has_next %}
             <a class="btn btn-default btn-block btn-sm" role="button"
-               href="{% url 'webinterface:schedule-view' schedule.slug page.next_page_number %}">
+               href="{% url 'webinterface:schedule-view' schedule.slug page_obj.next_page_number %}">
                         <span class="glyphicon glyphicon-arrow-right"></span> Nächste Seite
             </a>
         {% endif %}

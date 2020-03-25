@@ -25,7 +25,7 @@
 
     {% if user.is_superuser %}
         <a class="btn btn-warning" style="margin: 10px"
-           href="{% url 'webinterface:assignment-create' schedule.pk page.number %}"
+           href="{% url 'webinterface:assignment-create' schedule.pk page_obj.number %}"
            role="button">
         Erzeuge Putzdienste
         </a>
@@ -36,50 +36,19 @@
     <table class="table table-striped" style="margin-bottom: 0">
         <tr>
             <!--td> </td-->
-            <td><span class="glyphicon glyphicon-calendar"></span> Woche</td>
+            <td><span class="glyphicon glyphicon-calendar"></span> Datum</td>
             <td><span class="glyphicon glyphicon-user"></span> Putzer</td>
             {% if user.is_superuser %}
                 <td> </td>
             {% endif %}
         </tr>
 
-        {% for cleaning_week in page %}
+        {% for cleaning_week in cleaningweek_list %}
                 <tr class="
 {% if cleaning_week.disabled or not cleaning_week.assignments_valid %}danger
 {% elif cleaning_week.is_current_week %}success{% endif %}">
-                    <!--td>
-                       {% if not cleaning_week.disabled %}
-                           <div class="dropdown">
-                               <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1"
-                                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                                   <span class="glyphicon glyphicon-info-sign"></span></button>
-                               <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                                   <style>
-                                       .dropdown ul li {
-                                           margin: 0 0.5em
-                                       }
-                                   </style>
-                                   <li><strong>Offene Aufgaben</strong></li>
-                                   {% for task in cleaning_week.task_set.uncleaned.all %}
-                                       <li>{{ task }}</li>
-                                   {% empty %}
-                                       <li><i>Nichts mehr.</i></li>
-                                   {% endfor %}
 
-                                   <li role="separator" class="divider"></li>
-
-                                   <li><strong>Abgeschlossen</strong></li>
-                                   {% for task in cleaning_week.task_set.cleaned.all %}
-                                       <li>{{ task }}</li>
-                                   {% empty %}
-                                       <li><i>Noch nichts.</i></li>
-                                   {% endfor %}
-                               </ul>
-                           </div>
-                       {% endif %}
-                    </td-->
-
-                    <td>{{ cleaning_week.week_start|date:"d. M y" }} - <br>{{ cleaning_week.week_end|date:"d. M y" }}</td>
+                    <td>{{ cleaning_week.assignment_date|date:"d. M, Y" }}</td>
                     <td>
                         {% if not cleaning_week.disabled %}
                             {% if not cleaning_week.assignments_valid %}
@@ -87,7 +56,7 @@
                                 Putzdienste in dieser Woche aktualisiert werden</b>
                             {% else %}
                                 <a class="btn btn-default"
-                                   href="{% url 'webinterface:assignment-tasks-back-to-schedule' cleaning_week.pk page.number %}"
+                                   href="{% url 'webinterface:assignment-tasks-back-to-schedule' cleaning_week.pk page_obj.number %}"
                                    role="button">
                                     {% for assignment in cleaning_week.assignment_set.all %}
                                         {{ assignment.cleaner.name }}{% if not forloop.last %} & {% endif %}
@@ -120,18 +89,18 @@
                                 </button>
                                 <ul class="dropdown-menu">
                                     {% for assignment in cleaning_week.assignment_set.all %}
-                                        <li><a href="{% url 'webinterface:assignment-edit' assignment.pk page.number %}">
+                                        <li><a href="{% url 'webinterface:assignment-edit' assignment.pk page_obj.number %}">
                                             <span class="glyphicon glyphicon-cog"></span>
                                             {{ assignment.cleaner }}'s Dienst bearbeiten
                                         </a></li>
                                     {% endfor %}
                                     <li role="separator" class="divider"></li>
-                                    <li><a href="{% url 'webinterface:cleaning-week-edit' cleaning_week.pk page.number %}">
+                                    <li><a href="{% url 'webinterface:cleaning-week-edit' cleaning_week.pk page_obj.number %}">
                                         <span class="glyphicon glyphicon-off"></span> Aktivieren/Deaktivieren
                                     </a></li>
                                     {% if not cleaning_week.tasks_valid %}
                                         <li class="bg-danger">
-                                            <a href="{% url 'webinterface:cleaning-week-tasks' cleaning_week.pk page.number %}">
+                                            <a href="{% url 'webinterface:cleaning-week-tasks' cleaning_week.pk page_obj.number %}">
                                                 <span class="glyphicon glyphicon-plus"></span> Aufgaben aktualisieren
                                             </a>
                                         </li>
@@ -139,13 +108,13 @@
                                     {% if not cleaning_week.assignments_valid %}
                                         <li class="bg-danger">
                                             <a href="
-{% url 'webinterface:assignment-create-init' schedule.pk page.number cleaning_week.week cleaning_week.week%}">
+{% url 'webinterface:assignment-create-init' schedule.pk page_obj.number cleaning_week.week cleaning_week.week%}">
                                                 <span class="glyphicon glyphicon-refresh"></span> Putzdienste aktualisieren
                                             </a>
                                         </li>
                                     {% endif %}
                                     <li role="separator" class="divider"></li>
-                                    <li><a href="{% url 'webinterface:cleaning-week-delete' cleaning_week.pk page.number %}">
+                                    <li><a href="{% url 'webinterface:cleaning-week-delete' cleaning_week.pk page_obj.number %}">
                                         <span class="glyphicon glyphicon-warning-sign"></span> Löschen
                                     </a></li>
                                 </ul>
@@ -159,10 +128,10 @@
     </table>
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
 
-    {% if page.0.week %}
+    {% if page_obj.0.week %}
         <div class="row">
             <div class="col-xs-12">
-                <a href="{% url 'webinterface:schedule-print-view' schedule.slug page.0.week %}"
+                <a href="{% url 'webinterface:schedule-print-view' schedule.slug page_obj.0.week %}"
                    class="btn btn-default btn-xs" role="button">
                     <span class="glyphicon glyphicon-print"></span> Druckansicht (ab erstem Datum dieser Seite)
                 </a>
