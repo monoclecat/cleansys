@@ -65,7 +65,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'putzplan_generator.urls'
+ROOT_URLCONF = 'cleansys.urls'
 
 TEMPLATES = [
     {
