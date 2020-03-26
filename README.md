@@ -38,19 +38,9 @@ CleanSys was built for german users, so the interface language is german. If you
 
 
 ## Installation
-_Talk about cloning and creating virtualenv, then pip installing packages from requirements.txt,
-make sure that python command runs Python3_
+After cloning this project onto your local system, create a virtualenv for it *([tutorial](https://docs.python-guide.org/dev/virtualenvs/))*. 
 
-Unless otherwise noted, run all shell commands in the root directory of this project. 
-
-### Activating the virual environment
-If you're using a good Python IDE (I use PyCharm, it's free for students), 
-your project's virtual environment will be activated automatically in the IDE's terminal windows. 
-
-If you want to start the Django server outside of an IDE, you activate the virtualenv by running 
-`source path-to-venv/bin/activate`. 
-
-**Make sure to run all subsequent terminal commands in a terminal window with active venv!**
+Run all shell commands in the root directory of this project with the virtual environment **activated**.
 
 ### Installing required packages
 The required pip packages and their versions are listed in `requirements.txt`. 
@@ -58,7 +48,7 @@ To install them into your venv's site-packages run `pip install -r requirements.
 
 ### Setting up the database
 This Git ships without a database, so you will have to create it yourself. 
-In the terminal, change your working directory to the base of this repository and first call 
+In the terminal, first call 
 `python manage.py makemigrations`, then `python manage.py migrate`. 
 This will set up an empty database with all the required tables and columns. 
 
