@@ -32,6 +32,7 @@ CleanSys was built for german users, so the interface language is german. If you
 (and are willing to put some effort into it yourself), please open an Issue for it. 
 
 ## Screenshots
+Here is a selection of CleanSys' pages:
 
 #### Cleaner's pages (best on mobile clients)
 Login page | Cleaner's main page | Duty tasks page | Schedule overview (current week is highlighted) 
@@ -46,6 +47,10 @@ Schedule print view | Analytics page showing assignment count of all cleaners ov
 Administration main page | Cleaner creation form | Schedule creation form
 --- | --- | ---
 ![admin-page](screenshots/admin_view.png) | ![cleaner-new](screenshots/cleaner_new.png) | ![schedule-new](screenshots/schedule_new.png)
+
+Schedule group creation form | Affiliate a Cleaner with a schedule group | Tasks for a specific schedule | Add a new task to a schedule
+--- | --- | --- | ---
+![schedule-group-new](screenshots/schedule_group_new.png) | ![affiliation-new](screenshots/affiliation_new.png) | ![task-template-vew](screenshots/task_template_view.png) | ![login-page](screenshots/task_template_new.png)
 
 ## Installation
 After cloning this project onto your local system, create a virtualenv for it 
