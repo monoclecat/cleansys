@@ -15,10 +15,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
-with open('putzplan_generator/keys/django-secret-key.txt', 'r') as secret_key_file:
+with open('cleansys/keys/django-secret-key.txt', 'r') as secret_key_file:
     SECRET_KEY = secret_key_file.read().replace('\n', '')
 
-with open('putzplan_generator/keys/slack-bot-token.txt', 'r') as slack_bot_token:
+with open('cleansys/keys/slack-bot-token.txt', 'r') as slack_bot_token:
     SLACK_BOT_TOKEN = slack_bot_token.read().replace('\n', '')
 
 os.environ['SLACK_BOT_TOKEN'] = SLACK_BOT_TOKEN
@@ -83,7 +83,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'putzplan_generator.wsgi.application'
+WSGI_APPLICATION = 'cleansys.wsgi.application'
 
 
 # Database

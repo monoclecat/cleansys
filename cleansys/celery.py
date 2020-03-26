@@ -3,9 +3,9 @@ import os
 from celery import Celery
 
 # set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'putzplan_generator.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cleansys.settings')
 
-app = Celery('putzplan_generator')
+app = Celery('cleansys')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.

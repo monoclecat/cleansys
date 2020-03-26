@@ -1,5 +1,5 @@
 from __future__ import absolute_import, unicode_literals
-from putzplan_generator.celery import app
+from cleansys.celery import app
 from .slackbot import *
 
 
