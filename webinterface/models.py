@@ -185,38 +185,34 @@ class Schedule(models.Model):
                 logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
             logging.debug(logging_text)
 
+        # First, group by deployment_ratios
         distinct_ratio_values = list(set(x[1] for x in ratios))
         distinct_ratio_values.sort()
-        cleaners_grouped_by_ratios = [[x[0] for x in ratios if x[1] == val] for val in distinct_ratio_values]
-        for cleaner_group in cleaners_grouped_by_ratios:
-            non_excluded = [x for x in cleaner_group if x not in cleaning_week.excluded.all()]
-            eligible = [x for x in non_excluded if x.is_eligible_for_week(week=week)]
-            if eligible:
-                choice = random.choice(eligible)
-                logging.debug("   {} inserted! [Code21]".format(choice.name))
+        grouped_by_ratios = [[x[0] for x in ratios if x[1] == val] for val in distinct_ratio_values]
+        for same_ratio in grouped_by_ratios:
+            logging.debug("> [{}] have the same ratio.".format(','.join([x for x in same_ratio])))
+            non_excluded = [x for x in same_ratio if x not in cleaning_week.excluded.all()]
+            logging.debug(">>  [{}] of these are NOT excluded.".format(','.join([x for x in non_excluded])))
+
+            # Now, group by assignment count, so we don't randomly choose the Cleaner who has twice as many
+            # Assignments in this week as the others with the same deployment_ratio.
+            nr_assignments = list(set(x.nr_assignments_in_week(week) for x in same_ratio))
+            nr_assignments.sort()
+            grouped_by_assignment_count = [[x for x in non_excluded if x.nr_assignments_in_week(week) == count]
+                                           for count in nr_assignments]
+
+            for same_assignment_count in grouped_by_assignment_count:
+                logging.debug(">>>   [{}] have the same assignment count.".format(
+                    ','.join([x for x in same_assignment_count])))
+                choice = random.choice(same_assignment_count)
+                logging.debug("---- {} chosen! [Code21] ----".format(choice.name))
                 return self.assignment_set.create(cleaner=choice, cleaning_week=cleaning_week)
+
         else:
-            logging.debug("   All Cleaners are excluded or are already cleaning as much as they like. "
+            logging.debug("---- All Cleaners are excluded or are already cleaning as much as they like. "
                           "We must choose {} [Code22]"
                           .format(ratios[0][0]))
             return self.assignment_set.create(cleaner=ratios[0][0], cleaning_week=cleaning_week)
-
-        # for cleaner, ratio in ratios:
-        #     if cleaner in cleaning_week.excluded.all():
-        #         logging.debug("   {} is excluded for this week. [Code11]".format(cleaner.name))
-        #         continue
-        #     if cleaner.is_eligible_for_week(week):
-        #         logging.debug("   {} inserted! [Code21]".format(cleaner.name))
-        #         return self.assignment_set.create(cleaner=cleaner, cleaning_week=cleaning_week)
-        #     else:
-        #         logging.debug("   {} already has {} duties today. [Code12]".format(
-        #             cleaner.name, cleaner.nr_assignments_in_week(week)))
-        # else:
-        #
-        #     logging.debug("   All Cleaners are excluded or are already cleaning as much as they like. "
-        #                   "We must choose {} [Code22]"
-        #                   .format(ratios[0][0]))
-        #     return self.assignment_set.create(cleaner=ratios[0][0], cleaning_week=cleaning_week)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.slug = slugify(self.name)
@@ -291,11 +287,6 @@ class Cleaner(models.Model):
 
     time_zone = models.CharField(max_length=30, default="Europe/Berlin")
     slack_id = models.CharField(max_length=10, default='')
-
-    PREFERENCE = ((1, 'Ich möchte immer nur einen Putzdienst auf einmal machen müssen.'),
-                  (2, 'Ich möchte höchstens zwei Putzdienste auf einmal machen müssen.'),
-                  (3, 'Mir ist es egal, wie viele Putzdienste ich auf einmal habe.'))
-    preference = models.IntegerField(choices=PREFERENCE, default=2)
 
     objects = CleanerQuerySet.as_manager()
 

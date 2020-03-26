@@ -163,6 +163,35 @@ class CleanerView(ListView):
         return context
 
 
+class CleanerAnalyticsView(ListView):
+    model = Cleaner
+    template_name = 'webinterface/cleaner_analytics_dashboard.html'
+
+    def get_queryset(self):
+        return Cleaner.objects.active()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        weeks = [x['week'] for x in CleaningWeek.objects.all().values("week")]
+        weeks.sort()
+
+        fig = go.Figure()
+        for cleaner in context['cleaner_list']:
+            fig.add_trace(go.Scatter(
+                x=[epoch_week_to_sunday(x) for x in weeks],
+                y=[cleaner.assignment_set.filter(cleaning_week__week=x).count() for x in weeks],
+                name=cleaner.name,
+                mode='lines+markers'
+            ))
+
+        fig.update_layout(title='Anzahl Putzdienste',
+                          xaxis={'title': 'Wochen'},
+                          yaxis={'title': 'Anzahl Putzdienste'})
+        context['plot'] = opy.plot(fig, auto_open=False, output_type='div')
+
+        return context
+
+
 class AssignmentTasksView(TemplateView):
     template_name = "webinterface/assignment_tasks.html"
 

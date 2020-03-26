@@ -74,10 +74,9 @@ class ScheduleGroupForm(forms.ModelForm):
 class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
-        fields = ['name', 'preference']
+        fields = ['name', ]
         labels = {
             'name': "Name des Putzers",
-            'preference': "Putzvorlieben",
             'slack_id': "Wähle das Slackprofil des Putzers aus"
         }
         help_texts = {

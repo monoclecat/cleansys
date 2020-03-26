@@ -131,18 +131,18 @@
         {% endfor %}
     </table>
     {% include "webinterface_snippets/schedule_pagination_buttons.html" %}
-
+    <br>
     {% if page_obj.0.week %}
-        <div class="row">
+        <div class="row" style="padding: 5px">
             <div class="col-xs-12">
                 <a href="{% url 'webinterface:schedule-analystics-view' schedule.slug %}"
                    class="btn btn-default btn-block" role="button">
-                    <span class="glyphicon glyphicon-dashboard"></span> Analytics
+                    <span class="glyphicon glyphicon-dashboard"></span> Analytics zu {{ schedule }}
                 </a>
             </div>
         </div>
 
-        <div class="row">
+        <div class="row" style="padding: 5px">
             <div class="col-xs-12">
                 <a href="{% url 'webinterface:schedule-print-view' schedule.slug page_obj.0.week %}"
                    class="btn btn-default btn-block" role="button">

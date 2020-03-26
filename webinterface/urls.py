@@ -49,6 +49,7 @@ urlpatterns = [
 
 
     path('config/', staff_member_required(ConfigView.as_view(), login_url=reverse_lazy("webinterface:login")), name='config'),
+    path('putzer-analytics/', login_required(CleanerAnalyticsView.as_view()), name='cleaner-analytics'),
 
     path('cleaning-week-tasks/<int:pk>/<int:page>/', staff_member_required(TaskCreateView.as_view()),
          name='cleaning-week-tasks'),

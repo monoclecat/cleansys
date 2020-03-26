@@ -25,6 +25,10 @@ Einstellungen
                         <span class="glyphicon glyphicon-plus"></span> Neuer Putzer
                     {% endif %}
                     </a>
+                    <a href="{% url 'webinterface:cleaner-analytics' %}"
+                       class="btn btn-default" role="button">
+                        <span class="glyphicon glyphicon-dashboard"></span> Analytics
+                    </a>
                 </h2>
                 <div class="well">
                 {% if active_cleaner_list %}
@@ -97,7 +101,7 @@ Einstellungen
                     </div>
                 </div>
 
-                <a class="btn btn-default" role="button" href="{% url 'webinterface:logout' %}">Logout</a>
+                <a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:logout' %}">Logout</a>
                 <br><br><br>
             </div>
         </div>
