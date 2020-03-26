@@ -15,11 +15,8 @@ CleanSys was built for a 15-person household with 4 floors.
 Each floor has its own weekly repeating cleaning schedules, two kitchens which some floors share, and 
 several schedules which apply to the entire household. 
 
-Assigning cleaning duties can be done on paper, as a large Excel sheet for each schedule, with Tasks on the x-axis 
-and dates & assignees on the y-axis, which is how it was done in the 15-person household prior to CleanSys
-_(making all the paper schedules and filling in the names took up to 2 hours every 3 months)_. 
-
-An electronic solution, which CleanSys provides, takes over this tedious task and provides additional features.  
+An electronic solution, which CleanSys provides, takes over the tedious task of creating schedules on paper 
+and provides additional features.  
 One of them: CleanSys offers a quick and easy way for Cleaners to switch duties with each other, in case someone's 
 vacation is getting in the way of their cleaning duties 
 _(the analogue version of this is to ask the group chat and hope for a response)_.
