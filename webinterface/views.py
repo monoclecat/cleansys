@@ -133,7 +133,7 @@ class ScheduleTaskList(DetailView):
 class CleanerView(ListView):
     template_name = "webinterface/cleaner.html"
     model = Assignment
-    paginate_by = 10
+    paginate_by = 5
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_superuser:
