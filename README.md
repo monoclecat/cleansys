@@ -41,6 +41,9 @@ CleanSys was built for german users, so the interface language is german. If you
 After cloning this project onto your local system, create a virtualenv for it 
 *([tutorial](https://docs.python-guide.org/dev/virtualenvs/))*. 
 
+Next, create the directory `keys` inside `/cleansys` and create the files `/cleansys/keys/django-secret-key.txt`
+and `/cleansys/keys/slack-bot-token.txt`. 
+
 Run all shell commands in the root directory of this project with the virtual environment **activated**.
 
 ### Installing required packages
@@ -51,8 +54,10 @@ To install them into your venv's site-packages run `pip install -r requirements.
 This Git ships without a database, so you will have to create it yourself. 
 In the terminal, first call `python manage.py makemigrations`.
 
-You're gettinig an error? `django-secret-key.txt` missing? If you have worked with Django before, you should 
-know what that is and why it is missing. Just create a new directory in 
+You're getting an error? `django-secret-key.txt` missing? If you have worked with Django before, you should 
+know what that is and why it is missing. Just create a new `keys` directory inside the `cleansys` directory and
+add a new file called `django-secret-key.txt`. It should contain the raw string of random characters and should be 
+at least 50 characters long. 
 
 Then `python manage.py migrate`. 
 This will set up an empty database with all the required tables and columns. 
