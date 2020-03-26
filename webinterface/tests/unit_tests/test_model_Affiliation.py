@@ -23,8 +23,8 @@ class AffiliationTest(TestCase):
         cls.group2 = ScheduleGroup.objects.create(name="group2")
 
         # Cleaners
-        cls.cleaner1 = Cleaner.objects.create(name="cleaner1", preference=1)
-        cls.cleaner2 = Cleaner.objects.create(name="cleaner2", preference=1)
+        cls.cleaner1 = Cleaner.objects.create(name="cleaner1")
+        cls.cleaner2 = Cleaner.objects.create(name="cleaner2")
 
         # Affiliation
         cls.previous_affiliation = Affiliation.objects.create(

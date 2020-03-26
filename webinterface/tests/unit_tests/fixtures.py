@@ -27,12 +27,12 @@ class BaseFixture:
         cls.lower_group.schedules.add(cls.kitchen_schedule, cls.bedroom_schedule, cls.garage_schedule)
 
         # Cleaners
-        cls.angie = Cleaner.objects.create(name="angie", preference=1)  # Max one duty a week please
+        cls.angie = Cleaner.objects.create(name="angie")
         cls.angie_affiliation = Affiliation.objects.create(
             cleaner=cls.angie, group=cls.upper_group, beginning=cls.start_week, end=cls.end_week
         )
 
-        cls.bob = Cleaner.objects.create(name="bob", preference=2)  # Max two duties a week please
+        cls.bob = Cleaner.objects.create(name="bob")
         cls.bob_affiliation_1 = Affiliation.objects.create(
             cleaner=cls.bob, group=cls.upper_group, beginning=cls.start_week, end=cls.mid_week
         )
@@ -40,7 +40,7 @@ class BaseFixture:
             cleaner=cls.bob, group=cls.lower_group, beginning=cls.mid_week+1, end=cls.end_week
         )
 
-        cls.chris = Cleaner.objects.create(name="chris", preference=3)  # I don't care how many duties a week
+        cls.chris = Cleaner.objects.create(name="chris")
         cls.chris_affiliation_1 = Affiliation.objects.create(
             cleaner=cls.chris, group=cls.lower_group, beginning=cls.start_week, end=cls.mid_week
         )
@@ -48,7 +48,7 @@ class BaseFixture:
             cleaner=cls.chris, group=cls.upper_group, beginning=cls.mid_week+1, end=cls.end_week
         )
 
-        cls.dave = Cleaner.objects.create(name="dave", preference=3)  # I don't care how many duties a week
+        cls.dave = Cleaner.objects.create(name="dave")
         cls.dave_affiliation = Affiliation.objects.create(
             cleaner=cls.dave, group=cls.lower_group, beginning=cls.start_week, end=cls.end_week
         )

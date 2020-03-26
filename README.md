@@ -42,9 +42,11 @@ After cloning this project onto your local system, create a virtualenv for it
 *([tutorial](https://docs.python-guide.org/dev/virtualenvs/))*. 
 
 Next, create the directory `keys` inside `/cleansys` and create the files `/cleansys/keys/django-secret-key.txt`
-and `/cleansys/keys/slack-bot-token.txt`. 
+and `/cleansys/keys/slack-bot-token.txt`. Enter a >50 character random string into 
+`django-secret-key.txt` and leave `slack-bot-token.txt` empty for now. 
 
-Run all shell commands in the root directory of this project with the virtual environment **activated**.
+For the next steps, all shell commands are assumed to be run in the root directory of this project 
+with the virtual environment **activated**.
 
 ### Installing required packages
 The required pip packages and their versions are listed in `requirements.txt`. 
@@ -52,14 +54,7 @@ To install them into your venv's site-packages run `pip install -r requirements.
 
 ### Setting up the database
 This Git ships without a database, so you will have to create it yourself. 
-In the terminal, first call `python manage.py makemigrations`.
-
-You're getting an error? `django-secret-key.txt` missing? If you have worked with Django before, you should 
-know what that is and why it is missing. Just create a new `keys` directory inside the `cleansys` directory and
-add a new file called `django-secret-key.txt`. It should contain the raw string of random characters and should be 
-at least 50 characters long. 
-
-Then `python manage.py migrate`. 
+In the terminal, first call `python manage.py makemigrations`, then `python manage.py migrate`. 
 This will set up an empty database with all the required tables and columns. 
 
 The admin area of CleanSys uses the login of the Django superuser you create with `python manage.py createsuperuser`. 

@@ -277,7 +277,7 @@ class Cleaner(models.Model):
     """
     The Cleaner is the representation of the physical person living in the house.
 
-    The Cleaner is linked to a User and can state his/her preferences in cleaning.
+    Each Cleaner is linked to a User object
     """
     class Meta:
         ordering = ('name',)
@@ -353,11 +353,6 @@ class Cleaner(models.Model):
             return query.first()
         else:
             return None
-
-    def is_eligible_for_week(self, week: int):
-        nr_assignments_on_day = self.nr_assignments_in_week(week)
-        return nr_assignments_on_day == 0 or nr_assignments_on_day == 1 and self.preference == 2 \
-            or self.preference == 3
 
     def has_slack_id(self):
         return self.slack_id is not ''
