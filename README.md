@@ -33,10 +33,19 @@ CleanSys was built for german users, so the interface language is german. If you
 
 ## Screenshots
 
-#### Cleaner pages (made for mobile clients)
-Login page | Cleaner's main page | Cleaning duty assignment page | Schedule overview (current week is highlighted) 
+#### Cleaner's pages (best on mobile clients)
+Login page | Cleaner's main page | Duty tasks page | Schedule overview (current week is highlighted) 
 --- | --- | --- | ---
 ![login-page](screenshots/login_view.png) | ![cleaner-page](screenshots/cleaner_view.png) | ![task-page](screenshots/task_view.png) | ![schedule-page](screenshots/schedule_view.png) | 
+
+Schedule print view | Analytics page showing assignment count of all cleaners over time 
+--- | ---
+![schedule-print-page](screenshots/schedule_print_view.png) | ![analytics-page](screenshots/cleaner_analytics.png)
+
+#### Admin pages
+Administration main page | Cleaner creation form | Schedule creation form
+--- | --- | ---
+![admin-page](screenshots/admin_view.png) | ![cleaner-new](screenshots/cleaner_new.png) | ![schedule-new](screenshots/schedule_new.png)
 
 ## Installation
 After cloning this project onto your local system, create a virtualenv for it 
