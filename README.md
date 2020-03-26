@@ -1,19 +1,19 @@
 # Cleaning schedule management system (CleanSys)
 
 CleanSys is a *cleaning schedule management system* written in Python (using the Django framework) which is built for 
-large households with many cleaning schedules and complex relationships between Cleaners and Schedules. 
+large households with many cleaning schedules and time-variant relationships between Cleaners and Schedules. 
 
 It makes sure that:   
-- (a) Every Cleaner cleans his/her fair share in each cleaning schedule he is assigned
+- Every Cleaner cleans his/her fair share in each cleaning schedule he/she is assigned
  to *(not cleaning too much or too little)*.
-- (b) A Cleaner's work load is spread out over time as much as possible.  
+- A Cleaner's work load is spread out over time as much as possible.  
 
 *A simplified example of a use-case:*
-![Example of a multi-person household with cleaning schedules](diagrams/CleanSys1.svg)
+![Example of a multi-person household with cleaning schedules](screenshots/CleanSys1.svg)
 
 CleanSys was built for a 15-person household with 4 floors. 
-Each floor has its own weekly repeating cleaning schedules, there are two kitchens which some floors share and  
-there are several schedules for which the entire household is responsible. 
+Each floor has its own weekly repeating cleaning schedules, two kitchens which some floors share, and 
+several schedules which apply to the entire household. 
 
 Assigning cleaning duties can be done on paper, as a large Excel sheet for each schedule, with Tasks on the x-axis 
 and dates & assignees on the y-axis, which is how it was done in the 15-person household prior to CleanSys
@@ -31,6 +31,14 @@ simple click-on-your-name login, and a strong focus on transparency with a granu
 CleanSys was built for german users, so the interface language is german. If you would like to have a translation 
 (and are willing to put some effort into it yourself), please open an Issue for it. 
 
+## Screenshots
+
+#### Cleaner pages (made for mobile clients)
+Login page | Cleaner's main page 
+--- | --- 
+![login-page](screenshots/login_view.png) | ![cleaner-page](screenshots/cleaner_view.png) 
+Cleaning duty assignment page | Schedule overview (current week is highlighted) 
+![task-page](screenshots/task_view.png) | ![schedule-page](screenshots/schedule_view.png) 
 
 ## Installation
 After cloning this project onto your local system, create a virtualenv for it 
