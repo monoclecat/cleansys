@@ -38,7 +38,8 @@ CleanSys was built for german users, so the interface language is german. If you
 
 
 ## Installation
-After cloning this project onto your local system, create a virtualenv for it *([tutorial](https://docs.python-guide.org/dev/virtualenvs/))*. 
+After cloning this project onto your local system, create a virtualenv for it 
+*([tutorial](https://docs.python-guide.org/dev/virtualenvs/))*. 
 
 Run all shell commands in the root directory of this project with the virtual environment **activated**.
 
@@ -48,8 +49,12 @@ To install them into your venv's site-packages run `pip install -r requirements.
 
 ### Setting up the database
 This Git ships without a database, so you will have to create it yourself. 
-In the terminal, first call 
-`python manage.py makemigrations`, then `python manage.py migrate`. 
+In the terminal, first call `python manage.py makemigrations`.
+
+You're gettinig an error? `django-secret-key.txt` missing? If you have worked with Django before, you should 
+know what that is and why it is missing. Just create a new directory in 
+
+Then `python manage.py migrate`. 
 This will set up an empty database with all the required tables and columns. 
 
 The admin area of CleanSys uses the login of the Django superuser you create with `python manage.py createsuperuser`. 
