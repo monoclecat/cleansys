@@ -15,17 +15,15 @@ CleanSys was built for a 15-person household with 4 floors.
 Each floor has its own weekly repeating cleaning schedules, two kitchens which some floors share, and 
 several schedules which apply to the entire household. 
 
-An electronic solution, which CleanSys provides, takes over the tedious task of creating schedules on paper 
-and provides additional features.  
-One of them: CleanSys offers a quick and easy way for Cleaners to switch duties with each other, in case someone's 
-vacation is getting in the way of their cleaning duties 
-_(the analogue version of this is to ask the group chat and hope for a response)_.
+This cleaning-schedule management system takes over the tedious task of creating schedules on paper 
+and provides additional features, such as a quick and easy way for Cleaners to switch duties with each other.
 
 CleanSys comes with powerful editing capabilities for the administrator, an intuitive interface for the Cleaners, 
 simple click-on-your-name login, and a strong focus on transparency with a granularity down to the 
  sub-task level of each schedule.  
 
-CleanSys was built for german users, so the interface language is german. If you would like to have a translation 
+This project was made with german users in mind, so the interface language is german as well. 
+If you would like to have a translation 
 (and are willing to put some effort into it yourself), please open an Issue for it. 
 
 ## Screenshots
