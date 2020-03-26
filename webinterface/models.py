@@ -205,7 +205,7 @@ class Schedule(models.Model):
                 logging.debug(">>>   [{}] have the same assignment count.".format(
                     ','.join([x.name for x in same_assignment_count])))
                 choice = random.choice(same_assignment_count)
-                logging.debug("---- {} chosen! [Code21] ----".format(choice.name))
+                logging.debug(">>>>    {} chosen! [Code21] ----".format(choice.name))
                 return self.assignment_set.create(cleaner=choice, cleaning_week=cleaning_week)
 
         else:
