@@ -76,7 +76,7 @@ class CleanerForm(forms.ModelForm):
         model = Cleaner
         fields = ['name', ]
         labels = {
-            'name': "Name des Putzers",
+            'name': "Name des Putzers (bitte nur Vorname der Person oder Spitzname)",
             'slack_id': "Wähle das Slackprofil des Putzers aus"
         }
         help_texts = {

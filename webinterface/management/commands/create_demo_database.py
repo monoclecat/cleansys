@@ -35,7 +35,8 @@ class Command(BaseCommand):
                     obj.delete()
                 else:
                     raise CommandError("Found {} object! The database needs to be empty of objects "
-                                       "in order to create the demo database!".format(model.__name__))
+                                       "in order to create the demo database! Add flag '--clear-db' to clear "
+                                       "the database first (this is irreversible!).".format(model.__name__))
 
         eval_model(DutySwitch, clear_db)
         eval_model(Task, clear_db)

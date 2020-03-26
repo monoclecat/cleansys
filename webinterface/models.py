@@ -190,9 +190,9 @@ class Schedule(models.Model):
         distinct_ratio_values.sort()
         grouped_by_ratios = [[x[0] for x in ratios if x[1] == val] for val in distinct_ratio_values]
         for same_ratio in grouped_by_ratios:
-            logging.debug("> [{}] have the same ratio.".format(','.join([x for x in same_ratio])))
+            logging.debug("> [{}] have the same ratio.".format(','.join([x.name for x in same_ratio])))
             non_excluded = [x for x in same_ratio if x not in cleaning_week.excluded.all()]
-            logging.debug(">>  [{}] of these are NOT excluded.".format(','.join([x for x in non_excluded])))
+            logging.debug(">>  [{}] of these are NOT excluded.".format(','.join([x.name for x in non_excluded])))
 
             # Now, group by assignment count, so we don't randomly choose the Cleaner who has twice as many
             # Assignments in this week as the others with the same deployment_ratio.
@@ -203,7 +203,7 @@ class Schedule(models.Model):
 
             for same_assignment_count in grouped_by_assignment_count:
                 logging.debug(">>>   [{}] have the same assignment count.".format(
-                    ','.join([x for x in same_assignment_count])))
+                    ','.join([x.name for x in same_assignment_count])))
                 choice = random.choice(same_assignment_count)
                 logging.debug("---- {} chosen! [Code21] ----".format(choice.name))
                 return self.assignment_set.create(cleaner=choice, cleaning_week=cleaning_week)
