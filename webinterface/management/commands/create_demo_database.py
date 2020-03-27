@@ -199,7 +199,7 @@ class Command(BaseCommand):
         Affiliation.objects.create(cleaner=cl_moved_out, group=dis_group, beginning=now-10, end=now-1)
 
         self.stdout.write("Creating Assignments (this can take some time)...")
-        for sch in Schedule.objects.all():
+        for sch in Schedule.objects.enabled():
             sch.create_assignments_over_timespan(start_week=now - start_before,
                                                  end_week=now - start_before + demo_length)
 
