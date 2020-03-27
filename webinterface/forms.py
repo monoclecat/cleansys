@@ -69,6 +69,7 @@ class ScheduleGroupForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['schedules'].required = False
+        self.fields['schedules'].queryset = Schedule.objects.enabled()
 
 
 class CleanerForm(forms.ModelForm):
@@ -133,6 +134,7 @@ class AffiliationForm(forms.ModelForm):
 
     def __init__(self, cleaner=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['group'].queryset = ScheduleGroup.objects.enabled()
         self.cleaner = cleaner
         if not self.cleaner and 'instance' in kwargs and kwargs['instance']:
             self.cleaner = kwargs['instance'].cleaner
