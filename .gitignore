@@ -53,7 +53,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-bin/
+/bin/
 
 # mypy
 .mypy_cache/
@@ -62,3 +62,4 @@ bin/
 *.pid
 /htmlcov/
 index.html alias
+
