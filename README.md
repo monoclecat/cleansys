@@ -49,7 +49,7 @@ Schedule group creation form | Affiliate a Cleaner with a schedule group | Tasks
 
 # Installation
 
-#### 1. Clone the project
+### 1. Clone the project
 Clone the project into your workspace: 
 
 ```bash
@@ -58,7 +58,7 @@ git clone https://github.com/monoclecat/cleansys.git
 cd cleansys
 ```
 
-#### 2. Create a virtual environment and activate it
+### 2. Create a virtual environment and activate it
 A virtual environment isolates Python environment of CleanSys from your system's Python environment. 
 
 ```bash
@@ -67,25 +67,40 @@ virtualenv -p python3 .  # Create virtualenv inside the newly cloned repository
 source bin/activate  # activate the virtualenv
 ```
 
-For the next steps, all shell commands are assumed to be run in the root directory of this project 
-with the virtual environment **activated**.
-
-### Installing required packages
+### 3. Installing required packages
 The required pip packages and their versions are listed in `requirements.txt`. 
-To install them into your venv's site-packages run `pip3 install -r requirements.txt`. 
+Install them into your virtualenv's site-packages:
 
-### Setting up the database
-This Git ships without a database, so you will have to create it yourself. 
-In the terminal, first call `python manage.py makemigrations`, then `python manage.py migrate`. 
+```bash
+pip3 install -r requirements.txt
+``` 
+
+### 4. Setting up the database
+This Git ships without a database and any migrations. Create them with:
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+ 
 This will set up an empty database with all the required tables and columns. 
 
-The admin area of CleanSys uses the login of the Django superuser you create with `python manage.py createsuperuser`. 
-The username and password is up to you to choose.  
+The admin area of CleanSys uses the login of the Django superuser. Create one with:
 
-### Playing around an exploring features
-The best place to start is to set up the demonstration database. 
-The function to create it is implemented as a Django management command and is simply called with:
-`python manage.py create_demo_database`
+```bash
+python manage.py createsuperuser
+``` 
 
-To start the Django server, run `python manage.py runserver`. 
+### 5. Playing around an exploring features
+The best place to start is to set up the demonstration database. To set it up, run:
+
+```bash
+python manage.py create_demo_database
+```
+
+Finally, start the Django server:
+
+```bash
+python manage.py runserver
+``` 
 
