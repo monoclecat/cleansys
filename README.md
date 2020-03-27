@@ -47,20 +47,32 @@ Schedule group creation form | Affiliate a Cleaner with a schedule group | Tasks
 --- | --- | --- | ---
 ![schedule-group-new](screenshots/schedule_group_new.png) | ![affiliation-new](screenshots/affiliation_new.png) | ![task-template-vew](screenshots/task_template_view.png) | ![login-page](screenshots/task_template_new.png)
 
-## Installation
-After cloning this project onto your local system, create a virtualenv for it 
-*([tutorial](https://docs.python-guide.org/dev/virtualenvs/))*. 
+# Installation
 
-Next, create the directory `keys` inside `/cleansys` and create the files `/cleansys/keys/django-secret-key.txt`
-and `/cleansys/keys/slack-bot-token.txt`. Enter a >50 character random string into 
-`django-secret-key.txt` and leave `slack-bot-token.txt` empty for now. 
+#### 1. Clone the project
+Clone the project into your workspace: 
+
+```bash
+cd /path-to-workspace/
+git clone https://github.com/monoclecat/cleansys.git
+cd cleansys
+```
+
+#### 2. Create a virtual environment and activate it
+A virtual environment isolates Python environment of CleanSys from your system's Python environment. 
+
+```bash
+pip3 install virtualenv  # If you haven't installed the virtualenv package
+virtualenv -p python3 .  # Create virtualenv inside the newly cloned repository
+source bin/activate  # activate the virtualenv
+```
 
 For the next steps, all shell commands are assumed to be run in the root directory of this project 
 with the virtual environment **activated**.
 
 ### Installing required packages
 The required pip packages and their versions are listed in `requirements.txt`. 
-To install them into your venv's site-packages run `pip install -r requirements.txt`. 
+To install them into your venv's site-packages run `pip3 install -r requirements.txt`. 
 
 ### Setting up the database
 This Git ships without a database, so you will have to create it yourself. 

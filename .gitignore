@@ -11,9 +11,6 @@ __pycache__/
 # Mac OSX
 .DS_Store
 
-# Secret keys
-*/keys/*.txt
-
 # Django
 migrations/
 *.sqlite3
@@ -42,9 +39,6 @@ local_settings.py
 # pyenv
 .python-version
 
-# celery beat schedule file
-celerybeat-schedule
-
 # Environments
 .env
 .venv
@@ -58,7 +52,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# Celery
 *.pid
 /htmlcov/
 index.html alias

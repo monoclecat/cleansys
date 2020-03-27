@@ -78,10 +78,6 @@ class CleanerForm(forms.ModelForm):
         fields = ['name', ]
         labels = {
             'name': "Name des Putzers (bitte nur Vorname der Person oder Spitzname)",
-            'slack_id': "Wähle das Slackprofil des Putzers aus"
-        }
-        help_texts = {
-            'slack_id': "Das Putzplan-System muss dafür mit dem Slack-Server verbunden sein."
         }
 
     email = forms.EmailField(label="Email des Putzers")

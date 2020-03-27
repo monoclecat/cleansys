@@ -266,12 +266,6 @@ class CleanerQuerySet(models.QuerySet):
         return self.exclude(
             affiliation__beginning__lte=current_epoch_week(), affiliation__end__gte=current_epoch_week())
 
-    def no_slack_id(self) -> QuerySet:
-        return self.filter(slack_id='')
-
-    def has_slack_id(self) -> QuerySet:
-        return self.exclude(slack_id='')
-
 
 class Cleaner(models.Model):
     """
@@ -286,7 +280,6 @@ class Cleaner(models.Model):
     slug = models.CharField(max_length=20, unique=True)
 
     time_zone = models.CharField(max_length=30, default="Europe/Berlin")
-    slack_id = models.CharField(max_length=10, default='')
 
     objects = CleanerQuerySet.as_manager()
 
@@ -353,9 +346,6 @@ class Cleaner(models.Model):
             return query.first()
         else:
             return None
-
-    def has_slack_id(self):
-        return self.slack_id is not ''
 
     def delete(self, using=None, keep_parents=False):
         super().delete(using, keep_parents)

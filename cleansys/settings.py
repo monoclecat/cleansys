@@ -13,15 +13,10 @@ logging.getLogger('').setLevel(logging.DEBUG)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
+# See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
-with open('cleansys/keys/django-secret-key.txt', 'r') as secret_key_file:
-    SECRET_KEY = secret_key_file.read().replace('\n', '')
+SECRET_KEY = "B5qX%#+gY#UzW@yK2%zolzg:VD/u#/]~*sijL(KGe9!LyeAKRJ"
 
-with open('cleansys/keys/slack-bot-token.txt', 'r') as slack_bot_token:
-    SLACK_BOT_TOKEN = slack_bot_token.read().replace('\n', '')
-
-os.environ['SLACK_BOT_TOKEN'] = SLACK_BOT_TOKEN
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -44,12 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'webinterface.apps.WebinterfaceConfig',
-    'slackbot.apps.SlackbotConfig',
     'bootstrap3',
     'crispy_forms',
-    'slack',
-    'django_celery_beat',
-    'django_celery_results',
     'coverage'
 ]
 
@@ -134,9 +125,3 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
-
-# Celery settings
-
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers.DatabaseScheduler"
-CELERY_WORKER_CONCURRENCY = 1  # Alternative: Manual Routing: Only one worker for poll_slack queue
