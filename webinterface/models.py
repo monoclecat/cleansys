@@ -612,7 +612,7 @@ class TaskTemplateQuerySet(models.QuerySet):
 
 
 class TaskTemplate(models.Model):
-    task_name = models.CharField(max_length=20)
+    task_name = models.CharField(max_length=40)
     task_help_text = models.CharField(max_length=200, default="", null=True)
     start_days_before = models.IntegerField(choices=[(0, ''), (1, ''), (2, ''), (3, ''), (4, ''), (5, ''), (6, '')])
     end_days_after = models.IntegerField(choices=[(0, ''), (1, ''), (2, ''), (3, ''), (4, ''), (5, ''), (6, '')])

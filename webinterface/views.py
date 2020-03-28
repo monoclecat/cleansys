@@ -229,4 +229,8 @@ class AssignmentTasksView(TemplateView):
 
 class LoginByClickView(LoginView):
     template_name = "webinterface/login_byclick.html"
-    extra_context = {'cleaner_list': Cleaner.objects.active()}
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        context['cleaner_list'] = Cleaner.objects.active()
+        return context
