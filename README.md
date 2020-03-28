@@ -47,7 +47,8 @@ Schedule group creation form | Affiliate a Cleaner with a schedule group | Tasks
 --- | --- | --- | ---
 ![schedule-group-new](screenshots/schedule_group_new.png) | ![affiliation-new](screenshots/affiliation_new.png) | ![task-template-vew](screenshots/task_template_view.png) | ![login-page](screenshots/task_template_new.png)
 
-# Installation
+# Installation (local)
+> Should work on Unix systems and are verified on Mac OSX
 
 ### 1. Clone the project
 Clone the project into your workspace: 
@@ -98,9 +99,109 @@ The best place to start is to set up the demonstration database. To set it up, r
 python manage.py create_demo_database
 ```
 
+### 6. Starting the Django server
 Finally, start the Django server:
 
 ```bash
 python manage.py runserver
 ``` 
+
+# Installation (on an Ubuntu server)
+
+Follow steps 1 through 5 of the previous instructions, substituting `path-to-workspace` with `/var/www/`. 
+Also, you will run into 'Permission denied' errors if you don't run some of the command as root 
+(prepend `sudo ` to the command). 
+
+I first had to install pip3 `sudo apt install python3-pip`
+
+Change the ownership of the directory `cleansys` to your username, create the virtualenv in it without using sudo and
+install the pip packages inside `requirements.txt` without using sudo 
+*([installing pip packages using sudo is a major security risk](https://stackoverflow.com/a/21056000/5568461))*:
+```bash
+cd /var/www
+sudo chown -R your_username:your_username cleansys  # Your user needs ownership of cleansys/
+
+virtualenv -p python3 cleansys/
+cd cleansys
+
+source bin/activate  # Don't forget to activate the virtual environment!!!
+python3 -m pip install -r requirements.txt
+
+python3 manage.py makemigrations
+python3 manage.py migrate
+
+deactivate  # Deactivate virtualenv
+```
+
+Now, we will follow a recommended way of deploying Django: 
+[How to use Django with Apache and mod_wsgi](https://docs.djangoproject.com/en/3.0/howto/deployment/wsgi/modwsgi/)
+
+Install requirements:
+
+```bash
+sudo apt-get install libapache2-mod-wsgi-py3 apache2
+```
+
+Give the user `www-data` ownership of `cleansys`:
+```bash
+cd /var/www
+sudo chown -R www-data:www-data cleansys  # Give Apache's user ownership so it can serve the files
+```
+
+Create an Apache site-configuration file:
+```bash
+sudo vim /etc/apache2/sites-available/cleansys.conf
+```
+
+This opens the Vim editor. Press <kbd>i</kbd> and page the following: 
+
+```html
+ WSGIDaemonProcess cleansys python-home=/var/www/cleansys python-path=/var/www/cleansys
+ WSGIProcessGroup cleansys
+
+ <VirtualHost *:80>
+     Alias /static/ /var/www/cleansys/barsys/static/
+     <Directory /static>
+         Require all granted
+     </Directory>
+     WSGIScriptAlias / /var/www/cleansys/cleansys/wsgi.py process-group=cleansys
+     <Directory /var/www/cleansys/cleansys>
+         <Files wsgi.py>
+             Require all granted
+         </Files>
+     </Directory>
+ </VirtualHost>
+```
+
+## "I can't run virtualenv or pip install without sudo!"
+
+Make sure there is no system-wide installed version of virtualenv. **virtualenv is meant to be run as a non-root user**, 
+and installing virtualenv as root prevents this 
+(see [this](https://stackoverflow.com/a/19472082/5568461) and [this](https://stackoverflow.com/a/9349150/5568461))
+In my case, after trying around, I had installed virtualenv once via pip3 with sudo and once via apt with sudo, 
+so I had to uninstall it twice with: 
+
+```bash
+sudo python3 -m pip uninstall virtualenv
+sudo apt remove virtualenv
+```
+
+And then install it for my local user without root (notice the `--user` flag):
+
+```bash
+sudo python3 -m pip install virtualenv --user
+```
+
+Upon which I also received this important warning (I obfuscated by username with `<username>`): 
+
+```bash
+WARNING: The script virtualenv is installed in '/home/<username>/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location
+```
+
+This told me that the path that the local pip3 package was installed to wasn't in my PATH variable. The PATH variable 
+(see its value with `echo $PATH`) stores the directory of executables and is set in `~/.profiles`. 
+Checking `~/.profiles` revealed an if-statement which adds the exact directory mentioned above to `$PATH` if it 
+exists. But here is the catch: `~/.profiles` is only run when you login to your server. 
+So the solution is to simply restart your session (<kbd>CTRL+D</kbd> and log in again). 
 
