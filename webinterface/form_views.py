@@ -210,6 +210,9 @@ class AffiliationNewView(CreateView):
         context['cleaner'] = self.cleaner
         return context
 
+    def form_invalid(self, form):
+        print(1)
+
     def form_valid(self, form):
         if 'pk' not in self.kwargs:
             raise Http404('No pk is supplied in AffiliationNewView!')

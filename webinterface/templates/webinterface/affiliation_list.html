@@ -20,10 +20,10 @@
 
         <div class="well">
         <h3>Neue Zugehörigkeit eintragen</h3>
-        <form method="POST" class="form">
+        <form method="POST" class="form" id="main_form">
             {% crispy form %}
             {% if submit_button %}
-                <button class="btn btn-success" type="submit" name="save">
+                <button class="btn btn-success" type="submit" name="save" form="main_form" >
                     <span class="glyphicon glyphicon-ok"></span> {{ submit_button.text }}</button>
             {% endif %}
         </form>
