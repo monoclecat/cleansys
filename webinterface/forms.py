@@ -240,7 +240,7 @@ class TaskCleanedForm(forms.ModelForm):
         model = Task
         fields = ['cleaned_by']
         labels = {
-            'cleaned_by': "Putzer, der diese Aufgabe erledigt hat",
+            'cleaned_by': "Wähle die Person aus, die die Aufgabe erledigt hat:",
         }
         widgets = {
             'cleaned_by': forms.RadioSelect

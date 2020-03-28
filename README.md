@@ -129,9 +129,13 @@ python3 -m pip install -r requirements.txt
 
 python3 manage.py makemigrations
 python3 manage.py migrate
+python3 manage.py createsuperuser
 
 deactivate  # Deactivate virtualenv
 ```
+
+> You can only run manage.py commands while you own the database file db.sqlite3 and its parent folder, cleansys/. 
+> Later, the ownership will be transferred to Apache's www-data user. 
 
 Now, we will follow a recommended way of deploying Django: 
 [How to use Django with Apache and mod_wsgi](https://docs.djangoproject.com/en/3.0/howto/deployment/wsgi/modwsgi/)
@@ -142,10 +146,13 @@ Install requirements:
 sudo apt-get install libapache2-mod-wsgi-py3 apache2
 ```
 
-Give the user `www-data` ownership of `cleansys`:
+
+
+Give the user `www-data` ownership of the database and the parent directory, `cleansys`:
 ```bash
 cd /var/www
-sudo chown -R www-data:www-data cleansys  # Give Apache's user ownership so it can serve the files
+sudo chown www-data:www-data cleansys/
+sudo chown www-data:www-data cleansys/db.sqlite3
 ```
 
 Create an Apache site-configuration file:
@@ -171,6 +178,27 @@ This opens the Vim editor. Press <kbd>i</kbd> and page the following:
          </Files>
      </Directory>
  </VirtualHost>
+```
+
+Save the file by first pressing <kbd>esc</kbd> to leave insert mode and then 
+pressing <kbd>:wq</kbd> (<kbd>:</kbd>: "Command", <kbd>wq</kbd>: "Write and quit").
+
+Now, disable apache2 default site that uses port 80, enable cleansys site and restart apache2:
+
+```bash
+sudo a2dissite 000-default
+sudo a2ensite cleansys
+sudo systemctl restart apache2
+```
+
+Additionally, work through [Django's deployment checklist](https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/)
+to establish the security of your site. For settings.py this includes setting a new SECRET_KEY, adding 
+ALLOWED_HOSTS and setting DEBUG to False. 
+Keep in mind that CleanSys is only meant to be accessible inside your local network.  
+
+When changing any file or ownership, you will have to reload Apache for the changes to take effect. 
+```bash
+sudo systemctl reload apache2
 ```
 
 ## "I can't run virtualenv or pip install without sudo!"

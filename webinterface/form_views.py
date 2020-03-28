@@ -585,7 +585,7 @@ class DutySwitchNewView(CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = "Gebe einen Putzdienst-Tausch in Auftrag"
+        context['title'] = "Gib einen Putzdienst-Tausch in Auftrag"
         context['info_banner'] = {'text': "<p>Möchtest du deinen Putzdienst "
                                           "im Putzplan <b>{}</b> in der Woche von "
                                           "<b>{}</b> bis <b>{}</b> tauschen?</p><br>"

@@ -36,7 +36,7 @@ Putzdienst erledigen
         <div class="panel-heading">
             {% if cleaner in cleaning_week.assigned_cleaners %}
                 <h4>Hallo {{ cleaner }}!
-                    Du bist am {{ cleaning_week.assignment_date|date:"d. M, y" }} für den Putzdienst
+                    Du bist am {{ cleaning_week.assignment_date|date:"d. M. y" }} für den Putzdienst
                     {{ cleaning_week.schedule }} eingetragen
                 {% if assignment.cleaning_buddies %}
                      zusammen mit
