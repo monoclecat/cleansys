@@ -209,14 +209,12 @@ class Command(BaseCommand):
 
         self.stdout.write("Creating DutySwitch objects...")
         # Sprinkle some dutyswitch requests over the cleaning_weeks
-        for cl in [cl_a, cl_d, cl_g, cl_j, cl_m]:
-            assignments = Assignment.objects.filter(cleaner=cl,
-                                                    cleaning_week__week__range=(now, now+demo_length-start_before-4))
-            if assignments:
-                for i in range(0, 2):
-                    choice = random.choice(assignments)
-                    DutySwitch.objects.create(requester_assignment=choice)
-                    assignments = assignments.exclude(pk=choice.pk)
+        assignments = Assignment.objects.filter(cleaning_week__week__range=(now, now+demo_length-start_before-4))
+        if assignments:
+            for i in range(0, 5):
+                choice = random.choice(assignments)
+                DutySwitch.objects.create(requester_assignment=choice)
+                assignments = assignments.exclude(pk=choice.pk)
 
         self.stdout.write("Last tweaks...")
         # Of course the Cleaners were diligent and did all tasks until now
