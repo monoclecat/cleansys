@@ -13,68 +13,78 @@ Analytics - {{ schedule }}
 {% endblock %}
 
 {% block body %}
-    <div class="row">
-        <div class="col-xs-12 col-lg-6 col-lg-offset-3">
-            <a class="btn btn-default btn-block" role="button"
-               href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
-                Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
-            </a>
+    <div class="container-fluid">
+        <div class="row" style="padding: 5px">
+            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+                <a class="btn btn-default btn-block" role="button"
+                   href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
+                    Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
+                </a>
+            </div>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-xs-12 col-lg-6 col-lg-offset-3">
-            <h1>Analytics - {{ schedule }}</h1>
-            <i>Bitte auf einem großen Bildschirm betrachten!</i>
+        <div class="row">
+            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+                <h1>Analytics - {{ schedule }}</h1>
+                <i>Bitte auf einem großen Bildschirm betrachten!</i>
+            </div>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-xs-12 col-lg-6 col-lg-offset-3">
-            <h2>Besetzungsverhältnisse für alle Zugehörigkeiten</h2>
-            <p>
-                Ist ein Putzer jemals einem Putzplan zugewiesen gewesen, so lässt sich ein Besetzungsverhältnis
-                für diesen Putzer berechnen. Als 'Zeitraum' wird dabei ein Intervall an Wochen gewählt, während dem
-                die Zugehörigkeitsverhältnisse für den Putzplan konstant bleiben. Das heißt: Sind Anne, Bernd und
-                Clara schon
-                seit einem Jahr dem Badputzplan zugeteilt, aber vor einem Monat ist
-                erst Daniel eingezogen und in zwei Monaten zieht Clara schon wieder aus, so ist der
-                'Zeitraum' über dem die Besetzungsverhältnisse berechnet werden heute vor einem Monat bis heute in
-                zwei Monaten.
-            </p>
-            <p>
+        <div class="row">
+            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+                <h2>Besetzungsverhältnisse für alle Zugehörigkeiten</h2>
+                <p>
+                    Ist ein Putzer jemals einem Putzplan zugewiesen gewesen, so lässt sich ein Besetzungsverhältnis
+                    für diesen Putzer berechnen. Als 'Zeitraum' wird dabei ein Intervall an Wochen gewählt, während dem
+                    die Zugehörigkeitsverhältnisse für den Putzplan konstant bleiben. Das heißt: Sind Anne, Bernd und
+                    Clara schon
+                    seit einem Jahr dem Badputzplan zugeteilt, aber vor einem Monat ist
+                    erst Daniel eingezogen und in zwei Monaten zieht Clara schon wieder aus, so ist der
+                    'Zeitraum' über dem die Besetzungsverhältnisse berechnet werden heute vor einem Monat bis heute in
+                    zwei Monaten.
+                </p>
+                <p>
 
-            </p>
-            <p>
-                <i>[Besetzungsverhältnis für einen bestimmten Putzplan]</i> <strong>=</strong> <br>
-                <i>[gesamte Anzahl an Putzdiensten des Putzplans während des 'Zeitraums']</i> <br>
-                <strong>durch</strong> <br>
-                <i>[Anzahl an Putzdiensten des Putzplans, die der Putzer selbst während des 'Zeitraums' hatte]</i>
-            </p>
-            <p>
-                Ein Besetzungsverhältnis von <strong>1</strong> würde bedeuten, dass der Putzer <strong>jedem</strong>
-                Putzdienst des Putzplans im 'Zeitraum' zugewiesen war.
-            </p>
-            <p>
-                Ein Besetzungsverhältnis von <strong>0</strong> würde bedeuten, dass der Putzer <strong>keinem</strong>
-                Putzdienst des Putzplan im 'Zeitraum' zugewiesen war.
-            </p>
-            <p>
-                Aufgrund dieser Besetzungsverhältnisse werden die Putzdienste verteilt. Soll an einem gegebenen Tag
-                ein Putzdienst zugeteilt werden, so werden die Besetzungsverhältnisse für den geltenden 'Zeitraum'
-                für jeden Putzer ausgerechnet. Der Putzer mit dem niedrigsten Besetzungsverhältnis wird dem
-                Putzdienst zugeteilt.
-            </p>
-            <p>
-                Starke Unterschiede in Besetzungsverhältnissen stammen entweder von:
-            </p>
-            <ul>
-                <li>Sehr kurzen 'Zeiträumen' (< 2 Monate).</li>
-                <li>Vielen Putzern im Verhältnis zu Putzdiensten im 'Zeitraum'.</li>
-                <li>Manuellen Eingriffen des Administrators in die zugeteilten Putzdienste.</li>
-            </ul>
+                </p>
+                <p>
+                    <i>[Besetzungsverhältnis für einen bestimmten Putzplan]</i> <strong>=</strong> <br>
+                    <i>[gesamte Anzahl an Putzdiensten des Putzplans während des 'Zeitraums']</i> <br>
+                    <strong>durch</strong> <br>
+                    <i>[Anzahl an Putzdiensten des Putzplans, die der Putzer selbst während des 'Zeitraums' hatte]</i>
+                </p>
+                <p>
+                    Ein Besetzungsverhältnis von <strong>1</strong> würde bedeuten, dass der Putzer <strong>jedem</strong>
+                    Putzdienst des Putzplans im 'Zeitraum' zugewiesen war.
+                </p>
+                <p>
+                    Ein Besetzungsverhältnis von <strong>0</strong> würde bedeuten, dass der Putzer <strong>keinem</strong>
+                    Putzdienst des Putzplan im 'Zeitraum' zugewiesen war.
+                </p>
+                <p>
+                    Aufgrund dieser Besetzungsverhältnisse werden die Putzdienste verteilt. Soll an einem gegebenen Tag
+                    ein Putzdienst zugeteilt werden, so werden die Besetzungsverhältnisse für den geltenden 'Zeitraum'
+                    für jeden Putzer ausgerechnet. Der Putzer mit dem niedrigsten Besetzungsverhältnis wird dem
+                    Putzdienst zugeteilt.
+                </p>
+                <p>
+                    Starke Unterschiede in Besetzungsverhältnissen stammen entweder von:
+                </p>
+                <ul>
+                    <li>Sehr kurzen 'Zeiträumen' (< 2 Monate).</li>
+                    <li>Vielen Putzern im Verhältnis zu Putzdiensten im 'Zeitraum'.</li>
+                    <li>Manuellen Eingriffen des Administrators in die zugeteilten Putzdienste.</li>
+                </ul>
 
+            </div>
+            <div class="col-xs-12">
+                {{ ratios|safe }}
+            </div>
         </div>
-        <div class="col-xs-12">
-            {{ ratios|safe }}
+        <div class="row" style="padding: 5px">
+            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+                <a class="btn btn-default btn-block" role="button"
+                   href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
+                    Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
+                </a>
+            </div>
         </div>
     </div>
 {% endblock %}

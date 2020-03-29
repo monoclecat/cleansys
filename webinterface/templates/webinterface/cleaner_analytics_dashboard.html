@@ -13,26 +13,34 @@ Analytics - Putzer
 {% endblock %}
 
 {% block body %}
-    <div class="row">
-        <div class="col-xs-12 col-lg-6 col-lg-offset-3">
-            <a class="btn btn-default btn-block" role="button"
-               href="{% url 'webinterface:cleaner-no-page' %}">
-                Zurück
-            </a>
+    <div class="container-fluid">
+        <div class="row" style="padding: 5px">
+            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+                <div class="btn-group btn-group-justified" role="group" aria-label="zurueck">
+                    {% include 'webinterface_snippets/button_to_cleaner_page.html' %}
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-xs-12 col-lg-6 col-lg-offset-3">
-            <h1>Putzdienst-Aufkommen</h1>
-            <i>Bitte auf einem großen Bildschirm betrachten!</i>
+        <div class="row">
+            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+                <h1>Putzdienst-Aufkommen</h1>
+                <i>Bitte auf einem großen Bildschirm betrachten!</i>
+            </div>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+        <div class="row">
+            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
 
+            </div>
+            <div class="col-xs-12">
+                {{ plot|safe }}
+            </div>
         </div>
-        <div class="col-xs-12">
-            {{ plot|safe }}
+        <div class="row" style="padding: 5px">
+            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+                <div class="btn-group btn-group-justified" role="group" aria-label="zurueck">
+                    {% include 'webinterface_snippets/button_to_cleaner_page.html' %}
+                </div>
+            </div>
         </div>
     </div>
 {% endblock %}

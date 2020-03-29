@@ -19,11 +19,7 @@ Einstellungen
                 <h2>Putzer
                     <a class="btn btn-default {% if not active_schedule_group_list %}disabled{% endif %} %}"
                        href="{% url 'webinterface:cleaner-new' %}" role="button">
-                    {% if not active_schedule_group_list %}
-                        <span class="glyphicon glyphicon-warning-sign"></span> Erstelle/Aktiviere zuerst eine Putzplan-Gruppierung
-                    {% else %}
                         <span class="glyphicon glyphicon-plus"></span> Neuer Putzer
-                    {% endif %}
                     </a>
                     <a href="{% url 'webinterface:cleaner-analytics' %}"
                        class="btn btn-default" role="button">
