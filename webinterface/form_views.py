@@ -589,10 +589,11 @@ class DutySwitchNewView(CreateView):
         context['info_banner'] = {'text': "<p>Möchtest du deinen Putzdienst "
                                           "im Putzplan <b>{}</b> in der Woche von "
                                           "<b>{}</b> bis <b>{}</b> tauschen?</p><br>"
-                                          "<p>Wenn du den Putzdienst-Tausch in Auftrag gibst, werden mögliche "
-                                          "Tauschkandidaten in der Zukunft gesucht. <br>"
-                                          "Die Putzer dieser Tausch-Kandidaten werden benachrichtigt und gefragt, "
-                                          "ob sie mit dir tauschen möchten.</p>".format(
+                                          "<p><i>Wenn du den Putzdienst-Tausch in Auftrag gibst, wird auf der "
+                                          "Startseite jeder Person, die mit dir tauschen kann, "
+                                          "eine Nachricht eingeblendet. <br>"
+                                          "Der Tausch erfolgt, wenn die Person eine ihrer Putzdienste "
+                                          "zum Tauschen auswählt und den Tausch bestätigt.</i></p>".format(
                                             self.assignment.schedule,
                                             self.assignment.cleaning_week.week_start().strftime("%d. %b %Y"),
                                             self.assignment.cleaning_week.week_end().strftime("%d. %b %Y"))}
@@ -633,12 +634,19 @@ class DutySwitchUpdateView(UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Tauschanfrage beantworten"
-        context['info_banner'] = {'text': "<p><strong>{}</strong> möchte seinen Dienst "
-                                          "im Putzplan <strong>{}</strong> am <strong>{}</strong> "
-                                          "tauschen</p>".format(
+        context['info_banner'] = {'text': "<p><span class=\"glyphicon glyphicon-user\"></span> <strong>{}</strong> "
+                                          "möchte seinen/ihren Dienst im Putzplan "
+                                          "<span class=\"glyphicon glyphicon-list-alt\"></span> "
+                                          "<strong>{}</strong> am "
+                                          "<span class=\"glyphicon glyphicon-calendar\"></span> <strong>{} "
+                                          "(in {} Tagen)</strong> tauschen.</p>"
+                                          "<p><strong>Begründung</strong>:<br>{}</p>".format(
                                             self.object.requester_assignment.cleaner,
                                             self.object.requester_assignment.schedule,
-                                            self.object.requester_assignment.assignment_date())}
+                                            self.object.requester_assignment.assignment_date().strftime('%d. %b. %Y'),
+                                            str((self.object.requester_assignment.assignment_date() -
+                                                 timezone.now().date()).days),
+                                            self.object.message)}
         context['submit_button'] = {'text': "Ja, tausche diese Putzdienste miteinander!"}
         context['cancel_button'] = {'text': "Abbrechen",
                                     'url': self.success_url}

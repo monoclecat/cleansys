@@ -63,7 +63,7 @@ Einstellungen
                             <p>Keine Putzpläne zu Zeigen...</p>
                         {% endfor %}
                         {% if disabled_schedule_list %}
-                            <h3>Deaktivierte Putzpläne</h3>
+                            <div class="col-xs-12"><h3>Deaktivierte Putzpläne</h3></div>
                             {% for schedule in disabled_schedule_list %}
                                 {% include 'webinterface_snippets/schedule_dropdown_button.html' %}
                             {% endfor %}

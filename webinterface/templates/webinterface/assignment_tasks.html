@@ -32,29 +32,23 @@ Putzdienst erledigen
         <h3 style="padding: 1em;" class="bg-danger">{{ already_cleaned_error }}</h3>
     {% endif %}
 
-    <div class="panel panel-primary">
-        <div class="panel-heading">
-            {% if cleaner in cleaning_week.assigned_cleaners %}
-                <h4>Hallo {{ cleaner }}!
-                    Du bist am {{ cleaning_week.assignment_date|date:"d. M. y" }} für den Putzdienst
-                    {{ cleaning_week.schedule }} eingetragen
-                {% if assignment.cleaning_buddies %}
-                     zusammen mit
-                    {% for other_cleaner in assignment.cleaning_buddies %}
-                        {{ other_cleaner }}{% if not forloop.last %},{% endif %}
-                    {% endfor %}
-                {% endif %}!</h4>
-            {% else %}
-                <h4>
-                    {% for cleaner in cleaning_week.assigned_cleaners %}
-                        {{ cleaner }}{% if not forloop.last %},{% endif %}
-                    {% endfor %}
-                    {{ cleaning_week.assigned_cleaners.count|pluralize:"ist,sind" }}
-                    am {{ cleaning_week.assignment_date|date:"d. M, y" }} für den Putzdienst
-                    {{ cleaning_week.schedule }} eingetragen. </h4>
+    <div class="alert alert-info" role="alert">
+        <p><strong>Hallo {{ cleaner }}!</strong></p>
+        <p>
+            Du bist am
+            <span class="glyphicon glyphicon-calendar"></span>
+            <strong>{{ cleaning_week.assignment_date|date:"d. M. y" }}</strong>
+            {% if assignment.cleaning_buddies %}
+                zusammen mit
+                {% for other_cleaner in assignment.cleaning_buddies %}
+                    <span class="glyphicon glyphicon-user"></span>
+                    <strong>{{ other_cleaner }}</strong>{% if not forloop.last %},{% endif %}
+                {% endfor %}
             {% endif %}
-
-        </div>
+            für den Putzdienst
+            <span class="glyphicon glyphicon-list-alt"></span>
+            <strong>{{ cleaning_week.schedule }}</strong> eingetragen!
+        </p>
     </div>
 
     <h4>Folgende Aufgaben stehen an.
@@ -63,6 +57,14 @@ Putzdienst erledigen
             Aufgabe, um sie abzuschließen.
         {% endif %}
     </h4>
+
+    <div class="alert alert-info" role="alert">
+        <p>
+            <strong>{{ tasks.cleaned.count }}</strong> von <strong>{{ tasks.count }}</strong> Aufgaben sind
+            abgehakt.
+        </p>
+    </div>
+
     <div class="row">
         {% for task in tasks.uncleaned %}
             <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">

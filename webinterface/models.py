@@ -286,29 +286,6 @@ class Cleaner(models.Model):
     def __str__(self):
         return self.name
 
-    def switchable_assignments_for_request(self, duty_switch, look_weeks_into_future=12):
-        if duty_switch.requester_assignment.has_passed():
-            return Assignment.objects.none()
-
-        from_week = current_epoch_week()
-        schedule_from_request = duty_switch.requester_assignment.schedule
-        week_from_request = duty_switch.requester_assignment.cleaning_week.week
-
-        own_affiliation_during_request_week = self.affiliation_in_week(week_from_request)
-        if own_affiliation_during_request_week is None or \
-                schedule_from_request not in own_affiliation_during_request_week.group.schedules.all():
-            return Assignment.objects.none()
-
-        switchable_assignments = self.assignment_set.\
-            filter(cleaning_week__week__range=(from_week, from_week+look_weeks_into_future))
-
-        requested = duty_switch.possible_acceptors()
-        acceptable = switchable_assignments
-        return requested & acceptable
-
-    def can_accept_duty_switch_request(self, duty_switch) -> bool:
-        return len(self.switchable_assignments_for_request(duty_switch)) != 0
-
     def affiliation_in_week(self, week):
         try:
             current_affiliation = self.affiliation_set.get(
@@ -554,11 +531,13 @@ class CleaningWeek(models.Model):
         self.save()
 
 
-class AssignmentQuerySet(models.QuerySet):
-    def eligible_switching_destination_candidates(self, source_assignment):
-        return self.filter(schedule=source_assignment.schedule).\
-            filter(cleaning_week__week__gt=source_assignment.cleaning_week.week).\
-            exclude(cleaning_week__excluded=source_assignment.cleaner)
+# class AssignmentQuerySet(models.QuerySet):
+#     def eligible_switching_destination_candidates(self, requester_assignment):
+#         return self.filter(schedule=requester_assignment.schedule). \
+#             exclude(cleaner=requester_assignment.cleaner).\
+#             exclude(cleaning_week__excluded=requester_assignment.cleaner). \
+#             filter(cleaning_week__week__range=(requester_assignment.cleaning_week.week,
+#                                                requester_assignment.cleaning_week.week + 12))
 
 
 class Assignment(models.Model):
@@ -569,7 +548,7 @@ class Assignment(models.Model):
     cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE, editable=False)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
 
-    objects = AssignmentQuerySet.as_manager()
+    # objects = AssignmentQuerySet.as_manager()
 
     class Meta:
         ordering = ('-cleaning_week__week',)
@@ -708,6 +687,8 @@ class DutySwitch(models.Model):
                                              editable=False)
     acceptor_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="acceptor")
 
+    message = models.CharField(max_length=100)
+
     objects = DutySwitchQuerySet.as_manager()
 
     def __init__(self, *args, **kwargs):
@@ -715,20 +696,29 @@ class DutySwitch(models.Model):
         self.__previous_acceptor = self.acceptor_assignment
 
     def __str__(self):
+        base_str = "Requester: {} on {} in {}".format(self.requester_assignment.cleaner.name,
+                                                      self.requester_assignment.assignment_date().strftime('%d. %b %Y'),
+                                                      self.requester_assignment.schedule.name)
         if self.acceptor_assignment:
-            return "Requester: {} on {}  -  Acceptor: {} on {}".\
-                format(self.requester_assignment.cleaner.name,
-                       self.requester_assignment.assignment_date().strftime('%d. %b %Y'),
-                       self.acceptor_assignment.cleaner.name,
+            return base_str + " -  Acceptor: {} on {}".\
+                format(self.acceptor_assignment.cleaner.name,
                        self.acceptor_assignment.assignment_date().strftime('%d. %b %Y'))
         else:
-            return "Requester: {} on {}  -  Acceptor: none yet". \
-                format(self.requester_assignment.cleaner.name,
-                       self.requester_assignment.assignment_date().strftime('%d. %b %Y'))
+            return base_str
 
     def possible_acceptors(self):
-        return Assignment.objects.eligible_switching_destination_candidates(self.requester_assignment).\
-            exclude(cleaner=self.requester_assignment.cleaner)
+        if self.requester_assignment.has_passed():
+            return Assignment.objects.none()
+
+        active_affiliations = Affiliation.objects.active_in_week(self.requester_assignment.cleaning_week.week)
+        active_cleaners = [x.cleaner for x in active_affiliations.all()]
+
+        return Assignment.objects.filter(schedule=self.requester_assignment.schedule). \
+            filter(cleaning_week__week__range=(self.requester_assignment.cleaning_week.week + 1,
+                                               self.requester_assignment.cleaning_week.week + 12)). \
+            filter(cleaner__in=active_cleaners). \
+            exclude(cleaner=self.requester_assignment.cleaner). \
+            exclude(cleaning_week__excluded=self.requester_assignment.cleaner)
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):

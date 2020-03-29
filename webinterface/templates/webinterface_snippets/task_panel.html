@@ -1,7 +1,8 @@
-<div class="panel {% if task.cleaned_by %}panel-success{% else %}panel-info{% endif %}">
+<div class="panel {% if task.my_time_has_come %}panel-success{% else %}panel-default{% endif %}">
     <div class="panel-heading">
+        <p><span class="glyphicon glyphicon-play"></span> <strong>{{ task }}</strong></p>
         {% if assignment %}
-            {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come and not task.cleaned_by or user.is_superuser %}
+            {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come  or user.is_superuser %}
                 <a class="btn {% if task.my_time_has_come and not task.cleaned_by %}btn-success{% else %}btn-default{% endif %}"
                    href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
                    role="button">
@@ -13,14 +14,12 @@
                 </a>
             {% endif %}
         {% endif %}
-        <b>{{ task }}</b>
     </div>
-    <div class="panel-footer">
-        {% if not task.cleaned_by %}
-            Bearbeitbar von <b>{{ task.start_date|date:"l, d. M Y" }}</b> bis
-            <b>{{ task.end_date|date:"l, d. M Y" }}</b>.
-        {% else %}
-            Abgehakt von <span class="glyphicon glyphicon-user"></span> {{ task.cleaned_by }}
+    <div class="panel-body">
+        <p>Bearbeitbar von <b>{{ task.start_date|date:"l, d. M Y" }}</b> bis
+            <strong>{{ task.end_date|date:"l, d. M Y" }}</strong>.</p>
+        {% if task.cleaned_by %}
+            <p>Hat <span class="glyphicon glyphicon-user"></span> <strong>{{ task.cleaned_by }}</strong> erledigt.</p>
         {% endif %}
     </div>
 </div>

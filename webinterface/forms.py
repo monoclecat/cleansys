@@ -257,6 +257,12 @@ class DutySwitchCreateForm(forms.ModelForm):
     class Meta:
         model = DutySwitch
         exclude = ('acceptor_assignment',)
+        labels = {
+            'message': "Wieso möchtest du tauschen?"
+        }
+        help_texts = {
+            'message': "Max. 100 Zeichen. Diese Nachricht wird den Putzenden angezeigt, die mit dir tauschen können."
+        }
 
 
 class DutySwitchAcceptForm(forms.ModelForm):
@@ -272,7 +278,7 @@ class DutySwitchAcceptForm(forms.ModelForm):
 
         if 'instance' in kwargs and kwargs['instance']:
             self.fields['acceptor_assignment'].queryset = \
-                cleaner.switchable_assignments_for_request(kwargs['instance']).order_by('cleaning_week__week')
+                kwargs['instance'].possible_acceptors().filter(cleaner=cleaner)
 
 
 class AuthFormWithSubmit(AuthenticationForm):
