@@ -1,0 +1,5 @@
+.nav > li > .btn-info:hover, .nav > li > .btn-info:focus {
+    color: #fff;
+    background-color: #31b0d5;
+    border-color: #269abc;
+}
