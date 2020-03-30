@@ -13,16 +13,15 @@ Putzpläne
     </div>
 
     <h3>Welchen Putzplan möchtest du dir anschauen?</h3>
-    <div class="row">
-        {% for schedule in object_list %}
-            <div class="col-xs-12 col-sm-4" style="padding: 5px">
-                <a class="btn btn-primary btn-block" role="button"
-                   href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
-                    <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
-                </a>
-            </div>
-        {% empty %}
-            <p>Keine Putzpläne...</p>
-        {% endfor %}
-    </div>
+    <nav>
+        <ul class="nav nav-stacked">
+            {% for schedule in object_list %}
+                <li style="margin: 5px 0">
+                    {% include 'webinterface_snippets/button_to_schedule_page.html' %}
+                </li>
+            {% empty %}
+                <p>Keine Putzpläne...</p>
+            {% endfor %}
+        </ul>
+    </nav>
 {% endblock %}

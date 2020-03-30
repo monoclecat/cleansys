@@ -299,7 +299,7 @@ class CleaningWeekUpdateView(UpdateView):
 
     def form_valid(self, form):
         self.object = form.save()
-        return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view',
+        return HttpResponseRedirect(reverse_lazy('webinterface:schedule',
                                                  kwargs={'slug': self.object.schedule.slug,
                                                          'page': self.kwargs['page']}))
 
@@ -316,7 +316,7 @@ class CleaningWeekDeleteView(DeleteView):
 
     def delete(self, request, *args, **kwargs):
         cleaning_week = CleaningWeek.objects.get(pk=kwargs['pk'])
-        self.success_url = reverse_lazy('webinterface:schedule-view', kwargs={'slug': cleaning_week.schedule.slug,
+        self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': cleaning_week.schedule.slug,
                                                                               'page': kwargs['page']})
         return super().delete(request, *args, **kwargs)
 
@@ -328,7 +328,7 @@ class AssignmentCreateView(FormView):
     def dispatch(self, request, *args, **kwargs):
         if 'schedule_pk' in kwargs:
             self.schedule = get_object_or_404(Schedule, pk=kwargs['schedule_pk'])
-            self.success_url = reverse_lazy('webinterface:schedule-view', kwargs={'slug': self.schedule.slug,
+            self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': self.schedule.slug,
                                                                                   'page': kwargs['page']})
         else:
             self.schedule = None
@@ -391,14 +391,14 @@ class AssignmentUpdateView(UpdateView):
                                             self.object.cleaning_week.week_end().strftime("%d. %b %Y"))}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:schedule-view',
+                                    'url': reverse_lazy('webinterface:schedule',
                                                         kwargs={'slug': self.object.schedule.slug,
                                                                 'page': self.kwargs['page']})}
         return context
 
     def form_valid(self, form):
         self.object = form.save()
-        return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view',
+        return HttpResponseRedirect(reverse_lazy('webinterface:schedule',
                                                  kwargs={'slug': self.object.schedule.slug,
                                                          'page': self.kwargs['page']}))
 
@@ -508,7 +508,7 @@ class TaskCreateView(FormView):
             self.cleaning_week = CleaningWeek.objects.get(pk=kwargs['pk'])
         except Cleaner.DoesNotExist:
             Http404('Putzplan, für den Zugehörigkeit geändert werden soll, existiert nicht!')
-        self.success_url = reverse_lazy('webinterface:schedule-view', kwargs={'slug': self.cleaning_week.schedule.slug,
+        self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': self.cleaning_week.schedule.slug,
                                                                               'page': kwargs['page']})
         return super().dispatch(request, *args, **kwargs)
 
@@ -537,7 +537,7 @@ class TaskCreateView(FormView):
     def form_valid(self, form):
         self.cleaning_week.create_missing_tasks()
 
-        return HttpResponseRedirect(reverse_lazy('webinterface:schedule-view',
+        return HttpResponseRedirect(reverse_lazy('webinterface:schedule',
                                                  kwargs={'slug': self.cleaning_week.schedule.slug,
                                                          'page': self.kwargs['page']}))
 

@@ -50,7 +50,7 @@
         {% for cleaning_week in cleaningweek_list %}
                 <tr class="
 {% if cleaning_week.disabled or not cleaning_week.assignments_valid %}danger
-{% elif cleaning_week.is_current_week %}success{% endif %}">
+{% elif cleaning_week.tasks_are_ready_to_be_done %}success{% endif %}">
 
                     <td>{{ cleaning_week.assignment_date|date:"d. M, Y" }}</td>
                     <td>
@@ -135,7 +135,7 @@
     {% if page_obj.0.week %}
         <div class="row" style="padding: 5px">
             <div class="col-xs-12">
-                <a href="{% url 'webinterface:schedule-analystics-view' schedule.slug %}"
+                <a href="{% url 'webinterface:schedule-analystics-view-with-schedule-page' schedule.slug page_obj.number %}"
                    class="btn btn-default btn-block" role="button">
                     <span class="glyphicon glyphicon-dashboard"></span> Analytics zu {{ schedule }}
                 </a>

@@ -60,7 +60,7 @@ class ScheduleView(ListView):
                 page_nr_with_current_cleaning_week = 1 + (index_of_current_cleaning_week // self.paginate_by)
             else:
                 page_nr_with_current_cleaning_week = 1
-            return redirect(reverse_lazy('webinterface:schedule-view',
+            return redirect(reverse_lazy('webinterface:schedule',
                                          kwargs={'slug': kwargs['slug'], 'page': page_nr_with_current_cleaning_week}))
         return super().dispatch(request, *args, **kwargs)
 
@@ -227,6 +227,7 @@ class AssignmentTasksView(TemplateView):
             logging.error("CleaningWeek does not exist on date!")
             raise Exception("CleaningWeek does not exist on date!")
         context['cleaning_week'] = cleaning_week
+        context['schedule'] = cleaning_week.schedule
         context['tasks'] = cleaning_week.task_set.all()
 
         # if 'schedule_page' in self.kwargs:

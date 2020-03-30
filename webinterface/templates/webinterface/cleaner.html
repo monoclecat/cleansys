@@ -9,6 +9,9 @@ Deine Putzdienste
 {% block main %}
         <div class="row">
             <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+                <a class="btn btn-default" href="#" role="button">
+                    <span class="glyphicon glyphicon-question-sign"></span>
+                </a>
                 {% include "webinterface_snippets/button_to_schedule_list_page.html" %}
             </div>
         </div>
@@ -117,7 +120,7 @@ Deine Putzdienste
         <div class="row" style="padding: 5px">
             <div class="col-xs-12">
                 <a class="btn btn-default btn-block"
-                   href="{% url 'webinterface:affiliation-list' cleaner.pk %}"
+                   href="{% url 'webinterface:affiliation-list-with-cleaner-page' cleaner.pk page_obj.number %}"
                    role="button">
                     <span class="glyphicon glyphicon-th-list"></span> Deine Zugehörigkeiten
                 </a>
@@ -126,7 +129,7 @@ Deine Putzdienste
 
         <div class="row" style="padding: 5px">
             <div class="col-xs-12">
-                <a href="{% url 'webinterface:cleaner-analytics' %}"
+                <a href="{% url 'webinterface:cleaner-analytics-with-cleaner-page' page_obj.number %}"
                    class="btn btn-default btn-block" role="button">
                     <span class="glyphicon glyphicon-dashboard"></span> Analytics zu allen Putzern
                 </a>

@@ -17,31 +17,32 @@ Putzdienst erledigen
         <h3 style="padding: 1em;" class="bg-danger">{{ already_cleaned_error }}</h3>
     {% endif %}
 
-    <div class="alert alert-info" role="alert">
-        <p><strong>Hallo {{ cleaner }}!</strong></p>
+    {% if cleaner in cleaning_week.assigned_cleaners %}
+        <div class="alert alert-info" role="alert">
+            <p><strong>Hallo {{ cleaner }}!</strong></p>
+            <p>
+                Du bist am
+                <span class="glyphicon glyphicon-calendar"></span>
+                <strong>{{ cleaning_week.assignment_date|date:"d. M. y" }}</strong>
+                {% if assignment.cleaning_buddies %}
+                    zusammen mit
+                    {% for other_cleaner in assignment.cleaning_buddies %}
+                        <span class="glyphicon glyphicon-user"></span>
+                        <strong>{{ other_cleaner }}</strong>{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                {% endif %}
+                für den Putzdienst
+                <span class="glyphicon glyphicon-list-alt"></span>
+                <strong>{{ schedule }}</strong> eingetragen!
+            </p>
+        </div>
         <p>
-            Du bist am
-            <span class="glyphicon glyphicon-calendar"></span>
-            <strong>{{ cleaning_week.assignment_date|date:"d. M. y" }}</strong>
-            {% if assignment.cleaning_buddies %}
-                zusammen mit
-                {% for other_cleaner in assignment.cleaning_buddies %}
-                    <span class="glyphicon glyphicon-user"></span>
-                    <strong>{{ other_cleaner }}</strong>{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            {% endif %}
-            für den Putzdienst
-            <span class="glyphicon glyphicon-list-alt"></span>
-            <strong>{{ cleaning_week.schedule }}</strong> eingetragen!
-        </p>
-    </div>
-
-    <h4>Folgende Aufgaben stehen an.
-        {% if cleaner in cleaning_week.assigned_cleaners %}
             Wenn du einen Teil geputzt hast, klicke auf die entsprechende
             Aufgabe, um sie abzuschließen.
-        {% endif %}
-    </h4>
+        </p>
+    {% endif %}
+
+    <h4>Folgende Aufgaben stehen an.</h4>
 
     <div class="alert alert-info" role="alert">
         <p>
@@ -55,8 +56,6 @@ Putzdienst erledigen
             <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
                 {% include 'webinterface_snippets/task_panel.html' %}
             </div>
-        {% empty %}
-            <i>Es gibt keine Aufgaben...</i>
         {% endfor %}
     </div>
     <h4>Folgende Aufgaben wurden schon geputzt.</h4>
@@ -67,7 +66,7 @@ Putzdienst erledigen
             </div>
         {% empty %}
             <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
-                <i>Keine bisher...</i>
+                <p><i>Es wurde noch nichts abgehakt.</i></p>
             </div>
         {% endfor %}
     </div>
