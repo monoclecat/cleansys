@@ -14,6 +14,19 @@ from .forms import *
 from .models import *
 
 
+def back_button_page_context(kwargs: dict) -> dict:
+    context = {}
+    if 'schedule_page' in kwargs:
+        context['back_to_schedule_page'] = kwargs['schedule_page']
+    else:
+        context['back_to_schedule_page'] = -1
+    if 'cleaner_page' in kwargs:
+        context['back_to_cleaner_page'] = kwargs['cleaner_page']
+    else:
+        context['back_to_cleaner_page'] = -1
+    return context
+
+
 class ConfigView(TemplateView):
     template_name = 'webinterface/config.html'
 
@@ -66,6 +79,8 @@ class ScheduleAnalyticsView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context = {**context, **back_button_page_context(self.kwargs)}
+
         weeks = [x['week'] for x in self.object.cleaningweek_set.values("week")]
         weeks.sort()
 
@@ -177,6 +192,8 @@ class CleanerAnalyticsView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context = {**context, **back_button_page_context(self.kwargs)}
+
         weeks = [x['week'] for x in CleaningWeek.objects.all().values("week")]
         weeks.sort()
 
@@ -202,6 +219,8 @@ class AssignmentTasksView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context = {**context, **back_button_page_context(self.kwargs)}
+
         try:
             cleaning_week = CleaningWeek.objects.get(pk=self.kwargs['cleaning_week_pk'])
         except CleaningWeek.DoesNotExist:
@@ -210,14 +229,14 @@ class AssignmentTasksView(TemplateView):
         context['cleaning_week'] = cleaning_week
         context['tasks'] = cleaning_week.task_set.all()
 
-        if 'schedule_page' in self.kwargs:
-            context['schedule_page'] = self.kwargs['schedule_page']
-        else:
-            context['schedule_page'] = -1
-        if 'cleaner_page' in self.kwargs:
-            context['cleaner_page'] = self.kwargs['cleaner_page']
-        else:
-            context['cleaner_page'] = -1
+        # if 'schedule_page' in self.kwargs:
+        #     context['back_to_schedule_page'] = self.kwargs['schedule_page']
+        # else:
+        #     context['back_to_schedule_page'] = -1
+        # if 'cleaner_page' in self.kwargs:
+        #     context['back_to_cleaner_page'] = self.kwargs['cleaner_page']
+        # else:
+        #     context['back_to_cleaner_page'] = -1
 
         cleaner_for_user = context['view'].request.user.cleaner_set
         if cleaner_for_user.exists():
