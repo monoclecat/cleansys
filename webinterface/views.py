@@ -239,16 +239,7 @@ class AssignmentTasksView(TemplateView):
             raise Exception("CleaningWeek does not exist on date!")
         context['cleaning_week'] = cleaning_week
         context['schedule'] = cleaning_week.schedule
-        context['tasks'] = cleaning_week.task_set.all()
-
-        # if 'schedule_page' in self.kwargs:
-        #     context['back_to_schedule_page'] = self.kwargs['schedule_page']
-        # else:
-        #     context['back_to_schedule_page'] = -1
-        # if 'cleaner_page' in self.kwargs:
-        #     context['back_to_cleaner_page'] = self.kwargs['cleaner_page']
-        # else:
-        #     context['back_to_cleaner_page'] = -1
+        context['tasks'] = cleaning_week.task_set.enabled()
 
         cleaner_for_user = context['view'].request.user.cleaner_set
         if cleaner_for_user.exists():

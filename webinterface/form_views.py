@@ -429,8 +429,13 @@ class TaskTemplateNewView(CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Erstelle Aufgabe"
-        context['info_banner'] = {'text': "Diese Aufgabe gehört zum Putzplan <strong>{}</strong>, "
-                                          "welcher sich jeden <strong>{}</strong> wiederholt".format(
+        context['info_banner'] = {'text': "<p>Diese Aufgabe gehört zum Putzplan <strong>{}</strong>, "
+                                          "welcher sich jeden <strong>{}</strong> wiederholt.</p>"
+                                          "<p><strong>Bitte beachten!</strong><br>"
+                                          "Damit Putzer nicht durch kurzfristig neu erstellte Aufgaben überrascht "
+                                          "werden, werden neue Aufgaben erst zu den Putzdiensten ab der "
+                                          "nächsten Kalenderwoche hinzugefügt "
+                                          "(KW beginnen immer am Montag).</p>".format(
                                             self.schedule, Schedule.WEEKDAYS[self.schedule.weekday][1])}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
@@ -447,9 +452,6 @@ class TaskTemplateNewView(CreateView):
         self.object = form.save(commit=False)
         self.object.schedule = schedule
         self.object.save()
-        for cleaning_week in schedule.cleaningweek_set.all():
-            cleaning_week.tasks_valid = False
-            cleaning_week.save()
         return HttpResponseRedirect(self.success_url)
 
 
@@ -478,9 +480,11 @@ class TaskTemplateUpdateView(UpdateView):
 
 
 class TaskTemplateDeleteView(DeleteView):
-    model = CleaningWeek
-    success_url = reverse_lazy('webinterface:config')
+    model = TaskTemplate
     template_name = 'webinterface/generic_delete_form.html'
+
+    def get_success_url(self):
+        return reverse_lazy('webinterface:schedule-task-list', kwargs={'pk': self.object.schedule.pk})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

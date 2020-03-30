@@ -448,6 +448,9 @@ class CleaningWeekQuerySet(models.QuerySet):
     def disabled(self):
         return self.filter(disabled=True)
 
+    def in_future(self):
+        return self.filter(week__gte=current_epoch_week()+1)
+
 
 class CleaningWeek(models.Model):
     class Meta:
@@ -531,15 +534,6 @@ class CleaningWeek(models.Model):
         self.save()
 
 
-# class AssignmentQuerySet(models.QuerySet):
-#     def eligible_switching_destination_candidates(self, requester_assignment):
-#         return self.filter(schedule=requester_assignment.schedule). \
-#             exclude(cleaner=requester_assignment.cleaner).\
-#             exclude(cleaning_week__excluded=requester_assignment.cleaner). \
-#             filter(cleaning_week__week__range=(requester_assignment.cleaning_week.week,
-#                                                requester_assignment.cleaning_week.week + 12))
-
-
 class Assignment(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     cleaners_comment = models.CharField(max_length=200)
@@ -547,8 +541,6 @@ class Assignment(models.Model):
 
     cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE, editable=False)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
-
-    # objects = AssignmentQuerySet.as_manager()
 
     class Meta:
         ordering = ('-cleaning_week__week',)
@@ -604,6 +596,7 @@ class TaskTemplate(models.Model):
     def __init__(self, *args, **kwargs):
         super(TaskTemplate, self).__init__(*args, **kwargs)
         self.previous_disabled = self.task_disabled
+        self.previous_pk = self.pk
 
     def __str__(self):
         return self.task_name
@@ -617,9 +610,8 @@ class TaskTemplate(models.Model):
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         super().save(force_insert, force_update, using, update_fields)
-        if self.previous_disabled != self.task_disabled:
-            [x.set_tasks_valid_field(False)
-             for x in self.schedule.cleaningweek_set.filter(week__gt=current_epoch_week()).all()]
+        if self.previous_pk is None:
+            [x.create_missing_tasks() for x in self.schedule.cleaningweek_set.in_future().all()]
 
 
 class TaskQuerySet(models.QuerySet):
@@ -628,6 +620,12 @@ class TaskQuerySet(models.QuerySet):
 
     def uncleaned(self):
         return self.filter(cleaned_by__isnull=True)
+
+    def enabled(self):
+        return self.filter(template__task_disabled=False)
+
+    def disabled(self):
+        return self.filter(template__task_disabled=True)
 
 
 class Task(models.Model):

@@ -69,7 +69,8 @@
                                     {% endfor %}
                                     {% if not cleaning_week.is_in_future %}
                                         <span class="label label-default">
-                                            {{ cleaning_week.completed_tasks.count }} / {{ cleaning_week.task_set.count }}
+                                            {{ cleaning_week.completed_tasks.enabled.count }} /
+                                            {{ cleaning_week.task_set.enabled.count }}
                                         </span>
                                     {% endif %}
                                 </a>

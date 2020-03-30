@@ -206,12 +206,11 @@ class TaskTemplateForm(forms.ModelForm):
             'start_days_before': "Kann ab diesem Wochentag angefangen werden",
             'end_days_after': "Darf bis zu diesem Wochentag gemacht werden",
             'task_help_text': "Hilfetext",
-            'task_disabled': "Aufgabe deaktiviert (beachte Warnung!)"
+            'task_disabled': "Aufgabe deaktiviert"
         }
         help_texts = {
             'task_help_text': "Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können.",
-            'task_disabled': "<b>Achtung!</b> Wenn dieser Wert geändert wird, müssen die Aufgaben aller zukünfigen "
-                             "Putzdienste aktualisiert werden!"
+            'task_disabled': "Deaktivieren versteckt die Aufgabe"
         }
         widgets = {
             'task_help_text': forms.Textarea
