@@ -32,11 +32,22 @@ class ConfigView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(ConfigView, self).get_context_data(**kwargs)
-        context['active_schedule_list'] = Schedule.objects.enabled()
+
+        # webinterface_snippets/schedule_panel.html needs to cover these cases!
+        context['action_needed_schedules'] = \
+            Schedule.objects.enabled().filter(tasktemplate__isnull=True) | \
+            Schedule.objects.enabled().filter(assignment__isnull=True) | \
+            Schedule.objects.enabled().filter(assignment__isnull=True)
+        action_needed_schedule_pks = [x.pk for x in context['action_needed_schedules']]
+        context['active_schedule_list'] = Schedule.objects.enabled().exclude(pk__in=action_needed_schedule_pks)
         context['disabled_schedule_list'] = Schedule.objects.disabled()
 
-        context['active_cleaner_list'] = Cleaner.objects.active()
-        context['inactive_cleaner_list'] = Cleaner.objects.inactive()
+        # webinterface_snippets/cleaner_panel.html needs to cover these cases!
+        context['action_needed_cleaners'] = \
+            Cleaner.objects.filter(affiliation__isnull=True)
+        action_needed_cleaner_pks = [x.pk for x in context['action_needed_cleaners']]
+        context['active_cleaner_list'] = Cleaner.objects.active().exclude(pk__in=action_needed_cleaner_pks)
+        context['inactive_cleaner_list'] = Cleaner.objects.inactive().exclude(pk__in=action_needed_cleaner_pks)
 
         context['active_schedule_group_list'] = ScheduleGroup.objects.enabled()
         context['disabled_schedule_group_list'] = ScheduleGroup.objects.disabled()

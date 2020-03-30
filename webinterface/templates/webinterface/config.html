@@ -15,6 +15,16 @@ Einstellungen
 {% block body %}
     <div class="container-fluid">
         <div class="row">
+            {% if action_needed_cleaners %}
+                <div class="alert alert-warning" role="alert" style="margin: 5px 0">
+                    Bei Putzern sind Handlungen notwendig!</div>
+            {% endif %}
+            {% if action_needed_schedules %}
+                <div class="alert alert-warning" role="alert" style="margin: 5px 0">
+                    Bei Putzplänen sind Handlungen notwendig!</div>
+            {% endif %}
+        </div>
+        <div class="row">
             <div class="col-xs-12 col-sm-6">
                 <h2>Putzer
                     <a class="btn btn-default {% if not active_schedule_group_list %}disabled{% endif %} %}"
@@ -27,24 +37,35 @@ Einstellungen
                     </a>
                 </h2>
                 <div class="well">
-                {% if active_cleaner_list %}
-                    <div class="row">
-                        <h4>Putzer, die zur Zeit eine aktive Zugehörigkeit haben <span class="badge">{{ active_cleaner_list.count }}</span></h4>
-                        {% for cleaner in active_cleaner_list %}
-                            {% include "webinterface_snippets/cleaner_panel.html" %}
-                        {% empty %}
-                            Keine aktiven Putzer
-                        {% endfor %}
-                    </div>
-                {% endif %}
-                {% if inactive_cleaner_list %}
-                    <div class="row">
-                        <h4>Putzer, die ausgezogen sind <span class="badge">{{ inactive_cleaner_list.count }}</span></h4>
-                        {% for cleaner in inactive_cleaner_list %}
-                            {% include "webinterface_snippets/cleaner_panel.html" %}
-                        {% endfor %}
-                    </div>
-                {% endif %}
+                    {% if action_needed_cleaners %}
+                        <div class="row">
+                            <h4>Putzer mit Meldungen</h4>
+                            {% for cleaner in action_needed_cleaners %}
+                                {% include "webinterface_snippets/cleaner_panel.html" %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if active_cleaner_list %}
+                        <div class="row">
+                            <h4>Putzer, die zur Zeit eine aktive Zugehörigkeit haben <span class="badge">{{ active_cleaner_list.count }}</span></h4>
+                            {% for cleaner in active_cleaner_list %}
+                                {% include "webinterface_snippets/cleaner_panel.html" %}
+                            {% empty %}
+                                Keine aktiven Putzer
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if inactive_cleaner_list %}
+                        <div class="row">
+                            <h4>
+                                Putzer, die nicht mehr aktiv sind
+                                <span class="badge">{{ inactive_cleaner_list.count }}</span>
+                            </h4>
+                            {% for cleaner in inactive_cleaner_list %}
+                                {% include "webinterface_snippets/cleaner_panel.html" %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
             <div class="col-xs-12 col-sm-6">
@@ -52,19 +73,30 @@ Einstellungen
                     <a class="btn btn-default" href="{% url 'webinterface:schedule-new' %}" role="button">
                     <span class="glyphicon glyphicon-plus"></span> Neuer Putzplan</a></h2>
                 <div class="well">
-                    <div class="row">
-                        {% for schedule in active_schedule_list %}
-                            {% include 'webinterface_snippets/schedule_dropdown_button.html' %}
-                        {% empty %}
-                            <p>Keine Putzpläne zu Zeigen...</p>
-                        {% endfor %}
-                        {% if disabled_schedule_list %}
-                            <div class="col-xs-12"><h3>Deaktivierte Putzpläne</h3></div>
-                            {% for schedule in disabled_schedule_list %}
-                                {% include 'webinterface_snippets/schedule_dropdown_button.html' %}
+                    {% if action_needed_schedules %}
+                        <div class="row">
+                            <h4>Putzpläne mit Meldungen</h4>
+                            {% for schedule in action_needed_schedules %}
+                                {% include 'webinterface_snippets/schedule_panel.html' %}
                             {% endfor %}
-                        {% endif %}
-                    </div>
+                        </div>
+                    {% endif %}
+                    {% if active_schedule_list %}
+                        <div class="row">
+                            <h4>Aktive Putzpläne</h4>
+                            {% for schedule in active_schedule_list %}
+                                {% include 'webinterface_snippets/schedule_panel.html' %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if disabled_schedule_list %}
+                        <div class="row">
+                            <h4>Deaktivierte Putzpläne</h4>
+                            {% for schedule in disabled_schedule_list %}
+                                {% include 'webinterface_snippets/schedule_panel.html' %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <h2>Putzplan-Gruppierungen

@@ -1,5 +1,12 @@
 <div class="col-xs-12 col-sm-6" style="padding: 5px">
-    <div class="panel {% if cleaner.is_active %}panel-info{% else %}panel-default{% endif %}">
+    <div class="panel
+            {% if cleaner.is_active %}
+                panel-info
+            {% elif not cleaner.affiliation_set.exists %}
+                panel-danger
+            {% else %}
+                panel-default
+            {% endif %}">
         <div class="panel-heading">
 
             <h3 class="panel-title">
@@ -12,14 +19,37 @@
                         <li><a href="{% url 'webinterface:cleaner-edit' cleaner.pk %}">
                             <span class="glyphicon glyphicon-cog"></span> Putzerdaten</a></li>
                         <li role="separator" class="divider"></li>
-                        <li><a href="{% url 'webinterface:affiliation-list' cleaner.pk %}">
-                            <span class="glyphicon glyphicon-home"></span> Zugehörigkeiten</a></li>
+                        <li {% if not cleaner.affiliation_set.exists %}class="bg-danger" {% endif %}>
+                            <a href="{% url 'webinterface:affiliation-list' cleaner.pk %}">
+                            <span class="glyphicon glyphicon-home"></span> Zugehörigkeiten</a>
+                        </li>
                     </ul>
                 </div>
 
                 <span class="glyphicon glyphicon-user"></span> {{ cleaner.name }}
             </h3>
-
+        </div>
+        <div class="panel-footer">
+            {% if cleaner.affiliation_set.exists %}
+                {% if cleaner.current_affiliation %}
+                    Ist aktiv bis <span class="glyphicon glyphicon-calendar"></span>
+                    <strong>{{ cleaner.affiliation_set.last.end_as_date|date:"d. M. Y" }}</strong>
+                {% else %}
+                    War aktiv bis <span class="glyphicon glyphicon-calendar"></span>
+                    <strong>{{ cleaner.affiliation_set.last.end_as_date|date:"d. M. Y" }}</strong>
+                {% endif %}
+            {% else %}
+                <ul style="padding: 0">
+                    <li class="bg-warning">
+                        Dieser Putzer hat keine Zugehörigkeiten!
+                        <span style="white-space: nowrap">
+                            (<span class="glyphicon glyphicon-cog"></span>
+                            <span class="glyphicon glyphicon-menu-right"></span>
+                            <span class="glyphicon glyphicon-home"></span> Zugehörigkeiten)
+                        </span>
+                    </li>
+                </ul>
+            {% endif %}
         </div>
     </div>
 </div>
