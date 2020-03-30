@@ -63,6 +63,7 @@ class ScheduleDeleteView(DeleteView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Putzplan"
+        context['cancel_button'] = {'text': "Abbrechen", 'url': self.get_success_url()}
         return context
 
 
@@ -111,6 +112,7 @@ class ScheduleGroupDeleteView(DeleteView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Putzgruppe"
+        context['cancel_button'] = {'text': "Abbrechen", 'url': self.get_success_url()}
         return context
 
 
@@ -177,6 +179,7 @@ class CleanerDeleteView(DeleteView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Putzer"
+        context['cancel_button'] = {'text': "Abbrechen", 'url': self.get_success_url()}
         return context
 
 
@@ -271,15 +274,19 @@ class AffiliationDeleteView(DeleteView):
     success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_delete_form.html'
 
+    def get_success_url(self):
+        return reverse_lazy('webinterface:affiliation-list', kwargs={'pk': self.object.cleaner.pk})
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Zugehörigkeit"
+        context['cancel_button'] = {'text': "Abbrechen", 'url': self.get_success_url()}
         return context
 
-    def delete(self, request, *args, **kwargs):
-        affiliation = Affiliation.objects.get(pk=kwargs['pk'])
-        self.success_url = reverse_lazy('webinterface:affiliation-list', kwargs={'pk': affiliation.cleaner.pk})
-        return super().delete(request, *args, **kwargs)
+    # def delete(self, request, *args, **kwargs):
+    #     affiliation = Affiliation.objects.get(pk=kwargs['pk'])
+    #     self.success_url = reverse_lazy('webinterface:affiliation-list', kwargs={'pk': affiliation.cleaner.pk})
+    #     return super().delete(request, *args, **kwargs)
 
 
 class CleaningWeekUpdateView(UpdateView):
@@ -306,19 +313,23 @@ class CleaningWeekUpdateView(UpdateView):
 
 class CleaningWeekDeleteView(DeleteView):
     model = CleaningWeek
-    success_url = reverse_lazy('webinterface:config')
     template_name = 'webinterface/generic_delete_form.html'
+
+    def get_success_url(self):
+        return reverse_lazy('webinterface:schedule', kwargs={'slug': self.object.schedule.slug,
+                                                             'page': self.kwargs['page']})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Putzwoche"
+        context['cancel_button'] = {'text': "Abbrechen", 'url': self.get_success_url()}
         return context
 
-    def delete(self, request, *args, **kwargs):
-        cleaning_week = CleaningWeek.objects.get(pk=kwargs['pk'])
-        self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': cleaning_week.schedule.slug,
-                                                                              'page': kwargs['page']})
-        return super().delete(request, *args, **kwargs)
+    # def delete(self, request, *args, **kwargs):
+    #     cleaning_week = CleaningWeek.objects.get(pk=kwargs['pk'])
+    #     self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': cleaning_week.schedule.slug,
+    #                                                                           'page': kwargs['page']})
+    #     return super().delete(request, *args, **kwargs)
 
 
 class AssignmentCreateView(FormView):
@@ -435,7 +446,13 @@ class TaskTemplateNewView(CreateView):
                                           "Damit Putzer nicht durch kurzfristig neu erstellte Aufgaben überrascht "
                                           "werden, werden neue Aufgaben erst zu den Putzdiensten ab der "
                                           "nächsten Kalenderwoche hinzugefügt "
-                                          "(KW beginnen immer am Montag).</p>".format(
+                                          "(KW beginnen immer am Montag).</p>"
+                                          "<p>Soll dennoch ein früherer Putzdienst die neue Aufgabe erhalten, "
+                                          "so gehe in der entsprechenden Putzwoche auf "
+                                          "<span class=\"glyphicon glyphicon-cog\"></span> "
+                                          "<span class=\"glyphicon glyphicon-menu-right\"></span>"
+                                          "'<span class=\"glyphicon glyphicon-plus\"></span> "
+                                          "Aufgaben aktualisieren'".format(
                                             self.schedule, Schedule.WEEKDAYS[self.schedule.weekday][1])}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
@@ -489,6 +506,7 @@ class TaskTemplateDeleteView(DeleteView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Aufgabe"
+        context['cancel_button'] = {'text': "Abbrechen", 'url': self.get_success_url()}
         return context
 
 
@@ -501,8 +519,8 @@ class TaskCreateView(FormView):
         super().__init__()
 
     @staticmethod
-    def create_ul_of_task_set(task_set):
-        task_list = ['<li>' + task.template.task_name + '</li>' for task in task_set.all()]
+    def create_ul_of_task_templates(templates):
+        task_list = ['<li>' + x.task_name + '</li>' for x in templates]
         if len(task_list) == 0:
             return '<i>Keine Aufgaben</i>'
         return '<ul>' + ''.join(task_list) + '</ul>'
@@ -513,37 +531,30 @@ class TaskCreateView(FormView):
         except Cleaner.DoesNotExist:
             Http404('Putzplan, für den Zugehörigkeit geändert werden soll, existiert nicht!')
         self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': self.cleaning_week.schedule.slug,
-                                                                              'page': kwargs['page']})
+                                                                         'page': kwargs['page']})
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['cleaning_week'] = self.cleaning_week
         context['title'] = "Erzeuge Aufgaben für {} in der Woche von {} bis {}".\
-            format(self.cleaning_week.schedule.name, self.cleaning_week.week_start(), self.cleaning_week.week_end())
+            format(self.cleaning_week.schedule.name,
+                   self.cleaning_week.week_start().strftime("%d. %b. %Y"),
+                   self.cleaning_week.week_end().strftime("%d. %b. %Y"))
 
-        tasks = TaskCreateView.create_ul_of_task_set(self.cleaning_week.task_set)
-        missing_tasks = TaskCreateView.create_ul_of_task_set(self.cleaning_week.task_templates_missing())
+        missing_tasks = TaskCreateView.create_ul_of_task_templates(self.cleaning_week.task_templates_missing())
 
-        context['info_banner'] = {'text': "<strong>Aufgaben, die diese Putzwoche schon hat:</strong><br>"
-                                          "{}<br>"
-                                          "<strong>Aufgaben des Putudienstes, die zur Zeit der letzten "
-                                          "Aktualisierung noch nicht existierten:</strong><br>"
-                                          "{}".format(tasks, missing_tasks)}
+        context['info_banner'] = {'text': "<strong>Folgende Aufgaben wurden nachträglich erschaffen und "
+                                          "deshalb nicht in diesen Putzdienst übernommen:</strong><br>"
+                                          "{}".format(missing_tasks)}
         context['submit_button'] = {'text': "Fehlende Aufgaben erstellen"}
         context['cancel_button'] = {'text': "Abbrechen",
                                     'url': self.success_url}
-
-        context['cleaning_week_tasks'] = self.cleaning_week.task_set.all()
-        context['missing_schedule_task_templates'] = self.cleaning_week.task_templates_missing()
         return context
 
     def form_valid(self, form):
         self.cleaning_week.create_missing_tasks()
-
-        return HttpResponseRedirect(reverse_lazy('webinterface:schedule',
-                                                 kwargs={'slug': self.cleaning_week.schedule.slug,
-                                                         'page': self.kwargs['page']}))
+        return HttpResponseRedirect(self.success_url)
 
 
 class TaskCleanedView(UpdateView):
@@ -663,12 +674,11 @@ class DutySwitchDeleteView(DeleteView):
     success_url = reverse_lazy('webinterface:cleaner')
     template_name = 'webinterface/generic_delete_form.html'
 
-    def dispatch(self, request, *args, **kwargs):
-        self.success_url = reverse_lazy('webinterface:cleaner', kwargs={'page': kwargs['page']})
-        return super().dispatch(request, *args, **kwargs)
+    def get_success_url(self):
+        return reverse_lazy('webinterface:cleaner', kwargs={'page': self.kwargs['page']})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Lösche Tauschanfrage"
-        context['cancel_url'] = self.success_url
+        context['cancel_button'] = {'text': "Abbrechen", 'url': self.get_success_url()}
         return context

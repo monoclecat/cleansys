@@ -11,12 +11,9 @@ class TaskTemplateTest(TestCase):
         cls.week = 2500
         cls.schedule = Schedule.objects.create(name="schedule")
         cls.schedule2 = Schedule.objects.create(name="schedule2")
-        cls.cleaning_week = CleaningWeek.objects.create(schedule=cls.schedule, week=cls.week,
-                                                        tasks_valid=True)
-        cls.cleaning_week2 = CleaningWeek.objects.create(schedule=cls.schedule2, week=cls.week + 1,
-                                                         tasks_valid=True)
-        cls.future_cleaning_week = CleaningWeek.objects.create(schedule=cls.schedule, week=cls.week + 1,
-                                                               tasks_valid=True)
+        cls.cleaning_week = CleaningWeek.objects.create(schedule=cls.schedule, week=cls.week)
+        cls.cleaning_week2 = CleaningWeek.objects.create(schedule=cls.schedule2, week=cls.week + 1)
+        cls.future_cleaning_week = CleaningWeek.objects.create(schedule=cls.schedule, week=cls.week + 1)
         cls.task_template = TaskTemplate.objects.create(schedule=cls.schedule, start_days_before=1, end_days_after=1)
 
     def test__str(self):

@@ -58,9 +58,6 @@ class CleaningWeekTest(TestCase):
         self.assertEqual(mock_queryset_create.call_count, 1)
         self.assertEqual(mock_queryset_create.call_args[1]['template'], self.task_template_2)
 
-        modified_cleaning_week_obj = mock_cleaning_week_save.call_args[0][0]
-        self.assertTrue(modified_cleaning_week_obj.tasks_valid)
-
     def test__week_start(self):
         self.assertEqual(self.cleaning_week.week_start(), epoch_week_to_monday(self.reference_week))
 

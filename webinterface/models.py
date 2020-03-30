@@ -138,7 +138,6 @@ class Schedule(models.Model):
         """
         On a given epoch week, create Assignments for CleaningWeeks where there are
         ones to be created and recreate Assignments in CleaningWeeks where cleaning_week.assignments_valid==False.
-        All while updating Tasks where cleaning_week.tasks_valid==False.
 
         :param week: Epoch week number to update Assignments and Tasks on
         :return: True if Assignment was created, else False
@@ -162,8 +161,7 @@ class Schedule(models.Model):
             return False
 
         cleaning_week, was_created = self.cleaningweek_set.get_or_create(week=week)
-        if not cleaning_week.tasks_valid:
-            cleaning_week.create_missing_tasks()
+        cleaning_week.create_missing_tasks()
         if not cleaning_week.assignments_valid:
             cleaning_week.assignment_set.all().delete()
             cleaning_week.set_assignments_valid_field(True)
@@ -459,7 +457,6 @@ class CleaningWeek(models.Model):
     week = models.IntegerField(editable=False)
     excluded = models.ManyToManyField(Cleaner)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
-    tasks_valid = models.BooleanField(default=False)
     assignments_valid = models.BooleanField(default=False)
     disabled = models.BooleanField(default=False)
 
@@ -489,7 +486,6 @@ class CleaningWeek(models.Model):
         missing_task_templates = self.task_templates_missing()
         for task_template in missing_task_templates.all():
             self.task_set.create(template=task_template)
-        self.tasks_valid = True
         self.save()
 
     def completed_tasks(self) -> QuerySet:
@@ -527,10 +523,6 @@ class CleaningWeek(models.Model):
 
     def set_assignments_valid_field(self, value: bool) -> None:
         self.assignments_valid = value
-        self.save()
-
-    def set_tasks_valid_field(self, value: bool) -> None:
-        self.tasks_valid = value
         self.save()
 
 

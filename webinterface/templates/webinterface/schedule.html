@@ -85,7 +85,7 @@
                             <div class="btn-group">
                                 <button type="button"
                                         class="btn
-                                               {% if cleaning_week.tasks_valid and cleaning_week.assignments_valid %}btn-default
+                                               {% if cleaning_week.assignments_valid %}btn-default
                                                {% else %}btn-warning
                                                {% endif %}
                                               dropdown-toggle"
@@ -100,16 +100,16 @@
                                         </a></li>
                                     {% endfor %}
                                     <li role="separator" class="divider"></li>
-                                    <li><a href="{% url 'webinterface:cleaning-week-edit' cleaning_week.pk page_obj.number %}">
-                                        <span class="glyphicon glyphicon-off"></span> Aktivieren/Deaktivieren
-                                    </a></li>
-                                    {% if not cleaning_week.tasks_valid %}
-                                        <li class="bg-danger">
-                                            <a href="{% url 'webinterface:cleaning-week-tasks' cleaning_week.pk page_obj.number %}">
-                                                <span class="glyphicon glyphicon-plus"></span> Aufgaben aktualisieren
-                                            </a>
-                                        </li>
-                                    {% endif %}
+                                    <li>
+                                        <a href="{% url 'webinterface:cleaning-week-edit' cleaning_week.pk page_obj.number %}">
+                                            <span class="glyphicon glyphicon-off"></span> Aktivieren/Deaktivieren
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{% url 'webinterface:cleaning-week-tasks' cleaning_week.pk page_obj.number %}">
+                                            <span class="glyphicon glyphicon-plus"></span> Aufgaben aktualisieren
+                                        </a>
+                                    </li>
                                     {% if not cleaning_week.assignments_valid %}
                                         <li class="bg-danger">
                                             <a href="
