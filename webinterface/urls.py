@@ -45,11 +45,15 @@ urlpatterns = [
     path('putzplan/<slug:slug>/seite<int:page>/', login_required(ScheduleView.as_view()), name='schedule-view'),
     path('putzplan/<slug:slug>/analytics/', login_required(ScheduleAnalyticsView.as_view()),
          name='schedule-analystics-view'),
-    path('putzplan/<slug:slug>/', login_required(ScheduleView.as_view()), name='schedule-view-no-page'),
+    path('putzplan/<slug:slug>/analytics/s<int:schedule_page>/', login_required(ScheduleAnalyticsView.as_view()),
+         name='schedule-analystics-view-with-schedule-page'),
+    path('putzplan/<slug:slug>/', login_required(ScheduleView.as_view()), name='schedule-no-page'),
 
 
     path('config/', staff_member_required(ConfigView.as_view(), login_url=reverse_lazy("webinterface:login")), name='config'),
     path('putzer-analytics/', login_required(CleanerAnalyticsView.as_view()), name='cleaner-analytics'),
+    path('putzer-analytics/p<int:cleaner_page>/', login_required(CleanerAnalyticsView.as_view()),
+         name='cleaner-analytics-with-cleaner-page'),
 
     path('cleaning-week-tasks/<int:pk>/<int:page>/', staff_member_required(TaskCreateView.as_view()),
          name='cleaning-week-tasks'),
@@ -91,7 +95,8 @@ urlpatterns = [
          name='cleaner-edit'),
     path('putzer/<int:pk>/zugehoerigkeiten/', login_required(AffiliationNewView.as_view()),
          name='affiliation-list'),
-
+    path('putzer/<int:pk>/zugehoerigkeiten/p<int:cleaner_page>/', login_required(AffiliationNewView.as_view()),
+         name='affiliation-list-with-cleaner-page'),
 
     path('cleaner-delete/<int:pk>/', staff_member_required(CleanerDeleteView.as_view()), name='cleaner-delete'),
 

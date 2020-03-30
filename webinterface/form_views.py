@@ -4,6 +4,7 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView, FormVi
 from django.http import HttpResponseRedirect
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from .views import back_button_page_context
 
 
 class ScheduleNewView(CreateView):
@@ -202,16 +203,16 @@ class AffiliationNewView(CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = "Zugehörigkeiten von {}".format(self.cleaner.name)
-        context['submit_button'] = {'text': "Speichern"}
-        context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:affiliation-list',
-                                                        kwargs={'pk': self.cleaner.pk})}
-        context['cleaner'] = self.cleaner
-        return context
+        context = {
+            **context,
+            **back_button_page_context(self.kwargs),
+            'title': "Zugehörigkeiten von {}".format(self.cleaner.name),
+            'submit_button': {'text': "Speichern"},
+            'cancel_button': {'text': "Abbrechen",
+                              'url': reverse_lazy('webinterface:affiliation-list',
+                                                  kwargs={'pk': self.cleaner.pk})}, 'cleaner': self.cleaner}
 
-    def form_invalid(self, form):
-        print(1)
+        return context
 
     def form_valid(self, form):
         if 'pk' not in self.kwargs:
