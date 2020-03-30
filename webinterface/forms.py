@@ -200,17 +200,15 @@ class AssignmentForm(forms.ModelForm):
 class TaskTemplateForm(forms.ModelForm):
     class Meta:
         model = TaskTemplate
-        fields = ['task_name', 'task_help_text', 'start_days_before', 'end_days_after', 'task_disabled']
+        fields = ['task_name', 'task_help_text', 'start_days_before', 'end_days_after']
         labels = {
             'task_name': "Name der Aufgabe",
             'start_days_before': "Kann ab diesem Wochentag angefangen werden",
             'end_days_after': "Darf bis zu diesem Wochentag gemacht werden",
-            'task_help_text': "Hilfetext",
-            'task_disabled': "Aufgabe deaktiviert"
+            'task_help_text': "Hilfetext"
         }
         help_texts = {
-            'task_help_text': "Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können.",
-            'task_disabled': "Deaktivieren versteckt die Aufgabe"
+            'task_help_text': "Gib dem Putzer Tipps, um die Aufgabe schnell und effektiv machen zu können."
         }
         widgets = {
             'task_help_text': forms.Textarea

@@ -131,7 +131,7 @@ class SchedulePrintView(TemplateView):
         schedule = Schedule.objects.get(slug=kwargs['slug'])
         context = {'schedule': schedule,
                    'cleaning_weeks': schedule.cleaningweek_set.filter(week__gte=kwargs['week']).order_by('week'),
-                   'task_templates': schedule.tasktemplate_set.enabled()}
+                   'task_templates': schedule.tasktemplate_set.all()}
         return context
 
 
@@ -239,7 +239,7 @@ class AssignmentTasksView(TemplateView):
             raise Exception("CleaningWeek does not exist on date!")
         context['cleaning_week'] = cleaning_week
         context['schedule'] = cleaning_week.schedule
-        context['tasks'] = cleaning_week.task_set.enabled()
+        context['tasks'] = cleaning_week.task_set.all()
 
         cleaner_for_user = context['view'].request.user.cleaner_set
         if cleaner_for_user.exists():

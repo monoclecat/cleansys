@@ -487,7 +487,7 @@ class CleaningWeek(models.Model):
 
     def create_missing_tasks(self):
         missing_task_templates = self.task_templates_missing()
-        for task_template in missing_task_templates.enabled():
+        for task_template in missing_task_templates.all():
             self.task_set.create(template=task_template)
         self.tasks_valid = True
         self.save()
@@ -517,7 +517,7 @@ class CleaningWeek(models.Model):
         return current_epoch_week() < self.week
 
     def task_templates_missing(self):
-        return self.schedule.tasktemplate_set.enabled().exclude(pk__in=[x.template.pk for x in self.task_set.all()])
+        return self.schedule.tasktemplate_set.all().exclude(pk__in=[x.template.pk for x in self.task_set.all()])
 
     def week_start(self):
         return epoch_week_to_monday(self.week)
@@ -574,14 +574,6 @@ class Assignment(models.Model):
             return None
 
 
-class TaskTemplateQuerySet(models.QuerySet):
-    def enabled(self):
-        return self.filter(task_disabled=False)
-
-    def disabled(self):
-        return self.filter(task_disabled=True)
-
-
 class TaskTemplate(models.Model):
     task_name = models.CharField(max_length=40)
     task_help_text = models.CharField(max_length=200, default="", null=True)
@@ -589,13 +581,9 @@ class TaskTemplate(models.Model):
     end_days_after = models.IntegerField(choices=[(0, ''), (1, ''), (2, ''), (3, ''), (4, ''), (5, ''), (6, '')])
 
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
-    task_disabled = models.BooleanField(default=False)
-
-    objects = TaskTemplateQuerySet.as_manager()
 
     def __init__(self, *args, **kwargs):
         super(TaskTemplate, self).__init__(*args, **kwargs)
-        self.previous_disabled = self.task_disabled
         self.previous_pk = self.pk
 
     def __str__(self):
@@ -620,12 +608,6 @@ class TaskQuerySet(models.QuerySet):
 
     def uncleaned(self):
         return self.filter(cleaned_by__isnull=True)
-
-    def enabled(self):
-        return self.filter(template__task_disabled=False)
-
-    def disabled(self):
-        return self.filter(template__task_disabled=True)
 
 
 class Task(models.Model):
