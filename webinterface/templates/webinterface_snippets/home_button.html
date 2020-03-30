@@ -1,0 +1,18 @@
+<a class="btn btn-default" role="button"
+        {% if user.is_superuser %}
+
+            href="{% url 'webinterface:config' %}"
+
+        {% else %}
+            {% if back_to_cleaner_page and back_to_cleaner_page > 0 %}
+
+                href="{% url 'webinterface:cleaner' back_to_cleaner_page %}"
+
+            {% else %}
+
+                href="{% url 'webinterface:cleaner-no-page' %}"
+
+            {% endif %}
+        {% endif %}>
+    <span class="glyphicon glyphicon-home"></span> Home
+</a>

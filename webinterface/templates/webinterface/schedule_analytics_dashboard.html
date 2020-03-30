@@ -14,12 +14,9 @@ Analytics - {{ schedule }}
 
 {% block body %}
     <div class="container-fluid">
-        <div class="row" style="padding: 5px">
-            <div class="col-xs-12 col-lg-6 col-lg-offset-3">
-                <a class="btn btn-default btn-block" role="button"
-                   href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
-                    Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
-                </a>
+        <div class="row">
+            <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+                {% include 'webinterface_snippets/button_to_schedule_page.html' %}
             </div>
         </div>
         <div class="row">
@@ -80,10 +77,7 @@ Analytics - {{ schedule }}
         </div>
         <div class="row" style="padding: 5px">
             <div class="col-xs-12 col-lg-6 col-lg-offset-3">
-                <a class="btn btn-default btn-block" role="button"
-                   href="{% url 'webinterface:schedule-view-no-page' schedule.slug %}">
-                    Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
-                </a>
+                {% include 'webinterface_snippets/button_to_schedule_page.html' %}
             </div>
         </div>
     </div>

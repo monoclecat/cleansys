@@ -1,0 +1,9 @@
+<a class="btn btn-info" role="button"
+   style="white-space: normal"
+        {% if back_to_schedule_page and back_to_schedule_page > 0 %}
+            href="{% url 'webinterface:schedule' schedule.slug back_to_schedule_page %}"
+        {% else %}
+            href="{% url 'webinterface:schedule-no-page' schedule.slug %}"
+        {% endif %}>
+    <span class="glyphicon glyphicon-list-alt"></span> {{ schedule.name }}
+</a>

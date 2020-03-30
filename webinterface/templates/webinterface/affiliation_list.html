@@ -11,12 +11,12 @@
 {% endblock %}
 
 {% block main %}
+    <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+        {% include 'webinterface_snippets/home_button.html' %}
+    </div>
+
     {% if user.is_superuser %}
         <h2>Zugehörigkeiten von <b>{{ cleaner }}</b></h2>
-
-        <p><a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:config' %}">
-            <span class="glyphicon glyphicon-home"></span> Zur Admin-Übersicht
-        </a></p>
 
         <div class="well">
         <h3>Neue Zugehörigkeit eintragen</h3>
@@ -28,13 +28,9 @@
             {% endif %}
         </form>
     </div>
+
     {% else %}
         <h2>Deine Zugehörigkeiten</h2>
-
-        <p><a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:cleaner-no-page' %}">
-            <span class="glyphicon glyphicon-home"></span> Zurück
-        </a></p>
-
         <p>Bei Fragen wende dich bitte an den Administrator.</p>
     {% endif %}
 

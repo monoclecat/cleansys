@@ -8,24 +8,9 @@ Putzdienst erledigen
 {% block main %}
     <div class="row">
         <div class="btn btn-group btn-group-md btn-group-justified" role="group">
-            {% include "webinterface_snippets/button_to_cleaner_page.html" %}
+            {% include "webinterface_snippets/home_button.html" %}
+            {% include "webinterface_snippets/button_to_schedule_page.html" %}
         </div>
-        {% if schedule_page > 0 %}
-            <div class="btn btn-group btn-group-md btn-group-justified" role="group">
-                <a class="btn btn-default btn-block" role="button"
-                   href="{% url 'webinterface:schedule-view' cleaning_week.schedule.slug schedule_page %}">
-                    Zurück zu <span class="glyphicon glyphicon-list-alt"></span> {{ cleaning_week.schedule.name }}
-                </a>
-            </div>
-        {% endif %}
-        {% if cleaner_page > 0 %}
-            <div class="btn btn-group btn-group-md btn-group-justified" role="group">
-                <a class="btn btn-default btn-block" role="button"
-                   href="{% url 'webinterface:cleaner' cleaner_page %}">
-                    Zurück
-                </a>
-            </div>
-        {% endif %}
     </div>
 
     {% if already_cleaned_error %}
