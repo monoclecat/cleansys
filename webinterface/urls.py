@@ -1,7 +1,7 @@
 from django.urls import path
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LogoutView
 from .views import *
 from .form_views import *
 
@@ -15,8 +15,8 @@ urlpatterns = [
                                      authentication_form=AuthFormWithSubmit), name='login'),
     path('login-per-klick', LoginByClickView.as_view(), name='login-by-click'),
     path('logout/', login_required(LogoutView.as_view()), name='logout'),
-    path('config/', staff_member_required(ConfigView.as_view(), login_url=reverse_lazy("webinterface:login")),
-         name='config'),
+    path('admin/', staff_member_required(AdminView.as_view(), login_url=reverse_lazy("webinterface:login")),
+         name='admin'),
 
     path('affiliation-edit/<int:pk>/', staff_member_required(AffiliationUpdateView.as_view()), name='affiliation-edit'),
     path('affiliation-delete/<int:pk>/', staff_member_required(AffiliationDeleteView.as_view()),

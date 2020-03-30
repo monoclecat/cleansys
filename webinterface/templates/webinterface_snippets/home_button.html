@@ -1,7 +1,7 @@
 <a class="btn btn-default" role="button"
         {% if user.is_superuser %}
 
-            href="{% url 'webinterface:config' %}"
+            href="{% url 'webinterface:admin' %}"
 
         {% else %}
             {% if back_to_cleaner_page and back_to_cleaner_page > 0 %}

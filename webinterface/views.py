@@ -27,11 +27,11 @@ def back_button_page_context(kwargs: dict) -> dict:
     return context
 
 
-class ConfigView(TemplateView):
+class AdminView(TemplateView):
     template_name = 'webinterface/config.html'
 
     def get_context_data(self, **kwargs):
-        context = super(ConfigView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
 
         # webinterface_snippets/schedule_panel.html needs to cover these cases!
         context['action_needed_schedules'] = \
@@ -163,7 +163,7 @@ class CleanerView(ListView):
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_superuser:
-            return HttpResponseRedirect(reverse_lazy('webinterface:config'))
+            return HttpResponseRedirect(reverse_lazy('webinterface:admin'))
         self.cleaner = get_object_or_404(Cleaner, user=request.user)
         self.assignments = self.cleaner.assignment_set.order_by('cleaning_week__week', 'schedule__weekday')
 

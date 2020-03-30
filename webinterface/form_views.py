@@ -10,7 +10,7 @@ from .views import back_button_page_context
 class ScheduleNewView(CreateView):
     form_class = ScheduleForm
     model = Schedule
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -18,7 +18,7 @@ class ScheduleNewView(CreateView):
         context['title'] = "Erzeuge neuen Putzplan"
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:config')}
+                                    'url': reverse_lazy('webinterface:admin')}
         return context
 
     def form_valid(self, form):
@@ -32,7 +32,7 @@ class ScheduleNewView(CreateView):
 class ScheduleUpdateView(UpdateView):
     form_class = ScheduleForm
     model = Schedule
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -40,7 +40,7 @@ class ScheduleUpdateView(UpdateView):
         context['title'] = "Ändere Putzplan"
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:config')}
+                                    'url': reverse_lazy('webinterface:admin')}
         context['delete_button'] = {'text': "Lösche Putzplan",
                                     'url': reverse_lazy('webinterface:schedule-delete', kwargs={'pk': self.object.pk})}
         return context
@@ -57,7 +57,7 @@ class ScheduleUpdateView(UpdateView):
 
 class ScheduleDeleteView(DeleteView):
     model = Schedule
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_delete_form.html'
 
     def get_context_data(self, **kwargs):
@@ -70,7 +70,7 @@ class ScheduleDeleteView(DeleteView):
 class ScheduleGroupNewView(CreateView):
     form_class = ScheduleGroupForm
     model = ScheduleGroup
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -82,14 +82,14 @@ class ScheduleGroupNewView(CreateView):
                                           "der Putzer geregelt."}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:config')}
+                                    'url': reverse_lazy('webinterface:admin')}
         return context
 
 
 class ScheduleGroupUpdateView(UpdateView):
     form_class = ScheduleGroupForm
     model = ScheduleGroup
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -97,7 +97,7 @@ class ScheduleGroupUpdateView(UpdateView):
         context['title'] = "Ändere eine Putzplan-Gruppierung"
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:config')}
+                                    'url': reverse_lazy('webinterface:admin')}
         context['delete_button'] = {'text': "Lösche Putzgruppe",
                                     'url': reverse_lazy('webinterface:schedule-group-delete',
                                                         kwargs={'pk': self.object.pk})}
@@ -106,7 +106,7 @@ class ScheduleGroupUpdateView(UpdateView):
 
 class ScheduleGroupDeleteView(DeleteView):
     model = ScheduleGroup
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_delete_form.html'
 
     def get_context_data(self, **kwargs):
@@ -119,7 +119,7 @@ class ScheduleGroupDeleteView(DeleteView):
 class CleanerNewView(CreateView):
     form_class = CleanerForm
     model = Cleaner
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -134,7 +134,7 @@ class CleanerNewView(CreateView):
                                           "'<span class=\"glyphicon glyphicon-home\"></span> Zugehörigkeiten'."}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:config')}
+                                    'url': reverse_lazy('webinterface:admin')}
         return context
 
     def form_valid(self, form):
@@ -148,7 +148,7 @@ class CleanerNewView(CreateView):
 class CleanerUpdateView(UpdateView):
     form_class = CleanerForm
     model = Cleaner
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -156,7 +156,7 @@ class CleanerUpdateView(UpdateView):
         context['title'] = "Ändere Putzerprofil"
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:config')}
+                                    'url': reverse_lazy('webinterface:admin')}
         context['delete_button'] = {'text': "Lösche Putzer",
                                     'url': reverse_lazy('webinterface:cleaner-delete',
                                                         kwargs={'pk': self.object.pk})}
@@ -173,7 +173,7 @@ class CleanerUpdateView(UpdateView):
 
 class CleanerDeleteView(DeleteView):
     model = Cleaner
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_delete_form.html'
 
     def get_context_data(self, **kwargs):
@@ -238,7 +238,7 @@ class AffiliationNewView(CreateView):
 class AffiliationUpdateView(UpdateView):
     form_class = AffiliationForm
     model = Affiliation
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -271,7 +271,7 @@ class AffiliationUpdateView(UpdateView):
 
 class AffiliationDeleteView(DeleteView):
     model = Affiliation
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_delete_form.html'
 
     def get_success_url(self):
@@ -292,7 +292,7 @@ class AffiliationDeleteView(DeleteView):
 class CleaningWeekUpdateView(UpdateView):
     form_class = CleaningWeekForm
     model = CleaningWeek
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
@@ -325,12 +325,6 @@ class CleaningWeekDeleteView(DeleteView):
         context['cancel_button'] = {'text': "Abbrechen", 'url': self.get_success_url()}
         return context
 
-    # def delete(self, request, *args, **kwargs):
-    #     cleaning_week = CleaningWeek.objects.get(pk=kwargs['pk'])
-    #     self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': cleaning_week.schedule.slug,
-    #                                                                           'page': kwargs['page']})
-    #     return super().delete(request, *args, **kwargs)
-
 
 class AssignmentCreateView(FormView):
     template_name = 'webinterface/generic_form.html'
@@ -343,7 +337,7 @@ class AssignmentCreateView(FormView):
                                                                                   'page': kwargs['page']})
         else:
             self.schedule = None
-            self.success_url = reverse_lazy('webinterface:config')
+            self.success_url = reverse_lazy('webinterface:admin')
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -388,7 +382,7 @@ class AssignmentCreateView(FormView):
 class AssignmentUpdateView(UpdateView):
     form_class = AssignmentForm
     model = Assignment
-    success_url = reverse_lazy('webinterface:config')
+    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
 
     def get_context_data(self, **kwargs):
