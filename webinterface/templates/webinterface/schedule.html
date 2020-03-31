@@ -124,7 +124,7 @@
                                     {% for assignment in cleaning_week.assignment_set.all %}
                                         {{ assignment.cleaner.name }}{% if not forloop.last %} & {% endif %}
                                     {% empty %}
-                                        Keine Putzer
+                                        <i style="color: gray">Keine Putzdienste</i>
                                     {% endfor %}
                                     {% if not cleaning_week.is_in_future %}
                                         <span class="label label-default">

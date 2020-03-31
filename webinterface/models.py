@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
+from django.db.models.signals import m2m_changed
 from operator import itemgetter
 import datetime
 from django.contrib.auth.hashers import make_password
@@ -262,6 +263,21 @@ class ScheduleGroup(models.Model):
 
     def __str__(self):
         return self.name
+
+
+def schedule_group_changed(sender, instance, action, reverse, model, pk_set, **kwargs):
+    if action == 'post_add' or action == 'post_remove':
+        if model == Schedule:
+            schedules = Schedule.objects.filter(pk__in=pk_set)
+        else:
+            schedules = Schedule.objects.filter(pk=instance.pk)
+        if schedules.exists():
+            for schedule in schedules.all():
+                [x.set_assignments_valid_field(False) for x in schedule.cleaningweek_set.in_future()]
+    return
+
+
+m2m_changed.connect(schedule_group_changed, sender=ScheduleGroup.schedules.through)
 
 
 class CleanerQuerySet(models.QuerySet):
