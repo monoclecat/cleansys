@@ -14,19 +14,19 @@
         {% crispy form %}
     </form>
     {% if submit_button %}
-            <button class="btn btn-success" type="submit" form="main_form" name="save"
-                    style="margin: 5px 0; white-space: normal">
-                 <span class="glyphicon glyphicon-ok"></span> {{ submit_button.text }}</button>
-        {% endif %}
-        {% if cancel_button %}
-            <a class="btn btn-warning" href="{{ cancel_button.url }}" role="button"
-               style="margin: 5px 0; white-space: normal">
-                 <span class="glyphicon glyphicon-remove"></span> {{ cancel_button.text }}</a>
-        {% endif %}
-        {% if delete_button %}
-            <a class="btn btn-danger pull-right" style="color:whitesmoke; margin: 5px 0; white-space: normal"
-               href="{{ delete_button.url }}"
-               role="button"><span class="glyphicon glyphicon-trash"></span> {{ delete_button.text }}</a>
-        {% endif %}
+        <button class="btn btn-success" type="submit" form="main_form" name="save"
+                style="margin: 5px 0; white-space: normal">
+            <span class="glyphicon glyphicon-ok"></span> {{ submit_button.text }}</button>
+    {% endif %}
+    {% if cancel_button %}
+        <a class="btn btn-warning" href="{{ cancel_button.url }}" role="button"
+           style="margin: 5px 0; white-space: normal">
+            <span class="glyphicon glyphicon-remove"></span> {{ cancel_button.text }}</a>
+    {% endif %}
+    {% if delete_button %}
+        <a class="btn btn-danger pull-right" style="color:whitesmoke; margin: 5px 0; white-space: normal"
+           href="{{ delete_button.url }}"
+           role="button"><span class="glyphicon glyphicon-trash"></span> {{ delete_button.text }}</a>
+    {% endif %}
     <br><br><br>
 {% endblock %}
