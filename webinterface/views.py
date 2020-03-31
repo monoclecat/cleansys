@@ -53,8 +53,7 @@ class AdminView(TemplateView):
         context['active_cleaner_list'] = Cleaner.objects.active().exclude(pk__in=action_needed_cleaner_pks)
         context['inactive_cleaner_list'] = Cleaner.objects.inactive().exclude(pk__in=action_needed_cleaner_pks)
 
-        context['active_schedule_group_list'] = ScheduleGroup.objects.enabled()
-        context['disabled_schedule_group_list'] = ScheduleGroup.objects.disabled()
+        context['schedule_group_list'] = ScheduleGroup.objects.all()
         return context
 
 

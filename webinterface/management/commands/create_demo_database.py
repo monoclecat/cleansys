@@ -69,9 +69,7 @@ class Command(BaseCommand):
         og1 = ScheduleGroup.objects.create(name="1. Obergeschoss")
         og1.schedules.add(sch2, sch4, sch6, sch7, sch8, sch9)
         og2 = ScheduleGroup.objects.create(name="2. Obergeschoss")
-        og2.schedules.add(sch3, sch5, sch6, sch7, sch8, sch9)
-        dis_group = ScheduleGroup.objects.create(name="Alte Gruppe", disabled=True)
-        dis_group.schedules.add(schd)
+        og2.schedules.add(sch3, sch5, sch6, sch7, sch8, sch9, schd)
 
         self.stdout.write("Creating Cleaners...")
         cl_a = Cleaner.objects.create(name="Anne")
@@ -195,7 +193,7 @@ class Command(BaseCommand):
         affiliate_cleaner(cl_n, groups=[og1, og2])
         affiliate_cleaner(cl_o, groups=[og2, og1])
 
-        Affiliation.objects.create(cleaner=cl_moved_out, group=dis_group, beginning=now-10, end=now-1)
+        Affiliation.objects.create(cleaner=cl_moved_out, group=eg, beginning=now-10, end=now-1)
 
         self.stdout.write("Creating Assignments (this can take some time)...")
         for sch in Schedule.objects.enabled():

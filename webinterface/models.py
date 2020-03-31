@@ -232,34 +232,16 @@ class Schedule(models.Model):
              for x in self.cleaningweek_set.filter(week__gt=current_epoch_week()).all()]
 
 
-class ScheduleGroupQuerySet(models.QuerySet):
-    def enabled(self):
-        return self.filter(disabled=False)
-
-    def disabled(self):
-        return self.filter(disabled=True)
-
-
 class ScheduleGroup(models.Model):
     """
     A ScheduleGroup can be thought of as the floor you're living on. It simplifies grouping of Cleaners.
 
     Cleaners can be affiliated to different ScheduleGroups over time, which is tracked by the Affiliation model.
-    A ScheduleGroup should not be deleted (rather disabled), as this causes Affiliations to be deleted,
-    creating holes in the affiliation history which can lead to issues in consistency and the assigning of
-    duties to Cleaners.
     """
     class Meta:
         ordering = ("name", )
     name = models.CharField(max_length=30, unique=True)
     schedules = models.ManyToManyField(Schedule)
-    disabled = models.BooleanField(default=False)
-
-    objects = ScheduleGroupQuerySet.as_manager()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__disabled = self.disabled
 
     def __str__(self):
         return self.name

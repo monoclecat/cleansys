@@ -32,7 +32,7 @@ class ScheduleForm(forms.ModelForm):
         }
 
     schedule_group = forms. \
-        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.enabled(),
+        ModelMultipleChoiceField(queryset=ScheduleGroup.objects.all(),
                                  label="Zugehörigkeit zu Putzgruppen (mehrere möglich)",
                                  help_text="Alle Putzer einer Putzgruppe sind allen Putzplänen dieser "
                                            "Gruppe zugewiesen. Ein Putzer kann nur einer Putzgruppe auf "
@@ -56,7 +56,6 @@ class ScheduleGroupForm(forms.ModelForm):
         labels = {
             'name': "Name der Putzplan-Gruppe",
             'schedules': "Putzpläne, die dieser Putzplan-Gruppe angehören",
-            'disabled': "Putzplan-Gruppierung deaktivieren"
         }
         help_texts = {
             'name': "Dieser Name steht z.B. für ein Geschoss oder eine bestimmte Sammlung an Putzplänen, "
@@ -130,7 +129,6 @@ class AffiliationForm(forms.ModelForm):
 
     def __init__(self, cleaner=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['group'].queryset = ScheduleGroup.objects.enabled()
         self.cleaner = cleaner
         if not self.cleaner and 'instance' in kwargs and kwargs['instance']:
             self.cleaner = kwargs['instance'].cleaner
