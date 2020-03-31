@@ -28,7 +28,7 @@ def back_button_page_context(kwargs: dict) -> dict:
 
 
 class AdminView(TemplateView):
-    template_name = 'webinterface/config.html'
+    template_name = 'webinterface/admin_dashboard.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
