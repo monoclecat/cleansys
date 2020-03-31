@@ -418,16 +418,20 @@ class Affiliation(models.Model):
         self.date_validator(affiliation_pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
 
         if self.previous_beginning != self.beginning or self.previous_end != self.end:
+            cleaning_weeks = CleaningWeek.objects.filter(schedule__in=self.group.schedules.all())
+
             min_beginning = min(self.previous_beginning, self.beginning)
             max_beginning = max(self.previous_beginning, self.beginning)
-            beginning_affects = CleaningWeek.objects.\
-                filter(week__range=(min_beginning, max_beginning)).\
+            beginning_affects = cleaning_weeks. \
+                filter(week__gte=current_epoch_week()+1).\
+                filter(week__range=(min_beginning, max_beginning)). \
                 exclude(week=max_beginning)
 
             min_end = min(self.previous_end, self.end)
             max_end = max(self.previous_end, self.end)
-            end_affects = CleaningWeek.objects.\
-                filter(week__range=(min_end, max_end)).\
+            end_affects = cleaning_weeks. \
+                filter(week__gte=current_epoch_week()+1).\
+                filter(week__range=(min_end, max_end)). \
                 exclude(week=min_end)
 
             # XORing both sets deals with the case that the old and new affiliation week ranges don't overlap
@@ -448,6 +452,12 @@ class CleaningWeekQuerySet(models.QuerySet):
 
     def in_future(self):
         return self.filter(week__gte=current_epoch_week()+1)
+
+    def assignments_valid(self):
+        return self.filter(assignments_valid=True)
+
+    def assignments_invalid(self):
+        return self.filter(assignments_valid=False)
 
 
 class CleaningWeek(models.Model):
