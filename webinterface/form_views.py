@@ -188,6 +188,16 @@ class AffiliationNewView(CreateView):
     model = Affiliation
     template_name = 'webinterface/affiliation_list.html'
 
+    @staticmethod
+    def info_text():
+        return "<p><strong>Bitte beachten:</strong></p>" \
+               "<p>Eine Änderung der Zugehörigkeiten eines " \
+               "Putzers führt dazu, dass in den betroffenen Putzplänen die existierenden " \
+               "Putzdienste im betroffenen Zeitraum auf <i>ungültig</i> " \
+               "gesetzt werden und aktualisiert werden müssen.</p>" \
+               "<p>Putzdienste in der jetzigen Woche oder in vergangenen Wochen bleiben " \
+               "jedoch unberührt, falls sie nicht manuell gelöscht und neu erzeugt werden.</p>"
+
     def __init__(self):
         self.cleaner = None
         super().__init__()
@@ -213,7 +223,9 @@ class AffiliationNewView(CreateView):
             'submit_button': {'text': "Speichern"},
             'cancel_button': {'text': "Abbrechen",
                               'url': reverse_lazy('webinterface:affiliation-list',
-                                                  kwargs={'pk': self.cleaner.pk})}, 'cleaner': self.cleaner}
+                                                  kwargs={'pk': self.cleaner.pk})}, 'cleaner': self.cleaner,
+            'info_banner': {'text': self.info_text()}
+        }
 
         return context
 
@@ -244,12 +256,14 @@ class AffiliationUpdateView(UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Bearbeite Zugehörigkeit"
-        context['info_banner'] = {'text': "Du bearbeitest <strong>{}'s</strong> Zugehörigkeit in der "
-                                          "<strong>{}</strong> Putzgruppe, die am <strong>{}</strong> beginnt und am "
-                                          "<strong>{}</strong> endet".format(
-                                            self.object.cleaner, self.object.group,
-                                            self.object.beginning_as_date().strftime("%d. %b %Y"),
-                                            self.object.end_as_date().strftime("%d. %b %Y"))}
+        context['info_banner'] = {
+            'text': "<p>Du bearbeitest <strong>{}'s</strong> Zugehörigkeit in der "
+                    "<strong>{}</strong> Putzgruppe, die am <strong>{}</strong> beginnt und am "
+                    "<strong>{}</strong> endet.</p>".format(
+                        self.object.cleaner, self.object.group,
+                        self.object.beginning_as_date().strftime("%d. %b %Y"),
+                        self.object.end_as_date().strftime("%d. %b %Y")) +
+                    AffiliationNewView.info_text()}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
                                     'url': reverse_lazy('webinterface:affiliation-list',
@@ -362,7 +376,7 @@ class AssignmentCreateView(FormView):
                                           "<li>Fehlende Putzdienste werden neu erzeugt.</li>"
                                           "<li>Aufgaben werden aktualisiert.</li>"
                                           "<li>Ungültige Putzdienste werden gelöscht "
-                                          "(Putzdienste werden auf ungültig gesetzt"
+                                          "(Putzdienste werden auf ungültig gesetzt "
                                           "wenn wichtige Eigenschaften der Putzdienste verändert werden).</li>"
                                           "<li><strong>Gültige Putzdienste werden in Ruhe gelassen!</strong></li>"
                                           "</ul>"}

@@ -17,18 +17,6 @@
 
     {% if user.is_superuser %}
         <h2>Zugehörigkeiten von <b>{{ cleaner }}</b></h2>
-
-        <div class="well">
-        <h3>Neue Zugehörigkeit eintragen</h3>
-        <form method="POST" class="form" id="main_form">
-            {% crispy form %}
-            {% if submit_button %}
-                <button class="btn btn-success" type="submit" name="save" form="main_form" >
-                    <span class="glyphicon glyphicon-ok"></span> {{ submit_button.text }}</button>
-            {% endif %}
-        </form>
-    </div>
-
     {% else %}
         <h2>Deine Zugehörigkeiten</h2>
         <p>Bei Fragen wende dich bitte an den Administrator.</p>
@@ -52,4 +40,20 @@
             </tr>
         {% endfor %}
     </table>
+
+    {% if user.is_superuser %}
+        <div class="well">
+            <h3>Neue Zugehörigkeit eintragen</h3>
+            {% if info_banner %}
+                <div class="alert alert-info" role="alert">{{ info_banner.text|safe }}</div>
+            {% endif %}
+            <form method="POST" class="form" id="main_form">
+                {% crispy form %}
+                {% if submit_button %}
+                    <button class="btn btn-success" type="submit" name="save" form="main_form" >
+                        <span class="glyphicon glyphicon-ok"></span> {{ submit_button.text }}</button>
+                {% endif %}
+            </form>
+        </div>
+    {% endif %}
 {% endblock %}
