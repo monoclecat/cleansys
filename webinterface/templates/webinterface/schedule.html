@@ -15,6 +15,65 @@
         </div>
     </div>
 
+    {% if user.is_superuser %}
+        <div class="row">
+            {% if not schedule.assignment_set.exists %}
+                <div class="alert alert-warning" role="alert" style="margin: 5px 0">
+                    Dieser Putzplan besitzt keine Putzdienste! Erzeuge welche unter
+                    <strong>Erzeuge Putzdienste oder aktualisiere Aufgaben</strong>.
+                </div>
+            {% endif %}
+            {% if schedule.cleaningweek_set.assignments_invalid.exists %}
+                <div class="alert alert-warning" role="alert" style="margin: 5px 0">
+                    <p>
+                        <strong>Die Putzdienste mancher Putzwochen sind ungültig!</strong>
+                    </p>
+                    <p>
+                        Dies kann die Folge einer Änderung von
+                        Zugehörigkeiten sein, oder dieser Putzdienst wurde einer Putzplan-Gruppierung hinzugefügt
+                        oder aus einer solchen entfernt.
+                    </p>
+                    {% with invalid_weeks=schedule.cleaningweek_set.assignments_invalid %}
+                        <ul>
+                            <li>
+                                Frühester betroffener Putzdienst:
+                                <strong>{{ invalid_weeks.first.assignment_date }}</strong>
+                            </li>
+                            <li>
+                                Spätester betroffener Putzdienst:
+                                <strong>{{ invalid_weeks.last.assignment_date }}</strong>
+                            </li>
+                        </ul>
+                        <p>
+                            <a href="{% url 'webinterface:assignment-create-init' schedule.pk page_obj.number invalid_weeks.first.week invalid_weeks.last.week %}">
+                                <strong>Behebe das Problem hier</strong> <i>(alles notwendige ist schon eingetragen)</i></a>
+                        </p>
+                    {% endwith %}
+                </div>
+            {% endif %}
+            {% if schedule.assignments_are_running_out %}
+                <div class="alert alert-warning" role="alert" style="margin: 5px 0">
+                    <p>
+                        <strong>Bald laufen die Putzdienste aus!</strong>
+                    </p>
+                    {% with last_assignment=schedule.assignment_set.last nr_weeks=8 %}
+                        <p>
+                            Der letzte Putzdienst für diesen Putzplan ist schon am
+                            <strong>{{ last_assignment.assignment_date }}</strong>. Es wird Zeit für neue Putzdienste!
+                        </p>
+                        <p>
+                            <a href="{% url 'webinterface:assignment-create-init' schedule.pk page_obj.number last_assignment.cleaning_week.week last_assignment.cleaning_week.week|add:nr_weeks %}">
+                                <strong>Klicke hier um für diesen Putzplan für {{ nr_weeks }}
+                                    weitere Wochen Putzdienste zu erzeugen!</strong>
+                                <i>(alles notwendige ist schon eingetragen)</i>
+                            </a>
+                        </p>
+                    {% endwith %}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
     <div class="row">
         <div class="panel panel-primary" style="margin-bottom: 0">
             <div class="panel-heading">
@@ -26,7 +85,7 @@
     {% if user.is_superuser %}
         <div class="row" style="padding: 5px">
             <div class="col-xs-12">
-                <a class="btn btn-info btn-sm btn-block"
+                <a class="btn btn-info btn-block"
                    href="{% url 'webinterface:assignment-create-back-to-schedule' schedule.pk page_obj.number %}"
                    role="button">
                     Erzeuge Putzdienste oder aktualisiere Aufgaben

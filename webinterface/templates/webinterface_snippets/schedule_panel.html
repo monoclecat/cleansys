@@ -1,10 +1,11 @@
 {% with templates_exist=schedule.tasktemplate_set.exists assignments_exist=schedule.assignment_set.exists %}
-{% with groups_exist=schedule.schedulegroup_set.exists some_future_assignments_invalid=schedule.cleaningweek_set.in_future.assignments_invalid.exists %}
+{% with groups_exist=schedule.schedulegroup_set.exists some_assignments_invalid=schedule.cleaningweek_set.assignments_invalid.exists %}
+{% with assignments_running_out=schedule.assignments_are_running_out %}
 <div class="col-xs-12 col-sm-6" style="padding: 5px">
     <div class="panel
             {% if schedule.disabled %}
                 panel-default
-            {% elif not templates_exist or not assignments_exist or not groups_exist or some_future_assignments_invalid %}
+            {% elif not templates_exist or not assignments_exist or not groups_exist or some_assignments_invalid or assignments_running_out %}
                 panel-danger
             {% else %}
                 panel-info
@@ -17,7 +18,7 @@
                             <span class="glyphicon glyphicon-cog"></span> <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li {% if not schedule.disabled %}{% if not assignments_exist or some_future_assignments_invalid %}
+                        <li {% if not schedule.disabled %}{% if not assignments_exist or some_assignments_invalid or assignments_running_out %}
                                 class="bg-danger"{% endif %}{% endif %}>
 
                             <a href="{% url 'webinterface:schedule-no-page' schedule.slug %}">
@@ -84,10 +85,24 @@
                         </li>
                     </ul>
                 {% endif %}
-                {% if some_future_assignments_invalid %}
+                {% if some_assignments_invalid %}
                     <ul style="padding: 0">
                         <li class="bg-warning">
                             Bei manchen Putzwochen müssen die Putzdienste aktualisiert werden!
+                            <span style="white-space: nowrap">
+                                (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
+                                <span class="glyphicon glyphicon-menu-right"></span>
+                                <span class="glyphicon glyphicon-eye-open"></span> Putzdienste)
+                            </span>
+                        </li>
+                    </ul>
+                {% endif %}
+                {% if assignments_running_out %}
+                    <ul style="padding: 0">
+                        <li class="bg-warning">
+                            Der letzte Putzdienst ist schon am
+                            <strong>{{ schedule.assignment_set.last.assignment_date }}</strong>.
+                            Es müssen neue Putzdienste erstellt werden!
                             <span style="white-space: nowrap">
                                 (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
                                 <span class="glyphicon glyphicon-menu-right"></span>
@@ -100,4 +115,4 @@
         </div>
     </div>
 </div>
-{% endwith %}{% endwith %}
+{% endwith %}{% endwith %}{% endwith %}

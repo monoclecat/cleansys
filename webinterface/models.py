@@ -11,6 +11,7 @@ from django.utils import timezone
 import calendar
 import random
 import time
+from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT
 
 
 def date_to_epoch_week(date: datetime.date) -> int:
@@ -70,6 +71,14 @@ class Schedule(models.Model):
 
     def weekday_as_name(self):
         return Schedule.WEEKDAYS[self.weekday][1]
+
+    def assignments_are_running_out(self):
+        last_assignment = self.assignment_set.last()
+        if last_assignment:
+            return (last_assignment.cleaning_week.week - current_epoch_week()) <= \
+                   WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT
+        else:
+            return False
 
     def constant_affiliation_timespan(self, week: int) -> dict:
         """
@@ -462,7 +471,7 @@ class CleaningWeekQuerySet(models.QuerySet):
 
 class CleaningWeek(models.Model):
     class Meta:
-        ordering = ('-week',)
+        ordering = ('week',)
         unique_together = ('week', 'schedule')
     week = models.IntegerField(editable=False)
     excluded = models.ManyToManyField(Cleaner)
@@ -545,7 +554,7 @@ class Assignment(models.Model):
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
 
     class Meta:
-        ordering = ('-cleaning_week__week',)
+        ordering = ('cleaning_week__week',)
 
     def __str__(self):
         return "{}: {}, {} ".format(

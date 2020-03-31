@@ -39,7 +39,9 @@ class AdminView(TemplateView):
             set(enabled_schedules.filter(tasktemplate__isnull=True)) | \
             set(enabled_schedules.filter(assignment__isnull=True)) | \
             set(enabled_schedules.filter(schedulegroup__isnull=True)) | \
-            set(x for x in Schedule.objects.enabled() if x.cleaningweek_set.in_future().assignments_invalid().exists())
+            set(x for x in Schedule.objects.enabled() if x.cleaningweek_set.assignments_invalid().exists()) | \
+            set(x for x in Schedule.objects.enabled() if x.assignments_are_running_out())
+
         action_needed_schedule_pks = [x.pk for x in context['action_needed_schedules']]
         context['active_schedule_list'] = enabled_schedules.exclude(pk__in=action_needed_schedule_pks)
         context['disabled_schedule_list'] = Schedule.objects.disabled()
@@ -63,7 +65,7 @@ class ScheduleView(ListView):
 
     def dispatch(self, request, *args, **kwargs):
         self.schedule = get_object_or_404(Schedule, slug=kwargs['slug'])
-        self.cleaning_weeks = self.schedule.cleaningweek_set.order_by('week')
+        self.cleaning_weeks = self.schedule.cleaningweek_set.all()
 
         if 'page' not in kwargs:
             if self.cleaning_weeks.filter(week__gt=current_epoch_week()).exists():

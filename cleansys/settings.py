@@ -20,7 +20,12 @@ SECRET_KEY = "B5qX%#+gY#UzW@yK2%zolzg:VD/u#/]~*sijL(KGe9!LyeAKRJ"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
 ABSOLUTE_TRUST_IN_USERS = True
+
+# If the last Assignment of a Schedule is only these many weeks away from current_epoch_week, a warning is displayed
+WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT = 4
+
 
 ALLOWED_HOSTS = []
 
