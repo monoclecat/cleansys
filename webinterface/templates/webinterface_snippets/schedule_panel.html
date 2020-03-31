@@ -1,14 +1,15 @@
+{% with templates_exist=schedule.tasktemplate_set.exists assignments_exist=schedule.assignment_set.exists %}
+{% with groups_exist=schedule.schedulegroup_set.exists some_future_assignments_invalid=schedule.cleaningweek_set.in_future.assignments_invalid.exists %}
 <div class="col-xs-12 col-sm-6" style="padding: 5px">
     <div class="panel
             {% if schedule.disabled %}
                 panel-default
-            {% elif not schedule.tasktemplate_set.exists %}
+            {% elif not templates_exist or not assignments_exist or not groups_exist or some_future_assignments_invalid %}
                 panel-danger
             {% else %}
                 panel-info
             {% endif %}">
         <div class="panel-heading">
-
             <h3 class="panel-title">
                 <div class="btn-group">
                     <button type="button" class="btn btn-default dropdown-toggle pull-right"
@@ -16,8 +17,8 @@
                             <span class="glyphicon glyphicon-cog"></span> <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li {% if not schedule.disabled and not schedule.assignment_set.exists %}
-                                class="bg-danger"{% endif %}>
+                        <li {% if not schedule.disabled %}{% if not assignments_exist or some_future_assignments_invalid %}
+                                class="bg-danger"{% endif %}{% endif %}>
 
                             <a href="{% url 'webinterface:schedule-no-page' schedule.slug %}">
                             <span class="glyphicon glyphicon-eye-open"></span> Putzdienste</a>
@@ -26,14 +27,14 @@
 
                         <li role="separator" class="divider"></li>
 
-                        <li {% if not schedule.disabled and not schedule.schedulegroup_set.exists %}
+                        <li {% if not schedule.disabled and not groups_exist %}
                                 class="bg-danger"{% endif %}>
 
                             <a href="{% url 'webinterface:schedule-edit' schedule.pk %}">
                             <span class="glyphicon glyphicon-cog"></span> Bearbeiten</a>
 
                         </li>
-                        <li {% if not schedule.disabled and not schedule.tasktemplate_set.exists %}
+                        <li {% if not schedule.disabled and not templates_exist %}
                                 class="bg-danger"{% endif %}>
                             <a href="{% url 'webinterface:schedule-task-list' schedule.pk %}">
                             <span class="glyphicon glyphicon-tags"></span> Aufgaben</a>
@@ -47,39 +48,51 @@
         </div>
         <div class="panel-footer">
             {% if not schedule.disabled %}
-                {% if not schedule.tasktemplate_set.exists %}
+                {% if not templates_exist %}
                     <ul style="padding: 0">
                         <li class="bg-warning">
                             Bitte füge Aufgaben hinzu!
                             <span style="white-space: nowrap">
-                            (<span class="glyphicon glyphicon-cog"></span>
-                            <span class="glyphicon glyphicon-menu-right"></span>
-                            <span class="glyphicon glyphicon-tags"></span> Aufgaben)
-                        </span>
+                                (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
+                                <span class="glyphicon glyphicon-menu-right"></span>
+                                <span class="glyphicon glyphicon-tags"></span> Aufgaben)
+                            </span>
                         </li>
                     </ul>
                 {% endif %}
-                {% if not schedule.schedulegroup_set.exists %}
+                {% if not groups_exist %}
                     <ul style="padding: 0">
                         <li class="bg-warning">
                             Dieser Putzplan gehört keiner Gruppe an!
                             <span style="white-space: nowrap">
-                            (<span class="glyphicon glyphicon-cog"></span>
-                            <span class="glyphicon glyphicon-menu-right"></span>
-                            <span class="glyphicon glyphicon-cog"></span> Bearbeiten)
-                        </span>
+                                (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
+                                <span class="glyphicon glyphicon-menu-right"></span>
+                                <span class="glyphicon glyphicon-cog"></span> Bearbeiten)
+                            </span>
                         </li>
                     </ul>
                 {% endif %}
-                {% if not schedule.assignment_set.exists %}
+                {% if not assignments_exist %}
                     <ul style="padding: 0">
                         <li class="bg-warning">
                             Dieser Putzplan hat noch keine Putzdienste!
                             <span style="white-space: nowrap">
-                            (<span class="glyphicon glyphicon-cog"></span>
-                            <span class="glyphicon glyphicon-menu-right"></span>
-                            <span class="glyphicon glyphicon-eye-open"></span> Putzdienste)
-                        </span>
+                                (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
+                                <span class="glyphicon glyphicon-menu-right"></span>
+                                <span class="glyphicon glyphicon-eye-open"></span> Putzdienste)
+                            </span>
+                        </li>
+                    </ul>
+                {% endif %}
+                {% if some_future_assignments_invalid %}
+                    <ul style="padding: 0">
+                        <li class="bg-warning">
+                            Bei manchen Putzwochen müssen die Putzdienste aktualisiert werden!
+                            <span style="white-space: nowrap">
+                                (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
+                                <span class="glyphicon glyphicon-menu-right"></span>
+                                <span class="glyphicon glyphicon-eye-open"></span> Putzdienste)
+                            </span>
                         </li>
                     </ul>
                 {% endif %}
@@ -87,3 +100,4 @@
         </div>
     </div>
 </div>
+{% endwith %}{% endwith %}
