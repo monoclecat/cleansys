@@ -265,7 +265,7 @@ class ScheduleGroup(models.Model):
         return self.name
 
 
-def schedule_group_changed(sender, instance, action, reverse, model, pk_set, **kwargs):
+def schedule_group_changed(instance, action, model, pk_set, **kwargs):
     if action == 'post_add' or action == 'post_remove':
         if model == Schedule:
             schedules = Schedule.objects.filter(pk__in=pk_set)
