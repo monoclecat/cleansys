@@ -36,8 +36,6 @@ class CleaningWeekTest(TestCase):
             task_name="tasktemplate1", schedule=cls.schedule, start_days_before=1, end_days_after=2)
         cls.task_template_2 = TaskTemplate.objects.create(
             task_name="tasktemplate2", schedule=cls.schedule, start_days_before=1, end_days_after=2)
-        cls.task_template_3 = TaskTemplate.objects.create(
-            task_name="tasktemplate3", schedule=cls.schedule, start_days_before=1, end_days_after=2, task_disabled=True)
 
         cls.task_1 = Task.objects.create(cleaning_week=cls.cleaning_week, template=cls.task_template_1)
 

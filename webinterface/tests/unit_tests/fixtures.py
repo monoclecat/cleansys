@@ -84,7 +84,7 @@ class BaseFixture:
         for week, schedule_and_cleaner in configuration.items():
             for schedule, cleaner in schedule_and_cleaner.items():
                 if cleaner is not None:
-                    cleaning_week = CleaningWeek.objects.create(week=week, schedule=schedule)
+                    cleaning_week = CleaningWeek.objects.create(week=week, schedule=schedule, assignments_valid=True)
                     setattr(cls, "{}_cleaning_week_{}".format(schedule.name, week),
                             cleaning_week
                             )

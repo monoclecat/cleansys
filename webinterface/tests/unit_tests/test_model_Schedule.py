@@ -33,7 +33,7 @@ class ScheduleTest(BaseFixture, TestCase):
         self.assertListEqual(self.bathroom_schedule.deployment_ratios(self.end_week + 1), [])
 
     def test__deployment_ratios_are_sorted_and_correct_cleaners_are_selected(self):
-        with patch.object(Cleaner, 'deployment_ratio_for_schedule', side_effect=[0.5, 0.3]):
+        with patch.object(Cleaner, 'deployment_ratio', side_effect=[0.5, 0.3]):
             result = self.bathroom_schedule.deployment_ratios(self.start_week)
         self.assertListEqual([[self.bob, 0.3], [self.angie, 0.5]], result)
 
@@ -55,134 +55,84 @@ class ScheduleTest(BaseFixture, TestCase):
 
     @patch('webinterface.models.Schedule.create_assignment', autospec=True,
            side_effect=[x % 2 == 0 for x in range(0, 100)])
-    @patch('django.db.models.query.QuerySet.delete', autospec=True)
     def run_and_assert__create_assignments_over_timespan(
-            self, mock_queryset_delete, mock_create_assignment,
+            self, mock_create_assignment,
             schedule: Schedule, start_week: int, end_week: int,
-            mode: int, assignments_should_be_deleted: bool, cleaningweeks_should_be_deleted: bool,
             expected_create_assignment_week_args: list):
 
-        # Mocking create_assignment_directly means we are ignoring the cleaners_per_date property of Schedule
-        schedule.create_assignments_over_timespan(start_week, end_week, mode)
-
-        cleaningweek_delete_called = str(mock_queryset_delete.call_args_list).find('CleaningWeek') != -1
-        assignment_delete_called = str(mock_queryset_delete.call_args_list).find('Assignment') != -1
-
-        self.assertEqual(assignments_should_be_deleted, assignment_delete_called, msg="mode={}".format(mode))
-        self.assertEqual(cleaningweeks_should_be_deleted, cleaningweek_delete_called, msg="mode={}".format(mode))
+        schedule.create_assignments_over_timespan(start_week, end_week)
 
         create_assignment_week_args = [x[1]['week'] for x in mock_create_assignment.call_args_list]
 
         # Note on [::2] : side_effect of mock_create_assignment causes it to be called twice
         # with the exact same arguments in while loop of create_assignments_over_timespan()
-        self.assertListEqual(create_assignment_week_args[::2], expected_create_assignment_week_args,
-                             msg="mode={}".format(mode))
+        self.assertListEqual(create_assignment_week_args[::2], expected_create_assignment_week_args)
 
-    def test__create_assignments_over_timespan__mode_1(self):
+    def test__create_assignments_over_timespan(self):
         self.run_and_assert__create_assignments_over_timespan(
-            mode=1,  # Delete existing Assignments and CleaningDays and regenerate them throughout time frame
             schedule=self.bathroom_schedule, start_week=self.start_week, end_week=self.end_week,
-            assignments_should_be_deleted=True, cleaningweeks_should_be_deleted=True,
-            expected_create_assignment_week_args=[x for x in range(self.start_week, self.end_week+1)])
-
-    def test__create_assignments_over_timespan__mode_2(self):
-        self.run_and_assert__create_assignments_over_timespan(
-            mode=2,  # Keep existing Assignments and only create new ones where there are none already
-            schedule=self.bathroom_schedule, start_week=self.start_week, end_week=self.end_week,
-            assignments_should_be_deleted=False, cleaningweeks_should_be_deleted=False,
-            expected_create_assignment_week_args=[x for x in range(self.start_week, self.end_week+1)])
-
-    def test__create_assignments_over_timespan__mode_3(self):
-        self.run_and_assert__create_assignments_over_timespan(
-            mode=3,  # Only reassign Assignments on existing CleaningDays, don't generate new CleaningDays
-            schedule=self.bathroom_schedule, start_week=self.start_week, end_week=self.end_week,
-            assignments_should_be_deleted=True, cleaningweeks_should_be_deleted=False,
             expected_create_assignment_week_args=[x for x in range(self.start_week, self.end_week+1)])
 
     def test__create_assignments_over_timespan__only_one_week(self):
         self.run_and_assert__create_assignments_over_timespan(
-            mode=2,
             schedule=self.bathroom_schedule, start_week=self.start_week, end_week=self.start_week,
-            assignments_should_be_deleted=False, cleaningweeks_should_be_deleted=False,
             expected_create_assignment_week_args=[self.start_week])
 
-    def test__create_assignments_over_timespan__invalid_mode(self):
-        self.assertRaisesRegex(ValueError, 'create_assignments_over_timespan.*1.*2.*3.*',
-                               self.bathroom_schedule.create_assignments_over_timespan,
-                               mode=4, start_week=self.start_week, end_week=self.end_week)
-
-    def test__create_assignments__even_week_schedule__not_defined_on_date(self):
-        with self.assertLogs(level='DEBUG') as log:
-            result = self.kitchen_schedule.create_assignment(self.start_week+1)
-
-        self.assertTrue(str(log.output).find('[Code01]'))
-        self.assertFalse(result)
-
-    def test__create_assignments__even_week_schedule__no_positions_to_fill(self):
-        with self.assertLogs(level='DEBUG') as log:
-            result = self.bathroom_schedule.create_assignment(self.start_week)
-
-        self.assertTrue(str(log.output).find('[Code02]'))
-        self.assertFalse(result)
-
+    @patch('webinterface.models.CleaningWeek.excluded', autospec=True)
     @patch('webinterface.models.Schedule.deployment_ratios', autospec=True, return_value=[])
-    def test__create_assignments__even_week_schedule__no_deployment_ratios(self, mock_deployment_ratios):
-        with self.assertLogs(level='DEBUG') as log:
-            result = self.kitchen_schedule.create_assignment(self.start_week)
-
-        self.assertTrue(str(log.output).find('[Code03]'))
-        self.assertFalse(result)
-
     @patch('django.db.models.query.QuerySet.create', autospec=True)
-    @patch('webinterface.models.CleaningWeek.excluded', autospec=True)
-    @patch('webinterface.models.Schedule.deployment_ratios', autospec=True)
-    def test__create_assignments__even_week_schedule__every_cleaner_is_excluded(self,
-                                                                                mock_deployment_ratios,
-                                                                                mock_cleaningweek_excluded,
-                                                                                mock_queryset_create):
-        mock_queryset_create.return_value = "return value of create"
+    def run_and_assert__create_assignment(
+            self, mock_create, mock_deployment_ratios, mock_excluded,
+            schedule: Schedule, week: int, expect_codes: set, expect_result: bool, deployment_ratios: list,
+            excluded: list):
 
+        mock_create.return_value = True
+        mock_deployment_ratios.return_value = deployment_ratios
+        mock_excluded.all.return_value = excluded
+
+        with self.assertLogs(level='DEBUG') as log:
+            result = schedule.create_assignment(week=week)
+
+        all_codes = {"Code01", "Code02", "Code03", "Code04", "Code21", "Code22"}
+        must_occur = expect_codes
+        must_not_occur = all_codes - must_occur
+
+        [self.assertIn(x, str(log.output)) for x in must_occur]
+        [self.assertNotIn(x, str(log.output)) for x in must_not_occur]
+
+        self.assertEqual(expect_result, result)
+
+        if expect_result:
+            self.assertRegex(str(mock_create.call_args[1]),
+                             ".*'cleaning_week': <CleaningWeek.*{}.*{}.*>.*".format(schedule.name, str(week)))
+
+    def test__create_assignment__disabled_schedule(self):
+        self.run_and_assert__create_assignment(
+            schedule=self.garage_schedule, week=self.start_week, expect_codes={"Code04"}, expect_result=False,
+            deployment_ratios=[[self.bob, 0.9]], excluded=[])
+
+    def test__create_assignment__even_week_schedule__not_defined_on_date(self):
+        self.run_and_assert__create_assignment(
+            schedule=self.kitchen_schedule, week=self.start_week+1, expect_codes={"Code01"}, expect_result=False,
+            deployment_ratios=[[self.bob, 0.9]], excluded=[])
+
+    def test__create_assignment__even_week_schedule__no_positions_to_fill(self):
+        self.run_and_assert__create_assignment(
+            schedule=self.bathroom_schedule, week=self.start_week, expect_codes={"Code02"}, expect_result=False,
+            deployment_ratios=[[self.bob, 0.9]], excluded=[])
+
+    def test__create_assignment__even_week_schedule__no_deployment_ratios(self):
+        self.run_and_assert__create_assignment(
+            schedule=self.kitchen_schedule, week=self.start_week, expect_codes={"Code03"}, expect_result=False,
+            deployment_ratios=[], excluded=[])
+
+    def test__create_assignment__even_week_schedule__every_cleaner_is_excluded(self):
         # dave is not normally assigned to this schedule. We include him to make sure the first cleaner of
         # deployment_ratios is selected as the cleaner.
-        mock_deployment_ratios.return_value = [[self.bob, 0.5], [self.dave, 0.6]]
-
-        mock_cleaningweek_excluded.all.return_value = [self.bob, self.dave]
-        with self.assertLogs(level='DEBUG') as log:
-            result = self.kitchen_schedule.create_assignment(self.start_week)
-
-        self.assertEqual(result, "return value of create")
-        self.assertTrue(str(log.output).find('[Code11]'))
-        self.assertTrue(str(log.output).find('[Code22]'))
-        self.assertTrue(str(mock_queryset_create.call_args[1]).find("'cleaner': <Cleaner: bob>") != -1)
-        self.assertTrue(str(mock_queryset_create.call_args[1]).find(
-            "'cleaning_week': <CleaningWeek: kitchen: Week 2500>") != -1)
-
-    @patch('django.db.models.query.QuerySet.create', autospec=True)
-    @patch('webinterface.models.CleaningWeek.excluded', autospec=True)
-    @patch('webinterface.models.Schedule.deployment_ratios', autospec=True)
-    @patch('webinterface.models.Cleaner.is_eligible_for_week', autospec=True, side_effect=[False, True])
-    def test__create_assignments__even_week_schedule__second_cleaner_is_chosen(self,
-                                                                               mock_cleaner_is_eligible,
-                                                                               mock_deployment_ratios,
-                                                                               mock_cleaningweek_excluded,
-                                                                               mock_queryset_create):
-        mock_queryset_create.return_value = "return value of create"
-
-        # dave is not normally assigned to this schedule. We include him to make sure the first cleaner of
-        # deployment_ratios is selected as the cleaner.
-        mock_deployment_ratios.return_value = [[self.bob, 0.5], [self.dave, 0.6]]
-
-        mock_cleaningweek_excluded.all.return_value = []
-        with self.assertLogs(level='DEBUG') as log:
-            result = self.kitchen_schedule.create_assignment(self.start_week)
-
-        self.assertEqual(result, "return value of create")
-        self.assertEqual(mock_cleaner_is_eligible.call_count, 2)
-        self.assertTrue(str(log.output).find('[Code12]'))
-        self.assertTrue(str(log.output).find('[Code21]'))
-        self.assertTrue(str(mock_queryset_create.call_args[1]).find("'cleaner': <Cleaner: dave>") != -1)
-        self.assertTrue(str(mock_queryset_create.call_args[1]).find(
-            "'cleaning_week': <CleaningWeek: kitchen: Week 2500>") != -1)
+        self.run_and_assert__create_assignment(
+            schedule=self.kitchen_schedule, week=self.start_week, expect_codes={"Code11", "Code22"},
+            expect_result=True,
+            deployment_ratios=[[self.bob, 0.5], [self.dave, 0.5]], excluded=[self.bob, self.dave])
 
 
 class ScheduleModelDatabaseTests(TestCase):

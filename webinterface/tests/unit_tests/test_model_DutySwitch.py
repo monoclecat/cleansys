@@ -32,7 +32,8 @@ class DutySwitchTest(BaseFixtureWithDutySwitch, TestCase):
         string = self.angie_bathroom_dutyswitch_2502.__str__()
         self.assertIn(self.angie.name, string)
 
-    def test__possible_acceptors(self):
+    @patch('webinterface.models.Assignment.has_passed', autospec=True, return_value=False)
+    def test__possible_acceptors(self, mock_has_passed):
         self.assertSetEqual(set(self.angie_bathroom_dutyswitch_2502.possible_acceptors()),
                             {Assignment.objects.get(schedule=self.bathroom_schedule,
                                                     cleaning_week__week=self.start_week+3)})
@@ -40,6 +41,11 @@ class DutySwitchTest(BaseFixtureWithDutySwitch, TestCase):
         self.assertSetEqual(set(self.dave_garage_dutyswitch_2500.possible_acceptors()),
                             {Assignment.objects.get(schedule=self.garage_schedule,
                                                     cleaning_week__week=self.start_week + 3)})
+
+    @patch('webinterface.models.Assignment.has_passed', autospec=True, return_value=True)
+    def test__possible_acceptors__requester_has_passed(self, mock_has_passed):
+        self.assertFalse(self.angie_bathroom_dutyswitch_2502.possible_acceptors().exists())
+        self.assertFalse(self.dave_garage_dutyswitch_2500.possible_acceptors().exists())
 
     def test__save__acceptor_is_set(self):
         temp_schedule = Schedule.objects.create(name='temp')
