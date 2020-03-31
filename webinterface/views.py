@@ -33,16 +33,18 @@ class AdminView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # webinterface_snippets/schedule_panel.html needs to cover these cases!
+        enabled_schedules = Schedule.objects.enabled()
+        # webinterface_snippets/schedule_panel.html needs to cover the same cases!
         context['action_needed_schedules'] = \
-            Schedule.objects.enabled().filter(tasktemplate__isnull=True) | \
-            Schedule.objects.enabled().filter(assignment__isnull=True) | \
-            Schedule.objects.enabled().filter(assignment__isnull=True)
+            set(enabled_schedules.filter(tasktemplate__isnull=True)) | \
+            set(enabled_schedules.filter(assignment__isnull=True)) | \
+            set(enabled_schedules.filter(schedulegroup__isnull=True)) | \
+            set(x for x in Schedule.objects.enabled() if x.cleaningweek_set.in_future().assignments_invalid().exists())
         action_needed_schedule_pks = [x.pk for x in context['action_needed_schedules']]
-        context['active_schedule_list'] = Schedule.objects.enabled().exclude(pk__in=action_needed_schedule_pks)
+        context['active_schedule_list'] = enabled_schedules.exclude(pk__in=action_needed_schedule_pks)
         context['disabled_schedule_list'] = Schedule.objects.disabled()
 
-        # webinterface_snippets/cleaner_panel.html needs to cover these cases!
+        # webinterface_snippets/cleaner_panel.html needs to cover the same cases!
         context['action_needed_cleaners'] = \
             Cleaner.objects.filter(affiliation__isnull=True)
         action_needed_cleaner_pks = [x.pk for x in context['action_needed_cleaners']]
