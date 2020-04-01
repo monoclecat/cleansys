@@ -385,16 +385,9 @@ class Affiliation(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(Affiliation, self).__init__(*args, **kwargs)
-
         self.previous_beginning = self.beginning
         self.previous_end = self.end
-
-        if self.pk:
-            self.__previous_cleaner = self.cleaner
-            self.__previous_group = self.group
-        else:
-            self.__previous_cleaner = None
-            self.__previous_group = None
+        self.previous_group = self.group
 
     def beginning_as_date(self):
         return epoch_week_to_monday(self.beginning)
@@ -424,33 +417,57 @@ class Affiliation(models.Model):
                                   "Bitte passe die andere Zugehörigkeit zuerst an, "
                                   "damit es zu keiner Überlappung kommt.")
 
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        self.date_validator(affiliation_pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
+    @staticmethod
+    def cleaning_week_assignments_invalidator(
+            affiliation_pk, prev_group, new_group,
+            prev_beginning: int, new_beginning: int, prev_end: int, new_end: int):
 
-        if self.previous_beginning != self.beginning or self.previous_end != self.end:
-            cleaning_weeks = CleaningWeek.objects.filter(schedule__in=self.group.schedules.all())
+        cleaning_weeks = (CleaningWeek.objects.filter(schedule__in=prev_group.schedules.all()) |
+                          CleaningWeek.objects.filter(schedule__in=new_group.schedules.all()))
+        cleaning_weeks = cleaning_weeks.filter(week__gte=current_epoch_week() + 1)
 
-            min_beginning = min(self.previous_beginning, self.beginning)
-            max_beginning = max(self.previous_beginning, self.beginning)
+        cleaning_weeks_invalidated = None
+
+        if affiliation_pk is None or prev_group != new_group:
+            cleaning_weeks_invalidated = cleaning_weeks. \
+                filter(week__range=(new_beginning, new_end))
+
+        elif prev_beginning != new_beginning or prev_end != new_end:
+
+            min_beginning = min(prev_beginning, new_beginning)
+            max_beginning = max(prev_beginning, new_beginning)
             beginning_affects = cleaning_weeks. \
-                filter(week__gte=current_epoch_week()+1).\
                 filter(week__range=(min_beginning, max_beginning)). \
                 exclude(week=max_beginning)
 
-            min_end = min(self.previous_end, self.end)
-            max_end = max(self.previous_end, self.end)
+            min_end = min(prev_end, new_end)
+            max_end = max(prev_end, new_end)
             end_affects = cleaning_weeks. \
-                filter(week__gte=current_epoch_week()+1).\
                 filter(week__range=(min_end, max_end)). \
                 exclude(week=min_end)
 
             # XORing both sets deals with the case that the old and new affiliation week ranges don't overlap
             cleaning_weeks_invalidated = set(beginning_affects) ^ set(end_affects)
 
+        if cleaning_weeks_invalidated is not None:
             for cleaning_week in cleaning_weeks_invalidated:
                 cleaning_week.set_assignments_valid_field(False)
 
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.date_validator(affiliation_pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
+        self.cleaning_week_assignments_invalidator(
+            affiliation_pk=self.pk, prev_group=self.previous_group, new_group=self.group,
+            prev_beginning=self.previous_beginning, prev_end=self.previous_end,
+            new_beginning=self.beginning, new_end=self.end)
+
         super().save(force_insert, force_update, using, update_fields)
+
+    def delete(self, using=None, keep_parents=False):
+        self.cleaning_week_assignments_invalidator(
+            affiliation_pk=None, prev_group=self.previous_group, new_group=self.group,
+            prev_beginning=self.beginning, prev_end=self.end,
+            new_beginning=self.beginning, new_end=self.end)
+        super().delete(using, keep_parents)
 
 
 class CleaningWeekQuerySet(models.QuerySet):
