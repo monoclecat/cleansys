@@ -73,11 +73,10 @@ class Schedule(models.Model):
     def weekday_as_name(self):
         return Schedule.WEEKDAYS[self.weekday][1]
 
-    def assignments_are_running_out(self):
+    def assignments_are_running_out(self, weeks_ahead=WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT):
         last_assignment = self.assignment_set.last()
         if last_assignment:
-            return (last_assignment.cleaning_week.week - current_epoch_week()) <= \
-                   WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT
+            return (last_assignment.cleaning_week.week - current_epoch_week()) <= weeks_ahead
         else:
             return False
 
@@ -163,7 +162,7 @@ class Schedule(models.Model):
             cleaning_week_where_there_shouldnt_be_one = self.cleaningweek_set.filter(week=week)
             if cleaning_week_where_there_shouldnt_be_one.exists():
                 cleaning_week_where_there_shouldnt_be_one.first().delete()
-                logging.info("CLEANING_WEEK DELETED: Found a CleaningWeek where the Schedule doesn't occur. ")
+                logging.info("CLEANING_WEEK DELETED [Code90]: Found a CleaningWeek where the Schedule doesn't occur.")
 
             logging.info("NO ASSIGNMENT CREATED [Code01]: This schedule does not occur "
                          "in week {} as frequency is set to {}".format(
