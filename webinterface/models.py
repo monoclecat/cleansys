@@ -151,20 +151,22 @@ class Schedule(models.Model):
         :param week: Epoch week number to update Assignments and Tasks on
         :return: True if Assignment was created, else False
         """
-        logging.info('------------- CREATING NEW CLEANING DUTY FOR {} in week {} -------------'.format(
+        logger = logging.getLogger('create_assignment_logger')
+        logger.info('------------- CREATING NEW CLEANING DUTY FOR {} in week {} -------------'.format(
                         self.name, week))
 
         if self.disabled:
-            logging.info("NO ASSIGNMENT CREATED [Code04]: This schedule is disabled!")
+            logger.info("NO ASSIGNMENT CREATED [Code04]: This schedule is disabled!")
             return False
 
         if not self.occurs_in_week(week):
             cleaning_week_where_there_shouldnt_be_one = self.cleaningweek_set.filter(week=week)
             if cleaning_week_where_there_shouldnt_be_one.exists():
                 cleaning_week_where_there_shouldnt_be_one.first().delete()
-                logging.info("CLEANING_WEEK DELETED [Code90]: Found a CleaningWeek where the Schedule doesn't occur.")
+                logger.info("CLEANING_WEEK DELETED [Code90]: "
+                                 "Found a CleaningWeek where the Schedule doesn't occur.")
 
-            logging.info("NO ASSIGNMENT CREATED [Code01]: This schedule does not occur "
+            logger.info("NO ASSIGNMENT CREATED [Code01]: This schedule does not occur "
                          "in week {} as frequency is set to {}".format(
                             week, self.frequency))
             return False
@@ -176,30 +178,30 @@ class Schedule(models.Model):
             cleaning_week.set_assignments_valid_field(True)
 
         if cleaning_week.assignment_set.count() >= self.cleaners_per_date:
-            logging.info("NO ASSIGNMENT CREATED [Code02]: There are no open cleaning positions for week {}. "
-                         "All ({}/{}) positions have been filled.".format(
+            logger.info("NO ASSIGNMENT CREATED [Code02]: There are no open cleaning positions for week {}. "
+                        "All ({}/{}) positions have been filled.".format(
                             week, self.cleaners_per_date, self.cleaners_per_date))
             return False
 
         ratios = self.deployment_ratios(week)
         if not ratios:
-            logging.info("NO ASSIGNMENT CREATED [Code03]: Deployment ratios are not defined for this date.")
+            logger.info("NO ASSIGNMENT CREATED [Code03]: Deployment ratios are not defined for this date.")
             return False
 
-        if logging.getLogger(__name__).getEffectiveLevel() >= logging.DEBUG:
+        if logger.getEffectiveLevel() >= logging.INFO:
             logging_text = "All cleaners' ratios: "
             for cleaner, ratio in ratios:
                 logging_text += "{}: {}".format(cleaner.name, round(ratio, 3)) + "  "
-            logging.info(logging_text)
+            logger.info(logging_text)
 
         # First, group by deployment_ratios
         distinct_ratio_values = list(set(x[1] for x in ratios))
         distinct_ratio_values.sort()
         grouped_by_ratios = [[x[0] for x in ratios if x[1] == val] for val in distinct_ratio_values]
         for same_ratio in grouped_by_ratios:
-            logging.info("> [{}] have the same ratio.".format(','.join([x.name for x in same_ratio])))
+            logger.info("> [{}] have the same ratio.".format(','.join([x.name for x in same_ratio])))
             non_excluded = [x for x in same_ratio if x not in cleaning_week.excluded.all()]
-            logging.info(">>  [{}] of these are NOT excluded. {}".format(
+            logger.info(">>  [{}] of these are NOT excluded. {}".format(
                 ','.join([x.name for x in non_excluded]),
                 "All are excluded [Code11]" if len(non_excluded) == 0 else ""))
 
@@ -214,15 +216,15 @@ class Schedule(models.Model):
                                            for count in nr_assignments]
 
             for same_assignment_count in grouped_by_assignment_count:
-                logging.info(">>>   [{}] have the same assignment count.".format(
+                logger.info(">>>   [{}] have the same assignment count.".format(
                     ','.join([x.name for x in same_assignment_count])))
                 choice = random.choice(same_assignment_count)
-                logging.info(">>>>    {} chosen! [Code21] ----".format(choice.name))
+                logger.info(">>>>    {} chosen! [Code21] ----".format(choice.name))
                 return self.assignment_set.create(cleaner=choice, cleaning_week=cleaning_week)
 
         else:
             choice = random.choice(ratios)
-            logging.info("---- All Cleaners are excluded. We must choose {} [Code22]".format(choice[0]))
+            logger.info("---- All Cleaners are excluded. We must choose {} [Code22]".format(choice[0]))
             return self.assignment_set.create(cleaner=choice[0], cleaning_week=cleaning_week)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
