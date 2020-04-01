@@ -519,6 +519,9 @@ class CleaningWeek(models.Model):
                 return True
         return False
 
+    def task_templates_missing(self):
+        return self.schedule.tasktemplate_set.all().exclude(pk__in=[x.template.pk for x in self.task_set.all()])
+
     def create_missing_tasks(self):
         missing_task_templates = self.task_templates_missing()
         for task_template in missing_task_templates.all():
@@ -548,9 +551,6 @@ class CleaningWeek(models.Model):
 
     def is_in_future(self) -> bool:
         return current_epoch_week() < self.week
-
-    def task_templates_missing(self):
-        return self.schedule.tasktemplate_set.all().exclude(pk__in=[x.template.pk for x in self.task_set.all()])
 
     def week_start(self):
         return epoch_week_to_monday(self.week)
