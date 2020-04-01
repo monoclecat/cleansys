@@ -29,13 +29,42 @@ class CleanerTest(BaseFixtureWithDutySwitch, TestCase):
         mock_current_epoch_week.return_value = self.start_week-1
         self.assertFalse(self.angie.is_active())
 
-    def test__nr_assignments_on_day(self):
+    def test__deployment_ratio(self):
+        self.assertEqual(self.angie.deployment_ratio(self.bathroom_schedule, self.start_week, self.start_week+1),
+                         1.0)
+        self.assertEqual(self.angie.deployment_ratio(self.bathroom_schedule, self.start_week+2, self.start_week+3),
+                         0.5)
+        self.assertEqual(self.chris.deployment_ratio(self.bathroom_schedule, self.start_week, self.start_week+1),
+                         0.0)
+        self.assertEqual(self.chris.deployment_ratio(self.bathroom_schedule, self.start_week+2, self.start_week+3),
+                         0.5)
+
+        self.assertEqual(self.bob.deployment_ratio(self.kitchen_schedule, self.start_week, self.start_week+1),
+                         1.0)
+        self.assertEqual(self.bob.deployment_ratio(self.kitchen_schedule, self.start_week+2, self.start_week+3),
+                         0.0)
+        self.assertEqual(self.chris.deployment_ratio(self.kitchen_schedule, self.start_week, self.start_week+1),
+                         0.0)
+        self.assertEqual(self.chris.deployment_ratio(self.kitchen_schedule, self.start_week+2, self.start_week+3),
+                         1.0)
+
+    def test__nr_assignments_in_week(self):
         self.assertListEqual([self.angie.nr_assignments_in_week(x) for x in range(self.start_week, self.end_week+1)],
                              [1, 1, 1, 0])
         self.assertListEqual([self.bob.nr_assignments_in_week(x) for x in range(self.start_week, self.end_week + 1)],
                              [1, 0, 0, 2])
         self.assertListEqual([self.chris.nr_assignments_in_week(x) for x in range(self.start_week, self.end_week + 1)],
                              [0, 1, 1, 1])
+
+    def test__assignment_in_cleaning_week(self):
+        self.assertEqual(
+            self.angie.assignment_in_cleaning_week(self.bathroom_schedule.cleaningweek_set.get(week=self.start_week)),
+            self.angie.assignment_set.get(cleaning_week__week=self.start_week, schedule=self.bathroom_schedule)
+        )
+
+        self.assertIsNone(
+            self.angie.assignment_in_cleaning_week(self.garage_schedule.cleaningweek_set.get(week=self.start_week))
+        )
 
     def test__user_is_created_with_cleaner(self):
         self.assertTrue(User.objects.filter(username=self.angie.slug).exists())
