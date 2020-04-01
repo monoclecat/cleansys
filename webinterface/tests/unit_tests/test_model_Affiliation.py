@@ -154,7 +154,6 @@ class AffiliationTest(TestCase):
 class AffiliationDataBaseTests(TestCase):
     def setUp(self) -> None:
         self.start_week = 2500
-        self.current_week = 2501
         self.schedule = Schedule.objects.create(name='schedule')
         self.group = ScheduleGroup.objects.create(name='group')
         self.group.schedules.add(self.schedule)
@@ -165,9 +164,6 @@ class AffiliationDataBaseTests(TestCase):
         self.cleaner2 = Cleaner.objects.create(name='cleaner2')
         self.affiliation = Affiliation.objects.create(beginning=self.start_week, end=self.start_week+3,
                                                       cleaner=self.cleaner, group=self.group)
-
-        [self.schedule.cleaningweek_set.create(week=x, assignments_valid=True)
-         for x in range(self.start_week, self.start_week+4)]
 
     @patch('webinterface.models.Affiliation.cleaning_week_assignments_invalidator', autospec=True)
     def test__correct_args_to_invalidator__begin_and_end_change(self, mock_invalidator):
