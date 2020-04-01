@@ -135,7 +135,7 @@ class CleaningWeekTest(TestCase):
         self.assertTrue(self.cw2.all_tasks_are_completed())
 
     def test__assigned_cleaners(self):
-        self.assertSetEqual(self.cw1.assigned_cleaners(), {self.cleaner})
+        self.assertSetEqual(set(self.cw1.assigned_cleaners().all()), {self.cleaner})
 
     @patch('webinterface.models.current_epoch_week', autospec=True)
     def test__is_in_future(self, mock_current_epoch_week):
