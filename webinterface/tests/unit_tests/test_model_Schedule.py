@@ -1,4 +1,5 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT
 from webinterface.models import *
 from unittest.mock import *
 
@@ -28,13 +29,39 @@ class ScheduleTest(BaseFixture, TestCase):
         schedule = Schedule(name='abc')
         self.assertEqual(schedule.__str__(), schedule.name)
 
-    def test__deployment_ration__outside_of_active_affiliations(self):
+    def test__weekday_as_name(self):
+        self.assertListEqual([x.weekday_as_name() for x in [self.bathroom_schedule, self.kitchen_schedule,
+                                                            self.bedroom_schedule, self.garage_schedule]],
+                             ['Mittwoch', 'Freitag', 'Sonntag', 'Montag'])
+
+    @patch('webinterface.models.current_epoch_week', autospec=True)
+    def test__assignments_are_running_out__false(self, mock_current_epoch_week):
+        mock_current_epoch_week.return_value = self.start_week
+        self.assertFalse(self.bathroom_schedule.assignments_are_running_out(weeks_ahead=2))
+
+    @patch('webinterface.models.current_epoch_week', autospec=True)
+    def test__assignments_are_running_out__true(self, mock_current_epoch_week):
+        mock_current_epoch_week.return_value = self.start_week
+        self.assertTrue(self.bathroom_schedule.assignments_are_running_out(weeks_ahead=10))
+
+    @patch('webinterface.models.Schedule.constant_affiliation_timespan', autospec=True)
+    def test__deployment_ration__outside_of_active_affiliations(self, mock_timespan):
+        mock_timespan.return_value = {'beginning': self.start_week, 'end': self.end_week}
         self.assertListEqual(self.bathroom_schedule.deployment_ratios(self.start_week - 1), [])
         self.assertListEqual(self.bathroom_schedule.deployment_ratios(self.end_week + 1), [])
 
-    def test__deployment_ratios_are_sorted_and_correct_cleaners_are_selected(self):
-        with patch.object(Cleaner, 'deployment_ratio', side_effect=[0.5, 0.3]):
-            result = self.bathroom_schedule.deployment_ratios(self.start_week)
+    def test__constant_affiliation_timespan(self):
+        self.assertDictEqual(self.bathroom_schedule.constant_affiliation_timespan(self.start_week),
+                             {'beginning': self.start_week, 'end': self.start_week+1})
+        self.assertDictEqual(self.garage_schedule.constant_affiliation_timespan(self.start_week+3),
+                             {'beginning': self.start_week+2, 'end': self.start_week+3})
+
+    @patch('webinterface.models.Cleaner.deployment_ratio', autospec=True)
+    @patch('webinterface.models.Schedule.constant_affiliation_timespan', autospec=True)
+    def test__deployment_ratios_are_sorted_and_correct_cleaners_are_selected(self, mock_timespan, mock_ratio):
+        mock_timespan.return_value = {'beginning': self.start_week, 'end': self.end_week}
+        mock_ratio.side_effect = [0.5, 0.3]
+        result = self.bathroom_schedule.deployment_ratios(self.start_week)
         self.assertListEqual([[self.bob, 0.3], [self.angie, 0.5]], result)
 
     def test__occurs_in_week(self):
@@ -106,6 +133,8 @@ class ScheduleTest(BaseFixture, TestCase):
             self.assertRegex(str(mock_create.call_args[1]),
                              ".*'cleaning_week': <CleaningWeek.*{}.*{}.*>.*".format(schedule.name, str(week)))
 
+    # NOTE: For some reason, logs are not created when running tests from root directory,
+    # causing the tests below to fail.
     def test__create_assignment__disabled_schedule(self):
         self.run_and_assert__create_assignment(
             schedule=self.garage_schedule, week=self.start_week, expect_codes={"Code04"}, expect_result=False,
@@ -115,6 +144,14 @@ class ScheduleTest(BaseFixture, TestCase):
         self.run_and_assert__create_assignment(
             schedule=self.kitchen_schedule, week=self.start_week+1, expect_codes={"Code01"}, expect_result=False,
             deployment_ratios=[[self.bob, 0.9]], excluded=[])
+
+    def test__create_assignment__even_week_schedule__cleaning_week_on_not_defined_date(self):
+        new_cleaning_week = self.kitchen_schedule.cleaningweek_set.create(week=self.start_week+1)
+        self.run_and_assert__create_assignment(
+            schedule=self.kitchen_schedule, week=self.start_week+1, expect_codes={"Code01", 'Code90'},
+            expect_result=False,
+            deployment_ratios=[[self.bob, 0.9]], excluded=[])
+        self.assertFalse(self.kitchen_schedule.cleaningweek_set.filter(pk=new_cleaning_week.pk).exists())
 
     def test__create_assignment__even_week_schedule__no_positions_to_fill(self):
         self.run_and_assert__create_assignment(
@@ -133,6 +170,14 @@ class ScheduleTest(BaseFixture, TestCase):
             schedule=self.kitchen_schedule, week=self.start_week, expect_codes={"Code11", "Code22"},
             expect_result=True,
             deployment_ratios=[[self.bob, 0.5], [self.dave, 0.5]], excluded=[self.bob, self.dave])
+
+    def test__create_assignment__even_week_schedule(self):
+        # dave is not normally assigned to this schedule. We include him to make sure the first cleaner of
+        # deployment_ratios is selected as the cleaner.
+        self.run_and_assert__create_assignment(
+            schedule=self.kitchen_schedule, week=self.start_week, expect_codes={"Code21"},
+            expect_result=True,
+            deployment_ratios=[[self.bob, 0.5], [self.dave, 0.5]], excluded=[])
 
 
 class ScheduleModelDatabaseTests(TestCase):
@@ -163,7 +208,3 @@ class ScheduleModelDatabaseTests(TestCase):
 
     def test__future_cleaning_weeks_invalidated_on_frequency_change(self):
         self.invalidation_test_runner(field_name='frequency', new_value=2)
-
-    def test__create_assignment_removes_misplaced_cleaning_weeks(self):
-        self.schedule2.create_assignment(week=self.week)
-        self.assertFalse(self.schedule2.cleaningweek_set.filter(week=self.week).exists())
