@@ -50,11 +50,15 @@ ENV/
 env.bak/
 venv.bak/
 /bin/
+*.cfg
+etc/
+include/
+lib/
+share/
 
 # mypy
 .mypy_cache/
 
 *.pid
-/htmlcov/
 index.html alias
 
