@@ -32,6 +32,7 @@ coverage.xml
 
 # Django stuff:
 *.log
+*.log*
 .static_storage/
 .media/
 local_settings.py

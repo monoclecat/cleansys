@@ -6,6 +6,7 @@ import os
 import logging
 # from logging.handlers import RotatingFileHandler
 from django.urls import reverse_lazy
+from pathlib import Path
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -32,6 +33,7 @@ LOGIN_URL = reverse_lazy('webinterface:login-by-click')
 LOGIN_REDIRECT_URL = reverse_lazy('webinterface:cleaner-no-page')
 LOGOUT_REDIRECT_URL = '/'
 
+Path("logs").mkdir(parents=True, exist_ok=True)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -59,14 +61,6 @@ LOGGING = {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
         },
-        'create_assignment_handler': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'maxBytes': 1024,
-            'backupCount': 5,
-            'filename': 'logs/create_assignment.log',
-            'formatter': 'file_format'
-        },
     },
     'loggers': {
         'django': {
@@ -78,8 +72,7 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': False,
         },
-        'create_assignment_logger': {
-            'handlers': ['create_assignment_handler'],
+        'schedules': {
             'level': 'INFO'
         }
     }
