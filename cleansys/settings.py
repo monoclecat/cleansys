@@ -42,7 +42,7 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
-        'file_format': {
+        'file_format': {  # Used by webinterface.models.Schedule
             'format': '{levelname} {asctime} {message}',
             'style': '{',
         },
@@ -71,9 +71,6 @@ LOGGING = {
             'handlers': ['mail_admins'],
             'level': 'ERROR',
             'propagate': False,
-        },
-        'schedules': {
-            'level': 'INFO'
         }
     }
 }
