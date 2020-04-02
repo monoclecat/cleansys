@@ -76,7 +76,21 @@ Install them into your virtualenv's site-packages:
 pip3 install -r requirements.txt
 ``` 
 
-### 4. Setting up the database
+### 4. Creating your own settings
+Copy the directory `cleansys/setting_templates` to `cleansys/settings`. 
+Upon start-up, Django will auto-detect the new `settings` directory and will run the import statements 
+in `__init__.py`. 
+Only change files in `cleansys/settings`, as this directory is mentioned in  
+`.gitignore` and won't cause issues when updating CleanSys. 
+
+It is very important that you give a new value to the `SECRET_KEY`'s 
+in both `dev_settings.py` and `prod_settings.py` (the `SECRET_KEY` in both files may not be the same!).
+
+
+`common_settings.py` contains settings not in need of modification. 
+
+
+### 5. Setting up the database
 This Git ships without a database and any migrations. Create them with:
 
 ```bash
@@ -92,14 +106,14 @@ The admin area of CleanSys uses the login of the Django superuser. Create one wi
 python manage.py createsuperuser
 ``` 
 
-### 5. Playing around an exploring features
+### 6. Playing around an exploring features
 The best place to start is to set up the demonstration database. To set it up, run:
 
 ```bash
 python manage.py create_demo_database
 ```
 
-### 6. Starting the Django server
+### 7. Starting the Django server
 Finally, start the Django server:
 
 ```bash
@@ -108,7 +122,7 @@ python manage.py runserver
 
 # Installation (on an Ubuntu server)
 
-Follow steps 1 through 5 of the previous instructions, substituting `path-to-workspace` with `/var/www/`. 
+Follow steps 1 through 6 of the previous instructions, substituting `path-to-workspace` with `/var/www/`. 
 Also, you will run into 'Permission denied' errors if you don't run some of the command as root 
 (prepend `sudo ` to the command). 
 

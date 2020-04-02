@@ -1,4 +1,12 @@
-# Created by .ignore support plugin (hsz.mobi)
+# CleanSys specific
+logs/
+*.log
+*.log*
+.static_storage/
+.media/
+settings/
+
+
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -29,14 +37,6 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
-
-# Django stuff:
-logs/
-*.log
-*.log*
-.static_storage/
-.media/
-local_settings.py
 
 # pyenv
 .python-version

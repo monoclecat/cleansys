@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.core.exceptions import *
 from django.db.models.query import QuerySet
 from django.db.models.signals import m2m_changed
 from operator import itemgetter
@@ -7,6 +7,7 @@ import datetime
 from django.contrib.auth.hashers import make_password
 from django.utils.text import slugify
 import logging
+from logging.config import dictConfig
 from logging import handlers
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -73,15 +74,23 @@ class Schedule(models.Model):
         self.logger = None
 
     def set_up_logger(self):
-        self.logger = logging.getLogger(__name__ + self.name)
-        self.logger.setLevel(logging.INFO)
+        self.logger = logging.getLogger(self.slug)
         if not self.logger.hasHandlers():
-            handler = logging.handlers.RotatingFileHandler(filename='logs/{}.log'.format(self.slug),
-                                                           maxBytes=1000000, backupCount=3, encoding='utf8')
-            file_format = LOGGING['formatters']['file_format']
-            formatter = logging.Formatter(fmt=file_format['format'], style=file_format['style'])
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+            if LOGGING['LOG_SCHEDULE_CREATE_ASSIGNMENT_TO_FILE']:
+                handler_config = LOGGING['handlers']['file']
+                handler_config['filename'] = 'logs/{}.log'.format(self.slug)
+                handler_config['level'] = 'INFO'
+            else:
+                handler_config = LOGGING['handlers']['console']
+
+            handler_config = {
+                'version': 1,
+                'disable_existing_loggers': False,
+                'formatters': LOGGING['formatters'],
+                'handlers': {'output_method': handler_config},
+                'loggers': {self.slug: {'handlers': ['output_method'], 'level': 'INFO', 'propagate': False}}
+            }
+            logging.config.dictConfig(handler_config)
 
     def weekday_as_name(self):
         return Schedule.WEEKDAYS[self.weekday][1]
