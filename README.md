@@ -120,7 +120,11 @@ Finally, start the Django server:
 python manage.py runserver
 ``` 
 
-# Installation (on an Ubuntu server)
+# Deployment on an Ubuntu server
+
+Installing CleanSys on an Ubuntu server is very similar to the installation on a Unix system, such as a Mac. 
+
+## Installation
 
 Follow steps 1 through 6 of the previous instructions, substituting `path-to-workspace` with `/var/www/`. 
 Also, you will run into 'Permission denied' errors if you don't run some of the command as root 
@@ -145,11 +149,33 @@ python3 manage.py makemigrations
 python3 manage.py migrate
 python3 manage.py createsuperuser
 
+
 deactivate  # Deactivate virtualenv
 ```
 
 > You can only run manage.py commands while you own the database file db.sqlite3 and its parent folder, cleansys/. 
 > Later, the ownership will be transferred to Apache's www-data user. 
+
+Don't forget to create the `settings` directory from `settings_template`:
+ 
+```bash
+cd /var/www/cleansys/cleansys
+sudo cp setting_templates/ settings -R  # Duplicate and rename settings_template/
+``` 
+
+Adapt `dev_settings.py` and `prod_settings.py`, and make sure `__init__.py` imports the settings you want 
+(edit files using the vim editor with `sudo vim filename`). 
+
+When adapting the production settings, please follow the 
+[Django deployment checklist](https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/). 
+Necessary edits include:
+
+- Setting `ALLOWED_HOSTS` 
+- Setting a new `SECRET_KEY`
+- Setting `ADMINS`
+- Setting the SMTP login credentials (if no email fault reporting is wished, remove the line which sets 
+`LOGGING['loggers']['django.request']`)
+
 
 Now, we will follow a recommended way of deploying Django: 
 [How to use Django with Apache and mod_wsgi](https://docs.djangoproject.com/en/3.0/howto/deployment/wsgi/modwsgi/)
@@ -160,13 +186,15 @@ Install requirements:
 sudo apt-get install libapache2-mod-wsgi-py3 apache2
 ```
 
+> When running CleanSys with Apache, server errors and access logs won't be printed into the console 
+> but can be found in the logs under `/var/log/apache2`.
 
-
-Give the user `www-data` ownership of the database and the parent directory, `cleansys`:
+Give the user `www-data` ownership of the database, the `logs` directory, and their parent directory, `cleansys`:
 ```bash
 cd /var/www
 sudo chown www-data:www-data cleansys/
 sudo chown www-data:www-data cleansys/db.sqlite3
+sudo chown www-data:www-data cleansys/logs -R
 ```
 
 Create an Apache site-configuration file:
@@ -174,14 +202,14 @@ Create an Apache site-configuration file:
 sudo vim /etc/apache2/sites-available/cleansys.conf
 ```
 
-This opens the Vim editor. Press <kbd>i</kbd> and page the following: 
+This opens the Vim editor. Press <kbd>i</kbd> and paste the following: 
 
 ```html
  WSGIDaemonProcess cleansys python-home=/var/www/cleansys python-path=/var/www/cleansys
  WSGIProcessGroup cleansys
 
  <VirtualHost *:80>
-     Alias /static/ /var/www/cleansys/barsys/static/
+     Alias /static/ /var/www/cleansys/webinterface/static/
      <Directory /static>
          Require all granted
      </Directory>
@@ -214,6 +242,87 @@ When changing any file or ownership, you will have to reload Apache for the chan
 ```bash
 sudo systemctl reload apache2
 ```
+
+## Updating
+Before updating, make sure to create a backup of your current installation. 
+Then, check to see if there have been any changes since the last pull.
+
+```bash
+sudo systemctl stop apache2
+cd /var/www
+sudo cp -a cleansys /var/backups/<current_date>-cleansys  # Create a backup
+sudo chown your_username:your_username cleansys  # Give your user ownership of cleansys/, important for later
+cd cleansys
+git diff
+```
+
+If you haven't worked on the code, `git diff` shouldn't return anything. 
+Take note on any changes you see and decide if they are relevant, 
+as in the update process all these changes will be thrown away and must be re-done afterwards. 
+
+Next, show differences between the settings you have modified from the templates, and the templates themselves. 
+Screenshot this! You will need it soon. 
+
+```bash
+cd /var/www/cleansys/cleansys
+diff setting_templates/ settings/
+```
+
+Now comes the actual update: We pull the newest commit from this repository on Github. 
+
+```bash
+git add -A .  # Track untracked files that could get in the way
+git stash  # Any changes to files are 'stashed' to be thrown away later
+git pull
+git stash pop  # Throw away changes
+```  
+
+It is possible that the settings templates have changed and that settings have been added. 
+`cleansys/setting_templates` is not read by the Django server, only `cleansys/settings`. 
+But the update may contain changes to the settings, which are now only in `cleansys/setting_templates`
+and must be transferred to `cleansys/settings`. 
+
+To see if any action is necessary, check the differences again between the files of both directories: 
+
+```bash
+cd /var/www/cleansys/cleansys
+diff setting_templates/ settings/
+```
+
+Compare the output to the screenshot you did before. Anything new? 
+Implement any *new* changes in the files of the `settings` directory, so that the output of 
+`diff setting_templates/ settings/` matches your screenshot again.   
+
+> In case you are using the `vim` editor *(in constrast to the more intuitive `nano` editor)* 
+> to open files in `setting_templates`, make sure to close the editor with 
+> <kbd>:q</kbd> (quit) rather than <kbd>:wq</kbd> (write, quit) to ensure you aren't modifying the files 
+> there. 
+
+Next, update pip packages with an active virtualenv.
+
+```bash
+source bin/activate  # activate the virtual environment
+python3 -m pip install -r requirements.txt  # update packages
+
+python3 manage.py makemigrations  # update database structure
+python3 manage.py migrate
+deactivate
+```  
+
+Give the user `www-data` ownership of the database, the `logs` directory, and their parent directory, `cleansys`:
+```bash
+cd /var/www
+sudo chown www-data:www-data cleansys/
+sudo chown www-data:www-data cleansys/db.sqlite3
+sudo chown www-data:www-data cleansys/logs -R
+```
+
+Finally, restart your server: 
+```bash
+sudo systemctl start apache2
+```
+
+
 
 ## "I can't run virtualenv or pip install without sudo!"
 
