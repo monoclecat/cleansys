@@ -22,14 +22,14 @@ WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT = 4
 
 # Email settings
 EMAIL_HOST = 'localhost'
-# EMAIL_HOST_USER = 'system@cleansys.headquarters'
-# EMAIL_HOST_PASSWORD = 'areallygoodpassword'
+EMAIL_HOST_USER = 'system@cleansys.headquarters'
+EMAIL_HOST_PASSWORD = 'areallygoodpassword'
 EMAIL_FROM_ADDRESS = 'system@cleansys.headquarters'
 SERVER_EMAIL = EMAIL_FROM_ADDRESS
 DEFAULT_FROM_EMAIL = EMAIL_FROM_ADDRESS
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True   # USE_TLS and USE_SSL are mutually exclusive,
-# EMAIL_USE_SSL = False  # see https://docs.djangoproject.com/en/3.0/ref/settings/#email-use-tls
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True   # USE_TLS and USE_SSL are mutually exclusive,
+EMAIL_USE_SSL = False  # see https://docs.djangoproject.com/en/3.0/ref/settings/#email-use-tls
 
 # The ADMINS setting is needed when the AdminEmailHandler is used
 # https://docs.djangoproject.com/en/3.0/topics/logging/#django.utils.log.AdminEmailHandler

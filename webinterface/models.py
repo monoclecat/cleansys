@@ -14,7 +14,8 @@ from django.utils import timezone
 import calendar
 import random
 import time
-from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT, LOGGING
+import os
+from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT, LOGGING, LOGGING_PATH
 
 
 def date_to_epoch_week(date: datetime.date) -> int:
@@ -78,7 +79,7 @@ class Schedule(models.Model):
         if not self.logger.hasHandlers():
             if LOGGING['LOG_SCHEDULE_CREATE_ASSIGNMENT_TO_FILE']:
                 handler_config = LOGGING['handlers']['file']
-                handler_config['filename'] = 'logs/{}.log'.format(self.slug)
+                handler_config['filename'] = os.path.join(LOGGING_PATH, '{}.log'.format(self.slug))
                 handler_config['level'] = 'INFO'
             else:
                 handler_config = LOGGING['handlers']['console']

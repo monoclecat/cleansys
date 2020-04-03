@@ -102,7 +102,9 @@ USE_L10N = True
 
 USE_TZ = True
 
-Path("logs").mkdir(parents=True, exist_ok=True)
+LOGGING_PATH = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOGGING_PATH, mode=0o755, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -136,7 +138,7 @@ LOGGING = {
             'class': 'logging.handlers.RotatingFileHandler',
             'maxBytes': 1000000,
             'backupCount': 3,
-            'filename': 'logs/general.log',
+            'filename': os.path.join(LOGGING_PATH, 'general.log'),
             'formatter': 'file_format',
             'encoding': 'utf8',
         },
