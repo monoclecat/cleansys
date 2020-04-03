@@ -1,5 +1,4 @@
 # CleanSys specific
-logs/
 *.log
 *.log*
 .static_storage/
