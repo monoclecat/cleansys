@@ -139,7 +139,18 @@ class AffiliationTest(TestCase):
             expected_weeks=set(x for x in range(self.current_week + 1, self.start_week + 4))
         )
 
-    def test__affiliation_creation_or_deletion_invalidates(self):
+    def test__affiliation_creation_invalidates(self):
+        call_args_list = self.run_assignments_invalidator(
+            affiliation_pk=None, prev_group=None, new_group=self.group,
+            prev_beginning=None, prev_end=None,
+            new_beginning=self.start_week, new_end=self.start_week + 3
+        )
+        self.assert_future_cleaning_weeks_are_invalidated(
+            schedule=self.schedule, call_args_list=call_args_list,
+            expected_weeks=set(x for x in range(self.current_week + 1, self.start_week + 4))
+        )
+
+    def test__affiliation_deletion_invalidates(self):
         call_args_list = self.run_assignments_invalidator(
             affiliation_pk=None, prev_group=self.group, new_group=self.group,
             prev_beginning=self.start_week, prev_end=self.start_week + 3,

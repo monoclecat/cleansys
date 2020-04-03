@@ -120,11 +120,14 @@ class AffiliationForm(forms.ModelForm):
         pk = self.instance.pk
         try:
             beginning = date_to_epoch_week(cleaned_data.get('beginning'))
+        except AttributeError:
+            raise ValidationError("Beginn muss im korrekten Datumsformat sein!")
+        try:
             end = date_to_epoch_week(cleaned_data.get('end'))
-            Affiliation.date_validator(affiliation_pk=pk, cleaner=self.cleaner, beginning=beginning, end=end)
-        except TypeError:
-            pass
+        except AttributeError:
+            raise ValidationError("Ende muss im korrekten Datumsformat sein!")
 
+        Affiliation.date_validator(affiliation_pk=pk, cleaner=self.cleaner, beginning=beginning, end=end)
         return cleaned_data
 
     def __init__(self, cleaner=None, *args, **kwargs):

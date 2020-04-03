@@ -406,9 +406,14 @@ class Affiliation(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(Affiliation, self).__init__(*args, **kwargs)
-        self.previous_beginning = self.beginning
-        self.previous_end = self.end
-        self.previous_group = self.group
+        if self.pk:
+            self.previous_beginning = self.beginning
+            self.previous_end = self.end
+            self.previous_group = self.group
+        else:
+            self.previous_beginning = None
+            self.previous_end = None
+            self.previous_group = None
 
     def beginning_as_date(self):
         return epoch_week_to_monday(self.beginning)
@@ -443,13 +448,15 @@ class Affiliation(models.Model):
             affiliation_pk, prev_group, new_group,
             prev_beginning: int, new_beginning: int, prev_end: int, new_end: int):
 
-        cleaning_weeks = (CleaningWeek.objects.filter(schedule__in=prev_group.schedules.all()) |
-                          CleaningWeek.objects.filter(schedule__in=new_group.schedules.all()))
+        cleaning_weeks = CleaningWeek.objects.filter(schedule__in=new_group.schedules.all())
+        if prev_group is not None:
+            cleaning_weeks |= CleaningWeek.objects.filter(schedule__in=prev_group.schedules.all())
+
         cleaning_weeks = cleaning_weeks.filter(week__gte=current_epoch_week() + 1)
 
         cleaning_weeks_invalidated = None
 
-        if affiliation_pk is None or prev_group != new_group:
+        if affiliation_pk is None or prev_beginning is None or prev_end is None or prev_group != new_group:
             cleaning_weeks_invalidated = cleaning_weeks. \
                 filter(week__range=(new_beginning, new_end))
 
@@ -476,19 +483,18 @@ class Affiliation(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.date_validator(affiliation_pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
+        super().save(force_insert, force_update, using, update_fields)
         self.cleaning_week_assignments_invalidator(
             affiliation_pk=self.pk, prev_group=self.previous_group, new_group=self.group,
             prev_beginning=self.previous_beginning, prev_end=self.previous_end,
             new_beginning=self.beginning, new_end=self.end)
 
-        super().save(force_insert, force_update, using, update_fields)
-
     def delete(self, using=None, keep_parents=False):
+        super().delete(using, keep_parents)
         self.cleaning_week_assignments_invalidator(
             affiliation_pk=None, prev_group=self.previous_group, new_group=self.group,
             prev_beginning=self.beginning, prev_end=self.end,
             new_beginning=self.beginning, new_end=self.end)
-        super().delete(using, keep_parents)
 
 
 class CleaningWeekQuerySet(models.QuerySet):
