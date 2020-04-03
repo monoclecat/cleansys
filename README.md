@@ -233,15 +233,46 @@ sudo a2ensite cleansys
 sudo systemctl restart apache2
 ```
 
-Additionally, work through [Django's deployment checklist](https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/)
-to establish the security of your site. For settings.py this includes setting a new SECRET_KEY, adding 
-ALLOWED_HOSTS and setting DEBUG to False. 
 Keep in mind that CleanSys is only meant to be accessible inside your local network.  
 
 When changing any file or ownership, you will have to reload Apache for the changes to take effect. 
 ```bash
 sudo systemctl reload apache2
 ```
+
+### Creating Cronjobs
+
+Cronjobs are great for automating things. For CleanSys, a cronjob which runs `cronscripts/create_assignments.sh` once
+a week will make sure there are always Assignments for the next `WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT + 4`
+weeks (see `webinterface/management/commands/create_assignments.py`). 
+A good documentation on Cron can be found [here](https://help.ubuntu.com/community/CronHowto).  
+
+Make sure to create the Cronjobs under `root`, so that the job has sufficient privileges.   
+
+```bash
+sudo crontab -e  # Open root's crontab file
+```
+
+These are some cronjobs which are available for CleanSys. Just paste the code into the root's crontab file. 
+To test the cronjob you can initially set its interval to `*/1 * * * *` to run it every minute. 
+
+The following will create a job for `cronscripts/create_assignments.sh` (mentioned above) which runs every
+Monday at 4:00 in the morning: 
+```bash
+0 4 * * 0 sudo bash /var/www/cleansys/cronscripts/create_assignments.sh >> /var/www/cleansys/cronscripts/cron.log
+``` 
+
+Debugging cronjobs is a bit tricky. The log output given by `tail /var/log/syslog` will not give you any 
+information useful for debugging. Instead, cronjobs will send errors by *email*. 
+If you have no email server set up, you will find messages such as *"No MTA installed"* in `/var/log/syslog`. 
+
+Setting up an email server and client is actually very simple. 
+There are enough good tutorials when searching for `ubuntu setting up postfix with mutt`. 
+Basically, you need to install `postfix`, set it to *Local only*, and install the email client `mutt`. 
+
+Cron will be sending emails to postbox of user `root`, so be sure to run the email client with `sudo mutt`, 
+otherwise you will access your logged-in user's postbox.  
+ 
 
 ## Updating
 Before updating, make sure to create a backup of your current installation. 
