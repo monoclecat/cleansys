@@ -2,11 +2,22 @@ from django.urls import path
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
 from webinterface.views import *
+from webinterface.api_views import *
 from webinterface.form_views import *
 from webinterface.decorators import must_be_admin
+from django.conf.urls import url, include
+from rest_framework import routers
 
 from django.views.generic.base import RedirectView
 
+router = routers.SimpleRouter()
+router.register(r'schedules', ScheduleViewSet)
+router.register(r'schedule-groups', ScheduleGroupViewSet)
+router.register(r'cleaners', CleanerViewSet)
+router.register(r'assignments', AssignmentViewSet)
+router.register(r'tasktemplates', TaskTemplateViewSet)
+router.register(r'task', TaskViewSet)
+router.register(r'dutyswitches', DutySwitchViewSet)
 
 app_name = 'webinterface'
 urlpatterns = [
@@ -98,4 +109,6 @@ urlpatterns = [
          name='task-cleaned'),
     path('task-edit/<int:pk>/', must_be_admin(TaskTemplateUpdateView.as_view()), name='task-edit'),
     path('task-delete/<int:pk>/', must_be_admin(TaskTemplateDeleteView.as_view()), name='task-delete'),
+
+    url(r'^api/', include(router.urls))
 ]
