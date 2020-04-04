@@ -1,7 +1,6 @@
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from webinterface.models import *
 from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT
-import random
 
 
 class Command(BaseCommand):
@@ -28,6 +27,3 @@ class Command(BaseCommand):
 
         for schedule in Schedule.objects.enabled():
             schedule.create_assignments_over_timespan(current_epoch_week(), current_epoch_week() + weeks_ahead)
-
-
-
