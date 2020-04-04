@@ -8,7 +8,6 @@ from django.contrib.auth.hashers import make_password
 from django.utils.text import slugify
 import logging
 from logging.config import dictConfig
-from logging import handlers
 from django.contrib.auth.models import User
 from django.utils import timezone
 import calendar
@@ -68,10 +67,13 @@ class Schedule(models.Model):
     def __str__(self) -> str:
         return self.name
 
+    def update_previous(self):
+        self.__previous_cleaners_per_date = self.cleaners_per_date
+        self.__previous_frequency = self.frequency
+
     def __init__(self, *args, **kwargs):
         super(Schedule, self).__init__(*args, **kwargs)
-        self.previous_cleaners_per_date = self.cleaners_per_date
-        self.previous_frequency = self.frequency
+        self.update_previous()
         self.logger = None
 
     def set_up_logger(self):
@@ -250,10 +252,11 @@ class Schedule(models.Model):
         self.slug = slugify(self.name)
         super(Schedule, self).save(force_insert, force_update, using, update_fields)
 
-        if self.previous_frequency != self.frequency \
-                or self.previous_cleaners_per_date != self.cleaners_per_date:
+        if self.__previous_frequency != self.frequency \
+                or self.__previous_cleaners_per_date != self.cleaners_per_date:
             [x.set_assignments_valid_field(False)
              for x in self.cleaningweek_set.in_future().all()]
+            self.update_previous()
 
 
 class ScheduleGroup(models.Model):
@@ -404,16 +407,19 @@ class Affiliation(models.Model):
             self.beginning, self.end_as_date().strftime("%d. %b %Y"), self.end
         )
 
+    def update_previous(self):
+        if self.pk:
+            self.__previous_beginning = self.beginning
+            self.__previous_end = self.end
+            self.__previous_group = self.group
+        else:
+            self.__previous_beginning = None
+            self.__previous_end = None
+            self.__previous_group = None
+
     def __init__(self, *args, **kwargs):
         super(Affiliation, self).__init__(*args, **kwargs)
-        if self.pk:
-            self.previous_beginning = self.beginning
-            self.previous_end = self.end
-            self.previous_group = self.group
-        else:
-            self.previous_beginning = None
-            self.previous_end = None
-            self.previous_group = None
+        self.update_previous()
 
     def beginning_as_date(self):
         return epoch_week_to_monday(self.beginning)
@@ -483,18 +489,19 @@ class Affiliation(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.date_validator(affiliation_pk=self.pk, cleaner=self.cleaner, beginning=self.beginning, end=self.end)
-        super().save(force_insert, force_update, using, update_fields)
         self.cleaning_week_assignments_invalidator(
-            affiliation_pk=self.pk, prev_group=self.previous_group, new_group=self.group,
-            prev_beginning=self.previous_beginning, prev_end=self.previous_end,
+            affiliation_pk=self.pk, prev_group=self.__previous_group, new_group=self.group,
+            prev_beginning=self.__previous_beginning, prev_end=self.__previous_end,
             new_beginning=self.beginning, new_end=self.end)
+        super().save(force_insert, force_update, using, update_fields)
+        self.update_previous()
 
     def delete(self, using=None, keep_parents=False):
-        super().delete(using, keep_parents)
         self.cleaning_week_assignments_invalidator(
-            affiliation_pk=None, prev_group=self.previous_group, new_group=self.group,
+            affiliation_pk=None, prev_group=self.__previous_group, new_group=self.group,
             prev_beginning=self.beginning, prev_end=self.end,
             new_beginning=self.beginning, new_end=self.end)
+        super().delete(using, keep_parents)
 
 
 class CleaningWeekQuerySet(models.QuerySet):
@@ -640,7 +647,7 @@ class TaskTemplate(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(TaskTemplate, self).__init__(*args, **kwargs)
-        self.previous_pk = self.pk
+        self.__previous_pk = self.pk
 
     def __str__(self):
         return self.task_name
@@ -654,7 +661,7 @@ class TaskTemplate(models.Model):
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         super().save(force_insert, force_update, using, update_fields)
-        if self.previous_pk is None:
+        if self.__previous_pk is None:
             [x.create_missing_tasks() for x in self.schedule.cleaningweek_set.in_future().all()]
 
 
@@ -727,9 +734,12 @@ class DutySwitch(models.Model):
 
     objects = DutySwitchQuerySet.as_manager()
 
+    def update_previous(self):
+        self.__previous_acceptor = self.acceptor_assignment
+
     def __init__(self, *args, **kwargs):
         super(DutySwitch, self).__init__(*args, **kwargs)
-        self.__previous_acceptor = self.acceptor_assignment
+        self.update_previous()
 
     def __str__(self):
         base_str = "Requester: {} on {} in {}".format(self.requester_assignment.cleaner.name,
@@ -768,5 +778,6 @@ class DutySwitch(models.Model):
 
             self.acceptor_assignment.cleaner = source_cleaner
             self.acceptor_assignment.save()
+            self.update_previous()
 
         super().save(force_insert, force_update, using, update_fields)

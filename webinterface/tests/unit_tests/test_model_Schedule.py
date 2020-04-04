@@ -1,7 +1,7 @@
-from django.test import TestCase, override_settings
-from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT
+from django.test import TestCase
 from webinterface.models import *
 from unittest.mock import *
+import logging
 
 from webinterface.tests.unit_tests.fixtures import BaseFixture
 
@@ -117,7 +117,8 @@ class ScheduleTest(BaseFixture, TestCase):
         mock_deployment_ratios.return_value = deployment_ratios
         mock_excluded.all.return_value = excluded
 
-        with self.assertLogs(level='DEBUG') as log:
+        with self.assertLogs(logger=schedule.slug, level='DEBUG') as log:
+            schedule.logger = logging.getLogger(schedule.slug)
             result = schedule.create_assignment(week=week)
 
         all_codes = {"Code01", "Code02", "Code03", "Code04", "Code21", "Code22"}

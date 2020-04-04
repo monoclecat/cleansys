@@ -178,14 +178,18 @@ class AffiliationDataBaseTests(TestCase):
 
     @patch('webinterface.models.Affiliation.cleaning_week_assignments_invalidator', autospec=True)
     def test__correct_args_to_invalidator__begin_and_end_change(self, mock_invalidator):
-        self.affiliation.beginning = self.start_week + 1
-        self.affiliation.end = self.start_week + 2
+        pre_beginning = self.affiliation.beginning
+        pre_end = self.affiliation.end
+        new_beginning = self.start_week + 1
+        new_end = self.start_week + 2
+        self.affiliation.beginning = new_beginning
+        self.affiliation.end = new_end
         self.affiliation.save()
         self.assertDictEqual(mock_invalidator.call_args[1],
                              {'affiliation_pk': self.affiliation.pk,
                               'prev_group': self.group, 'new_group': self.group,
-                              'prev_beginning': self.start_week, 'prev_end': self.start_week + 3,
-                              'new_beginning': self.affiliation.beginning, 'new_end': self.affiliation.end})
+                              'prev_beginning': pre_beginning, 'prev_end': pre_end,
+                              'new_beginning': new_beginning, 'new_end': new_end})
 
     @patch('webinterface.models.Affiliation.cleaning_week_assignments_invalidator', autospec=True)
     def test__correct_args_to_invalidator__group_changes(self, mock_invalidator):
@@ -194,7 +198,7 @@ class AffiliationDataBaseTests(TestCase):
         self.assertDictEqual(mock_invalidator.call_args[1],
                              {'affiliation_pk': self.affiliation.pk,
                               'prev_group': self.group, 'new_group': self.group2,
-                              'prev_beginning': self.start_week, 'prev_end': self.start_week + 3,
+                              'prev_beginning': self.affiliation.beginning, 'prev_end': self.affiliation.end,
                               'new_beginning': self.affiliation.beginning, 'new_end': self.affiliation.end})
 
     @patch('webinterface.models.Affiliation.cleaning_week_assignments_invalidator', autospec=True)
@@ -203,8 +207,8 @@ class AffiliationDataBaseTests(TestCase):
                                    cleaner=self.cleaner2, group=self.group)
         self.assertDictEqual(mock_invalidator.call_args[1],
                              {'affiliation_pk': None,
-                              'prev_group': self.group, 'new_group': self.group,
-                              'prev_beginning': self.start_week, 'prev_end': self.start_week + 3,
+                              'prev_group': None, 'new_group': self.group,
+                              'prev_beginning': None, 'prev_end': None,
                               'new_beginning': self.start_week, 'new_end': self.start_week + 3})
 
     @patch('webinterface.models.Affiliation.cleaning_week_assignments_invalidator', autospec=True)
