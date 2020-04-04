@@ -140,6 +140,7 @@ install the pip packages inside `requirements.txt` without using sudo
 
 ```bash
 cd /var/www
+sudo git clone https://github.com/monoclecat/cleansys.git
 sudo chown -R "$USER":"$USER" cleansys  # Your user needs ownership of cleansys/
 
 virtualenv -p python3 cleansys/
