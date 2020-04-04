@@ -134,10 +134,13 @@ I first had to install pip3 `sudo apt install python3-pip`
 
 Change the ownership of the directory `cleansys` to your username, create the virtualenv in it without using sudo and
 install the pip packages inside `requirements.txt` without using sudo 
-*([installing pip packages using sudo is a major security risk](https://stackoverflow.com/a/21056000/5568461))*:
+*([installing pip packages using sudo is a major security risk](https://stackoverflow.com/a/21056000/5568461))*. 
+
+> Having problems creating a virtualenv without sudo? [Read this](#virtenvsudo)
+
 ```bash
 cd /var/www
-sudo chown -R your_username:your_username cleansys  # Your user needs ownership of cleansys/
+sudo chown -R "$USER":"$USER" cleansys  # Your user needs ownership of cleansys/
 
 virtualenv -p python3 cleansys/
 cd cleansys
@@ -176,6 +179,7 @@ Necessary edits include:
 - Setting the SMTP login credentials (if no email fault reporting is wished, remove the line which sets 
 `LOGGING['loggers']['django.request']`)
 
+### Setting up the server
 
 Now, we will follow a recommended way of deploying Django: 
 [How to use Django with Apache and mod_wsgi](https://docs.djangoproject.com/en/3.0/howto/deployment/wsgi/modwsgi/)
@@ -189,13 +193,37 @@ sudo apt-get install libapache2-mod-wsgi-py3 apache2
 > When running CleanSys with Apache, server errors and access logs won't be printed into the console 
 > but can be found in the logs under `/var/log/apache2`.
 
-Give the user `www-data` ownership of the database, the `logs` directory, and their parent directory, `cleansys`:
+By installing Apache, a new user has been created on your system: `www-data`, along with a new group with 
+the same name. Following [this informative AskUbuntu answer](https://askubuntu.com/a/46371), we will now
+add our user to the `www-data`-**group**. Then, the ownership of all files and directories will be 
+transferred to your user and the `www-data`-group. 
+
+> This allows us to split up the permissions for the files and directories. 
+> Running `chmod 640` on a file will give the owning user read+write permissions (`6`), 
+> all users in the owning group read permissions (`4`) and any other user no permissions (`0`). 
+> Read more about permissions in the [chmod command help](https://www.computerhope.com/unix/uchmod.htm).  
+
+Add your user to the `www-data` group and log out and back in to the server to make the group change take effect.  
+
 ```bash
-cd /var/www
-sudo chown www-data:www-data cleansys/
-sudo chown www-data:www-data cleansys/db.sqlite3
-sudo chown www-data:www-data cleansys/logs -R
+sudo gpasswd -a "$USER" www-data
 ```
+<a name="perms"></a>
+Now we will set the permissions. We will only give the `www-data`-group write access where necessary. 
+
+```bash
+sudo chown -R "$USER":www-data /var/www  # Set ownership recursively
+
+find /var/www/ -type f -exec chmod 0640 {} \;
+sudo find /var/www -type d -exec chmod 2750 {} \;  # The '2' sets the setgid bit so that all new files inherit the same group
+
+chmod g+w /var/www/cleansys  # Add write permissions to group
+chmod g+w /var/www/cleansys/db.sqlite3
+chmod g+w /var/www/cleansys/logs
+```
+
+> At any time, you can check if the `www-data` user has sufficient privileges to successfully start the server by 
+> running `sudo -u www-data bash -c "source bin/activate; python3 manage.py runserver"`
 
 Create an Apache site-configuration file:
 ```bash
@@ -242,35 +270,47 @@ sudo systemctl reload apache2
 
 ### Creating Cronjobs
 
-Cronjobs are great for automating things. For CleanSys, a cronjob which runs `cronscripts/create_assignments.sh` once
+Cronjobs are great for automating things. For CleanSys, a Cronjob which runs `cronscripts/create_assignments.sh` once
 a week will make sure there are always Assignments for the next `WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT + 4`
 weeks (see `webinterface/management/commands/create_assignments.py`). 
 A good documentation on Cron can be found [here](https://help.ubuntu.com/community/CronHowto).  
 
-Make sure to create the Cronjobs under `root`, so that the job has sufficient privileges.   
+We will be putting our Cronjobs into the system Crontab under `/etc/crontab`. 
+Just open the file with your favorite terminal editor using sudo (ex. `sudo vim /etc/crontab`) and 
+append the examples below to the file.    
 
+> To test a Cronjob you can initially set its interval to `*/1 * * * *` to run it every minute. 
+
+The following job will run `cronscripts/create_assignments.sh` (mentioned above) every
+Monday at 3:00 in the morning: 
 ```bash
-sudo crontab -e  # Open root's crontab file
-```
-
-These are some cronjobs which are available for CleanSys. Just paste the code into the root's crontab file. 
-To test the cronjob you can initially set its interval to `*/1 * * * *` to run it every minute. 
-
-The following will create a job for `cronscripts/create_assignments.sh` (mentioned above) which runs every
-Monday at 4:00 in the morning: 
-```bash
-0 4 * * 0 sudo bash /var/www/cleansys/cronscripts/create_assignments.sh >> /var/www/cleansys/cronscripts/cron.log
+0 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_assignments.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
-Debugging cronjobs is a bit tricky. The log output given by `tail /var/log/syslog` will not give you any 
-information useful for debugging. Instead, cronjobs will send errors by *email*. 
+The following job will create a gzipped backup of `db.sqlite3` and put it in `/var/www/cleansys/backups` 
+every day at 4 in the morning: 
+```bash
+0 4 * * * www-data bash /var/www/cleansys/cronscripts/create_backup.sh >> /var/www/cleansys/logs/cron.log
+``` 
+
+The following job will send the database file to all admins mentioned in the ADMINS setting every Monday at 
+3:30 in the morning:
+```bash
+30 3 * * 0 www-data bash /var/www/cleansys/cronscripts/send_database_backup.sh >> /var/www/cleansys/logs/cron.log
+``` 
+
+
+#### Cronjobs aren't working?
+Debugging Cronjobs is a bit tricky. The log output given by `tail /var/log/syslog` will not give you any 
+information useful for debugging. Instead, Cronjobs will send errors by *email*. 
 If you have no email server set up, you will find messages such as *"No MTA installed"* in `/var/log/syslog`. 
 
 Setting up an email server and client is actually very simple. 
-There are enough good tutorials when searching for `ubuntu setting up postfix with mutt`. 
+There are enough good tutorials when searching for *ubuntu setting up postfix with mutt*. 
 Basically, you need to install `postfix`, set it to *Local only*, and install the email client `mutt`. 
 
-Cron will be sending emails to postbox of user `root`, so be sure to run the email client with `sudo mutt`, 
+Cron will be sending emails to postbox of user `www-data`, 
+so be sure to run the email client with `sudo -H -u www-data mutt`, 
 otherwise you will access your logged-in user's postbox.  
  
 
@@ -282,7 +322,6 @@ Then, check to see if there have been any changes since the last pull.
 sudo systemctl stop apache2
 cd /var/www
 sudo cp -a cleansys /var/backups/<current_date>-cleansys  # Create a backup
-sudo chown your_username:your_username cleansys  # Give your user ownership of cleansys/, important for later
 cd cleansys
 git diff
 ```
@@ -340,22 +379,18 @@ python3 manage.py migrate
 deactivate
 ```  
 
-Give the user `www-data` ownership of the database, the `logs` directory, and their parent directory, `cleansys`:
-```bash
-cd /var/www
-sudo chown www-data:www-data cleansys/
-sudo chown www-data:www-data cleansys/db.sqlite3
-sudo chown www-data:www-data cleansys/logs -R
-```
+Make sure all files and directories have the correct permissions set, as stated [here](#perms).
+
 
 Finally, restart your server: 
 ```bash
 sudo systemctl start apache2
 ```
 
+## Troubleshooting
 
-
-## "I can't run virtualenv or pip install without sudo!"
+<a name="virtenvsudo"></a>
+### "I can't run virtualenv or pip install without sudo!"
 
 Make sure there is no system-wide installed version of virtualenv. **virtualenv is meant to be run as a non-root user**, 
 and installing virtualenv as root prevents this 
