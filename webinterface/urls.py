@@ -1,9 +1,9 @@
 from django.urls import path
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
-from .views import *
-from .form_views import *
-from .decorators import must_be_admin
+from webinterface.views import *
+from webinterface.form_views import *
+from webinterface.decorators import must_be_admin
 
 from django.views.generic.base import RedirectView
 
