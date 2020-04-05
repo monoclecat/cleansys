@@ -163,11 +163,11 @@ class BaseFixtureWithTasks(BaseFixture):
     def setUpTestData(cls):
         super().setUpTestData()
 
-        cls.bathroom_task_template_1 = TaskTemplate.objects.create(task_name="bathroom_task_1",
+        cls.bathroom_task_template_1 = TaskTemplate.objects.create(name="bathroom_task_1",
                                                                    start_days_before=1, end_days_after=2,
                                                                    schedule=cls.bathroom_schedule)
 
-        cls.bathroom_task_template_2 = TaskTemplate.objects.create(task_name="bathroom_task_2",
+        cls.bathroom_task_template_2 = TaskTemplate.objects.create(name="bathroom_task_2",
                                                                    start_days_before=3, end_days_after=3,
                                                                    schedule=cls.bathroom_schedule)
 

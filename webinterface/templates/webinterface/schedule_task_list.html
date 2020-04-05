@@ -38,11 +38,11 @@ Aufgaben für {{ schedule }}
                 <a class="btn btn-default btn-sm" role="button" href="{% url 'webinterface:task-edit' tasktemplate.pk %}">
                         <span class="glyphicon glyphicon-cog"></span>
                 </a>
-                {{ tasktemplate.task_name }} {% if tasktemplate.task_disabled %}
+                {{ tasktemplate.name }} {% if tasktemplate.task_disabled %}
                 <span class="label label-warning">Deaktiviert</span>{% endif %}
             </div>
             <div class="panel-body">
-                <i>Hilfetext: </i>{{ tasktemplate.task_help_text }}
+                <i>Hilfetext: </i>{{ tasktemplate.help_text }}
             </div>
 
             <!-- List group -->

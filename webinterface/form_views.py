@@ -528,7 +528,7 @@ class TaskCreateView(FormView):
 
     @staticmethod
     def create_ul_of_task_templates(templates):
-        task_list = ['<li>' + x.task_name + '</li>' for x in templates]
+        task_list = ['<li>' + x.name + '</li>' for x in templates]
         if len(task_list) == 0:
             return '<i>Keine Aufgaben</i>'
         return '<ul>' + ''.join(task_list) + '</ul>'
@@ -585,7 +585,7 @@ class TaskCleanedView(UpdateView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Setze eine Aufgabe als 'geputzt'"
         context['info_banner'] = {'text': "<p><strong>Gespeicherter Hilfetext:</strong></p><p>" +
-                                          self.object.template.task_help_text + "</p>"}
+                                          self.object.template.help_text + "</p>"}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
                                     'url': self.success_url}

@@ -93,7 +93,7 @@ class Command(BaseCommand):
 
         def create_task_templates(schedule: Schedule, template_tuples: list):
             for name, help_text, start, end in bathroom_tasks:
-                TaskTemplate.objects.create(task_name=name, task_help_text=help_text, schedule=schedule,
+                TaskTemplate.objects.create(name=name, help_text=help_text, schedule=schedule,
                                             start_days_before=start, end_days_after=end)
 
         common_bathroom_kitchen_tasks = \
