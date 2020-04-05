@@ -57,17 +57,13 @@ class CleanerViewSet(ModelViewSet):
     lookup_field = 'slug'
     permission_classes = [IsAdminOrReadOnly]
 
-    # @action(detail=True, methods=['GET'])
-    # def acceptable_dutyswitch(self, request, slug):
-    #     print(1)
-    #     cleaner = get_object_or_404(Cleaner, slug=slug)
-    #     open_dutyswitch = DutySwitch.objects.open()
-    #     acceptable = [x for x in open_dutyswitch if x.possible_acceptors().filter(cleaner=cleaner).exists()]
-    #     serializer = DutySwitchSerializer(many=True, data=acceptable)
-    #     if serializer.is_valid(raise_exception=True):
-    #         return Response(serializer.data)
-    #     else:
-    #         print(1)
+    @action(detail=True, methods=['GET'])
+    def acceptable_dutyswitch(self, request, slug):
+        cleaner = get_object_or_404(Cleaner, slug=slug)
+        open_dutyswitch = DutySwitch.objects.open().all()
+        acceptable = [x for x in open_dutyswitch if x.possible_acceptors().filter(cleaner=cleaner).exists()]
+        serializer = DutySwitchSerializer(acceptable, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 class AffiliationViewSet(ModelViewSet):
