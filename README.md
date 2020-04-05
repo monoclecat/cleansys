@@ -120,6 +120,23 @@ Finally, start the Django server:
 python manage.py runserver
 ``` 
 
+### Last notes
+
+If you are using a Python IDE such as PyCharm (I very much recommend), you might come across this error
+when opening the Python Console or running tests from the test parent directory (`webinterface/tests`):
+
+```
+django.core.exceptions.ImproperlyConfigured: Requested setting INSTALLED_APPS, but settings are not configured. 
+You must either define the environment variable DJANGO_SETTINGS_MODULE or call settings.configure() before accessing settings.
+```
+
+In this case, open `PyCharm > Preferences > Build, Execution, Deployment > Console` and add 
+`DJANGO_SETTINGS_MODULE=cleansys.settings` to the `Environment Variables` field of the Django Console.
+
+If you are getting this error when running tests, do the same to 
+`Run/Debug Configurations > Edit Configurations... > Templates > Django Tests` 
+and to your existing tests configurations.
+ 
 # Deployment on an Ubuntu server
 
 Installing CleanSys on an Ubuntu server is very similar to the installation on a Unix system, such as a Mac. 
@@ -423,3 +440,6 @@ Checking `~/.profiles` revealed an if-statement which adds the exact directory m
 exists. But here is the catch: `~/.profiles` is only run when you login to your server. 
 So the solution is to simply restart your session (<kbd>CTRL+D</kbd> and log in again). 
 
+**Acknowledgements**
+Thanks to @nspo for his mentorship along the way! I recommend his [pybarsys](https://github.com/nspo/pybarsys) 
+in case your large household or organization has a bar or a snack cupboard you would like to digitize! 
