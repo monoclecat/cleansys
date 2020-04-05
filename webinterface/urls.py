@@ -10,10 +10,13 @@ from rest_framework import routers
 
 from django.views.generic.base import RedirectView
 
-router = routers.SimpleRouter()
+router = routers.DefaultRouter()  # https://www.django-rest-framework.org/api-guide/routers/#defaultrouter
 router.register(r'schedules', ScheduleViewSet)
-router.register(r'schedule-groups', ScheduleGroupViewSet)
+router.register(r'schedulegroups', ScheduleGroupViewSet)
+router.register(r'users', UserViewSet)
 router.register(r'cleaners', CleanerViewSet)
+router.register(r'affiliations', AffiliationViewSet)
+router.register(r'cleaningweeks', CleaningWeekViewSet)
 router.register(r'assignments', AssignmentViewSet)
 router.register(r'tasktemplates', TaskTemplateViewSet)
 router.register(r'task', TaskViewSet)
@@ -110,5 +113,5 @@ urlpatterns = [
     path('task-edit/<int:pk>/', must_be_admin(TaskTemplateUpdateView.as_view()), name='task-edit'),
     path('task-delete/<int:pk>/', must_be_admin(TaskTemplateDeleteView.as_view()), name='task-delete'),
 
-    url(r'^api/', include(router.urls))
+    path('api/', include((router.urls, 'webinterface'), namespace="api"))
 ]
