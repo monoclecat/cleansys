@@ -440,6 +440,8 @@ Checking `~/.profiles` revealed an if-statement which adds the exact directory m
 exists. But here is the catch: `~/.profiles` is only run when you login to your server. 
 So the solution is to simply restart your session (<kbd>CTRL+D</kbd> and log in again). 
 
-**Acknowledgements**
+
+## Acknowledgements
+
 Thanks to @nspo for his mentorship along the way! I recommend his [pybarsys](https://github.com/nspo/pybarsys) 
 in case your large household or organization has a bar or a snack cupboard you would like to digitize! 

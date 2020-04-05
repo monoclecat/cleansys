@@ -10,8 +10,7 @@ from django.http import Http404
 from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
 from django.shortcuts import get_object_or_404
-from .forms import *
-from .models import *
+from webinterface.models import *
 
 
 def back_button_page_context(kwargs: dict) -> dict:
