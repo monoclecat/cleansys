@@ -267,11 +267,16 @@ class ScheduleGroup(models.Model):
     """
     class Meta:
         ordering = ("name", )
-    name = models.CharField(max_length=30, unique=True)
+    name = models.CharField(max_length=20, unique=True)
+    slug = models.CharField(max_length=20, unique=True)
     schedules = models.ManyToManyField(Schedule)
 
     def __str__(self):
         return self.name
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.slug = slugify(self.name)
+        super().save(force_insert, force_update, using, update_fields)
 
 
 def schedule_group_changed(instance, action, model, pk_set, **kwargs):
@@ -638,8 +643,8 @@ class Assignment(models.Model):
 
 
 class TaskTemplate(models.Model):
-    task_name = models.CharField(max_length=40)
-    task_help_text = models.CharField(max_length=200, default="", null=True)
+    name = models.CharField(max_length=20)
+    help_text = models.CharField(max_length=200, default="", null=True)
     start_days_before = models.IntegerField(choices=[(0, ''), (1, ''), (2, ''), (3, ''), (4, ''), (5, ''), (6, '')])
     end_days_after = models.IntegerField(choices=[(0, ''), (1, ''), (2, ''), (3, ''), (4, ''), (5, ''), (6, '')])
 
@@ -650,7 +655,7 @@ class TaskTemplate(models.Model):
         self.__previous_pk = self.pk
 
     def __str__(self):
-        return self.task_name
+        return self.name
 
     def start_day_to_weekday(self):
         return Schedule.WEEKDAYS[(self.schedule.weekday-self.start_days_before) % 7][1]
@@ -681,7 +686,7 @@ class Task(models.Model):
     objects = TaskQuerySet.as_manager()
 
     def __str__(self):
-        return self.template.task_name
+        return self.template.name
 
     def start_date(self):
         return self.cleaning_week.week_start() \

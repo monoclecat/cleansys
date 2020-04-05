@@ -55,11 +55,11 @@ class CleaningWeekTest(TestCase):
         cls.assignment = Assignment.objects.create(cleaner=cls.cleaner, cleaning_week=cls.cw1, schedule=cls.schedule)
 
         cls.task_template_1 = TaskTemplate.objects.create(
-            task_name="tasktemplate1", schedule=cls.schedule, start_days_before=1, end_days_after=2)
+            name="tasktemplate1", schedule=cls.schedule, start_days_before=1, end_days_after=2)
         cls.task_template_2 = TaskTemplate.objects.create(
-            task_name="tasktemplate2", schedule=cls.schedule, start_days_before=1, end_days_after=2)
+            name="tasktemplate2", schedule=cls.schedule, start_days_before=1, end_days_after=2)
         cls.task_template_3 = TaskTemplate.objects.create(
-            task_name="tasktemplate3", schedule=cls.schedule, start_days_before=1, end_days_after=2)
+            name="tasktemplate3", schedule=cls.schedule, start_days_before=1, end_days_after=2)
 
         cls.task1_cw1 = Task.objects.create(cleaning_week=cls.cw1, template=cls.task_template_1,
                                             cleaned_by=None)
