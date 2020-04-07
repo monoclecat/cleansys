@@ -18,7 +18,7 @@ class ScheduleForm(forms.ModelForm):
         labels = {
             'name': "Name des Putzplans",
             'weekday': "Wochentag, an dem sich der Dienst wiederholen soll.",
-            'cleaners_per_date': "Anzahl der Putzer pro Woche (Warnung beachten!)",
+            'cleaners_per_date': "Anzahl der Putzenden pro Termin (Warnung beachten!)",
             'frequency': "Häufigkeit der Putzdienste (Warnung beachten!)",
             'disabled': "Putzplan deaktivieren"
         }

@@ -313,9 +313,10 @@ class CleaningWeekUpdateView(UpdateView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Putzwoche deaktivieren"
         context['submit_button'] = {'text': "Speichern"}
-        context['info_banner'] = {'text': "Du bearbeitest die Woche von <b>{}</b> bis <b>{}</b> für <b>{}</b>".format(
-                    self.object.week_start(), self.object.week_end(),
-                    self.object.schedule, self.object.schedule.name)}
+        context['info_banner'] = {
+            'text': "Du bearbeitest die Woche von <b>{}</b> bis <b>{}</b> im Putzplan <b>{}</b>".format(
+                        self.object.week_start().strftime("%d. %b %Y"), self.object.week_end().strftime("%d. %b %Y"),
+                        self.object.schedule, self.object.schedule.name)}
         return context
 
     def form_valid(self, form):
