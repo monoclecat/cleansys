@@ -5,7 +5,7 @@ from webinterface.views import *
 from webinterface.api_views import *
 from webinterface.form_views import *
 from webinterface.decorators import must_be_admin
-from django.conf.urls import url, include
+from django.conf.urls import include
 from rest_framework import routers
 
 from django.views.generic.base import RedirectView
@@ -25,12 +25,13 @@ router.register(r'dutyswitches', DutySwitchViewSet)
 app_name = 'webinterface'
 urlpatterns = [
     path('', RedirectView.as_view(url=reverse_lazy("webinterface:cleaner-no-page")), name='welcome'),
-    path('login/', LoginView.as_view(template_name="webinterface/generic_form.html", extra_context={'title': "Login"},
+    path('login/', LoginView.as_view(template_name="webinterface/generic_form.html",
+                                     extra_context={'title': "Login", 'add_home_button': True},
                                      authentication_form=AuthFormWithSubmit), name='login'),
-    path('login-per-klick', LoginByClickView.as_view(), name='login-by-click'),
+    path('login-per-klick/', LoginByClickView.as_view(), name='login-by-click'),
     path('logout/', login_required(LogoutView.as_view()), name='logout'),
-    path('admin/', must_be_admin(AdminView.as_view()),
-         name='admin'),
+    path('admin/', must_be_admin(AdminView.as_view()), name='admin'),
+    path('documentation/', DocumentationView.as_view(), name='docs'),
 
     path('affiliation-edit/<int:pk>/', must_be_admin(AffiliationUpdateView.as_view()), name='affiliation-edit'),
     path('affiliation-delete/<int:pk>/', must_be_admin(AffiliationDeleteView.as_view()),

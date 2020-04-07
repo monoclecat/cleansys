@@ -11,6 +11,7 @@ from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
 from django.shortcuts import get_object_or_404
 from webinterface.models import *
+import markdown
 
 
 def back_button_page_context(kwargs: dict) -> dict:
@@ -24,6 +25,16 @@ def back_button_page_context(kwargs: dict) -> dict:
     else:
         context['back_to_cleaner_page'] = -1
     return context
+
+
+class DocumentationView(TemplateView):
+    template_name = 'webinterface/docs.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        with open('documentation/doc_main.md', 'r') as file:
+            context['content'] = markdown.markdown(text=file.read(), output_format='html5', tab_length=2)
+        return context
 
 
 class AdminView(TemplateView):

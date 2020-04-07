@@ -1,0 +1,16 @@
+{% extends "webinterface/mobile_first_body.html" %}
+{% load crispy_forms_tags %}
+{% load tz %}
+
+{% block title %}
+    Dokumentation
+{% endblock %}
+
+{% block main %}
+    <div class="row">
+        <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+            {% include "webinterface_snippets/home_button.html" %}
+        </div>
+    </div>
+    {{ content|safe }}
+{% endblock %}

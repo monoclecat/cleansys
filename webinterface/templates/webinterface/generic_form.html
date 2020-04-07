@@ -6,6 +6,13 @@
 {% endblock %}
 
 {% block main %}
+    {% if add_home_button %}
+        <div class="row">
+            <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+                {% include 'webinterface_snippets/home_button.html' %}
+            </div>
+        </div>
+    {% endif %}
     <h1>{{ title }}</h1>
     {% if info_banner %}
         <div class="alert alert-info" role="alert">{{ info_banner.text|safe }}</div>
