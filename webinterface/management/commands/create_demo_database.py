@@ -103,8 +103,7 @@ class Command(BaseCommand):
              ('Handtücher wechseln', 'Gib dem Bad frische Handtücher', 1, 4),
              ('Putzmittel auffüllen', 'Putzmittel leer? Neues her!', 1, 4),
              ('Putzlappen wecheln', 'Lasse die Putzlappen waschen', 1, 4),
-             ('Dusche putzen', 'Schrubbe die Duschwände und hole die Haare aus dem Abfluss', 1, 4),
-             ('Deaktivierte Aufgabe', 'Diese Aufgabe ist deaktiviert', 4, 4)]
+             ('Dusche putzen', 'Schrubbe die Duschwände und hole die Haare aus dem Abfluss', 1, 4)]
 
         bathroom_tasks = \
             [('Waschbecken putzen', 'Wische das Waschbecken', 2, 2),
@@ -129,29 +128,25 @@ class Command(BaseCommand):
         stairway_tasks = \
             [('Treppe fegen', 'Fege die Treppe, bevor du sie wischst', 2, 2),
              ('Treppe wischen', 'Wische die Treppe mit normalem Wasser (kein Reiniger!)', 2, 2),
-             ('Handtücher waschen', 'Zum Treppenputzdienst gehört auch das Waschen aller Handtücher', 2, 2),
-             ('Deaktivierte Aufgabe', 'Diese Aufgabe ist deaktiviert', 4, 4)]
+             ('Handtücher waschen', 'Zum Treppenputzdienst gehört auch das Waschen aller Handtücher', 2, 2)]
         create_task_templates(schedule=sch6, template_tuples=stairway_tasks)
 
         meowmeow_tasks = \
             [('Futter auffüllen', 'Mietz will schließlich was zu essen haben', 2, 2),
              ('Katzenklo', 'Fisch die Brocken aus dem Streu', 2, 2),
-             ('Wasser auffüllen', 'Und nochmal für alle: KEIN BIER', 2, 2),
-             ('Deaktivierte Aufgabe', 'Diese Aufgabe ist deaktiviert', 4, 4)]
+             ('Wasser auffüllen', 'Und nochmal für alle: KEIN BIER', 2, 2)]
         create_task_templates(schedule=sch7, template_tuples=meowmeow_tasks)
 
         garden_tasks = \
             [('Rasen mähen', 'Fülle bitte Benzin nach wenn es fast leer ist!', 4, 2),
              ('Unkraut yeeten', 'Sonst wächst das Gemüse nicht gut', 4, 2),
-             ('Kompost umgraben', 'Die unteren Schichten nach oben und umgekehrt', 2, 4),
-             ('Deaktivierte Aufgabe', 'Diese Aufgabe ist deaktiviert', 4, 4)]
+             ('Kompost umgraben', 'Die unteren Schichten nach oben und umgekehrt', 2, 4)]
         create_task_templates(schedule=sch8, template_tuples=garden_tasks)
 
         basement_tasks = \
             [('Inventar machen', 'Schreibe bitte auf wie viel von jedem Getränk da ist', 2, 4),
              ('Boden fegen', 'Am besten Staubmaske tragen', 2, 4),
-             ('Gaszähler lesen', 'Schreibe bitte den Stand in unser Buch', 4, 2),
-             ('Deaktivierte Aufgabe', 'Diese Aufgabe ist deaktiviert', 4, 4)]
+             ('Gaszähler lesen', 'Schreibe bitte den Stand in unser Buch', 4, 2)]
         create_task_templates(schedule=sch9, template_tuples=basement_tasks)
 
         # Create time-dependent objects, using current week number as reference so that you can see the difference
