@@ -152,35 +152,44 @@
                                     <span class="glyphicon glyphicon-cog"></span> <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    {% for assignment in cleaning_week.assignment_set.all %}
-                                        <li><a href="{% url 'webinterface:assignment-edit' assignment.pk page_obj.number %}">
-                                            <span class="glyphicon glyphicon-cog"></span>
-                                            {{ assignment.cleaner }}'s Dienst bearbeiten
-                                        </a></li>
-                                    {% endfor %}
-                                    <li role="separator" class="divider"></li>
+                                    {% if not cleaning_week.disabled %}
+                                        {% for assignment in cleaning_week.assignment_set.all %}
+                                            <li><a href="{% url 'webinterface:assignment-edit' assignment.pk page_obj.number %}">
+                                                <span class="glyphicon glyphicon-cog"></span>
+                                                {{ assignment.cleaner }}'s Dienst bearbeiten
+                                            </a></li>
+                                        {% endfor %}
+                                        <li role="separator" class="divider"></li>
+
+                                        {% if cleaning_week.task_templates_missing.exists %}
+                                            <li>
+                                                <a href="{% url 'webinterface:cleaning-week-tasks' cleaning_week.pk page_obj.number %}">
+                                                    <span class="glyphicon glyphicon-plus"></span> Aufgaben aktualisieren
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                        {% if not cleaning_week.assignments_valid %}
+                                            <li class="bg-danger">
+                                                <a href="
+{% url 'webinterface:assignment-create-init' schedule.pk page_obj.number cleaning_week.week cleaning_week.week%}">
+                                                    <span class="glyphicon glyphicon-refresh"></span> Putzdienste aktualisieren
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                    {% endif %}
                                     <li>
                                         <a href="{% url 'webinterface:cleaning-week-edit' cleaning_week.pk page_obj.number %}">
-                                            <span class="glyphicon glyphicon-off"></span> Aktivieren/Deaktivieren
+                                            <span class="glyphicon glyphicon-off"></span>
+                                            Diese Woche {% if cleaning_week.disabled %}aktivieren{% else %}deaktivieren{% endif %}
                                         </a>
                                     </li>
-                                    <li>
-                                        <a href="{% url 'webinterface:cleaning-week-tasks' cleaning_week.pk page_obj.number %}">
-                                            <span class="glyphicon glyphicon-plus"></span> Aufgaben aktualisieren
-                                        </a>
-                                    </li>
-                                    {% if not cleaning_week.assignments_valid %}
-                                        <li class="bg-danger">
-                                            <a href="
-{% url 'webinterface:assignment-create-init' schedule.pk page_obj.number cleaning_week.week cleaning_week.week%}">
-                                                <span class="glyphicon glyphicon-refresh"></span> Putzdienste aktualisieren
-                                            </a>
-                                        </li>
-                                    {% endif %}
+                                    {% comment %}
+                                    CleaningWeeks shall not be deleted, rather disabled!
                                     <li role="separator" class="divider"></li>
                                     <li><a href="{% url 'webinterface:cleaning-week-delete' cleaning_week.pk page_obj.number %}">
                                         <span class="glyphicon glyphicon-warning-sign"></span> Löschen
                                     </a></li>
+                                    {% endcomment %}
                                 </ul>
                             </div>
                         </td>
