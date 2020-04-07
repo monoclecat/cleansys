@@ -47,8 +47,13 @@
 
 
     </style>
-
-    <h1 style="margin: 20px 0 -60px 20px">{{ schedule.name }}</h1>
+    {% with seconds=600 %}
+        <meta http-equiv="refresh" content="{{ seconds }}" />
+        <div style="margin: 10px 0 -80px 20px">
+            <h1 style="margin: 0">{{ schedule.name }}</h1>
+            <p style="color: gray"><i>Aktualisiert sich alle {{ seconds }} Sekunden</i></p>
+        </div>
+    {% endwith %}
     <table id="printtable" class="table table-condensed table-bordered table-striped"
            style="width: auto; border:none; margin: 0 100px 10px 10px">
         <tr style="background: #ffffff">
