@@ -114,19 +114,22 @@
                     {% endif %}
                 {% endif %}
             {% endif %}
-            Besitzt <strong>{{ schedule.tasktemplate_set.count }}</strong> Aufgaben, <br>
-            die sich
+            Besitzt <span class="glyphicon glyphicon-send"></span>
+            <strong>{{ schedule.tasktemplate_set.count }}</strong> Aufgaben. <br>
+            <span class="glyphicon glyphicon-repeat"></span>
             <strong>
                 {% if schedule.frequency == 1 %}
                     jede Woche
                 {% elif schedule.frequency == 2 %}
-                    an geraden Wochen
+                    in geraden Wochen
                 {% elif schedule.frequency == 3 %}
-                    an ungeraden Wochen
+                    in ungeraden Wochen
                 {% endif %}
-            </strong><br>
-            am <strong>{{ schedule.weekday_as_name }}</strong> wiederholen.<br>
-
+            </strong>
+            am <span class="glyphicon glyphicon-calendar"></span>
+            <strong>{{ schedule.weekday_as_name }}</strong><br>
+            Zur Zeit <span class=" glyphicon glyphicon-user "></span>
+            <strong>{{ schedule.currently_active_affiliations.count }}</strong> zugewiesene Putzer.
         </div>
     </div>
 </div>

@@ -105,6 +105,12 @@ class Schedule(models.Model):
         else:
             return False
 
+    def active_affiliations_in_week(self, week: int):
+        return Affiliation.objects.active_in_week_for_schedule(week, self)
+
+    def currently_active_affiliations(self):
+        return self.active_affiliations_in_week(current_epoch_week())
+
     def constant_affiliation_timespan(self, week: int) -> dict:
         """
         Find minimal timespan during which all currently active Affiliations exist at the same time
@@ -114,7 +120,7 @@ class Schedule(models.Model):
         """
         minimal_week_set = {}
 
-        active_affiliations = Affiliation.objects.active_in_week_for_schedule(week, self)
+        active_affiliations = self.active_affiliations_in_week(week)
         if active_affiliations.exists():
 
             for affiliation in active_affiliations:
@@ -127,6 +133,7 @@ class Schedule(models.Model):
                         minimal_week_set['end'] = affiliation.end
 
         return minimal_week_set
+
 
     def deployment_ratios(self, week: int) -> list:
         """week must be a epoch week number as returned by date_to_epoch_week()"""

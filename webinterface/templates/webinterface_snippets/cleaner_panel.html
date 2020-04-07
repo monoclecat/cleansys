@@ -37,7 +37,7 @@
                         bis <span class="glyphicon glyphicon-calendar"></span>
                         <strong>{{ current_affiliation.end_as_date|date:"d. M. Y" }}</strong>
                     {% else %}
-                        War in <strong>{{ current_affiliation.group }}</strong><br>
+                        War in <strong>{{ last_affiliation.group }}</strong><br>
                         bis <span class="glyphicon glyphicon-calendar"></span>
                         <strong>{{ last_affiliation.end_as_date|date:"d. M. Y" }}</strong>
                     {% endif %}

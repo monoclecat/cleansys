@@ -108,7 +108,7 @@
 
         {% for cleaning_week in cleaningweek_list %}
                 <tr class="
-{% if cleaning_week.disabled or not cleaning_week.assignments_valid %}danger
+{% if cleaning_week.disabled or not cleaning_week.assignments_valid %}{% if user.is_superuser %}danger{% endif %}
 {% elif cleaning_week.tasks_are_ready_to_be_done %}success{% endif %}">
 
                     <td>{{ cleaning_week.assignment_date|date:"d. M, Y" }}</td>
@@ -135,7 +135,11 @@
                                 </a>
                             {% endif %}
                         {% else %}
-                            <b>In dieser Woche deaktiviert</b>
+                            {% if cleaning_week.disabled %}
+                                In dieser Woche müssen keine Putzdienste erledigt werden.
+                            {% else %}
+                                Keine Putzdienste in dieser Woche.
+                            {% endif %}
                         {% endif %}
                     </td>
 

@@ -112,8 +112,8 @@ Wochentag die Aufgabe erledigt werden kann.
 
 Du als Administrator kannst fast überall selbst Veränderungen vornehmen, z.B. wer in einer Woche Putzdienst hat oder
 wer eine Aufgabe erledigt hat. 
-Möchtest du z.B. über Weihnachten die Putzdieste aussetzen, so kannst du das einfach auf den Seiten 
-der jeweiligen Putzpläne machen. 
+Möchtest du z.B. über Weihnachten die Putzdieste aussetzen, so kannst du auf den Seiten 
+der jeweiligen Putzpläne die entsprechenden Putzwochen deaktivieren. 
 
 Vorsicht solltest du beim Bearbeiten von Putzdiensten oder Zugehörigkeiten haben. 
 
