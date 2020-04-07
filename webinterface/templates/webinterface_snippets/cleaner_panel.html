@@ -33,10 +33,12 @@
             <div class="panel-footer">
                 {% if last_affiliation %}
                     {% if current_affiliation %}
-                        Ist aktiv bis <span class="glyphicon glyphicon-calendar"></span>
-                        <strong>{{ last_affiliation.end_as_date|date:"d. M. Y" }}</strong>
+                        In <strong>{{ current_affiliation.group }}</strong><br>
+                        bis <span class="glyphicon glyphicon-calendar"></span>
+                        <strong>{{ current_affiliation.end_as_date|date:"d. M. Y" }}</strong>
                     {% else %}
-                        War aktiv bis <span class="glyphicon glyphicon-calendar"></span>
+                        War in <strong>{{ current_affiliation.group }}</strong><br>
+                        bis <span class="glyphicon glyphicon-calendar"></span>
                         <strong>{{ last_affiliation.end_as_date|date:"d. M. Y" }}</strong>
                     {% endif %}
                 {% else %}

@@ -49,69 +49,84 @@
         </div>
         <div class="panel-footer">
             {% if not schedule.disabled %}
-                {% if not templates_exist %}
-                    <ul style="padding: 0">
-                        <li class="bg-warning">
-                            Bitte füge Aufgaben hinzu!
-                            <span style="white-space: nowrap">
+                {% if not templates_exist or not assignments_exist or not groups_exist or some_assignments_invalid or assignments_running_out %}
+                    {% if not templates_exist %}
+                        <ul style="padding: 0">
+                            <li class="bg-warning">
+                                Bitte füge Aufgaben hinzu!
+                                <span style="white-space: nowrap">
                                 (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
                                 <span class="glyphicon glyphicon-menu-right"></span>
                                 <span class="glyphicon glyphicon-tags"></span> Aufgaben)
                             </span>
-                        </li>
-                    </ul>
-                {% endif %}
-                {% if not groups_exist %}
-                    <ul style="padding: 0">
-                        <li class="bg-warning">
-                            Dieser Putzplan gehört keiner Gruppe an!
-                            <span style="white-space: nowrap">
+                            </li>
+                        </ul>
+                    {% endif %}
+                    {% if not groups_exist %}
+                        <ul style="padding: 0">
+                            <li class="bg-warning">
+                                Dieser Putzplan gehört keiner Gruppe an!
+                                <span style="white-space: nowrap">
                                 (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
                                 <span class="glyphicon glyphicon-menu-right"></span>
                                 <span class="glyphicon glyphicon-cog"></span> Bearbeiten)
                             </span>
-                        </li>
-                    </ul>
-                {% endif %}
-                {% if not assignments_exist %}
-                    <ul style="padding: 0">
-                        <li class="bg-warning">
-                            Dieser Putzplan hat noch keine Putzdienste!
-                            <span style="white-space: nowrap">
+                            </li>
+                        </ul>
+                    {% endif %}
+                    {% if not assignments_exist %}
+                        <ul style="padding: 0">
+                            <li class="bg-warning">
+                                Dieser Putzplan hat noch keine Putzdienste!
+                                <span style="white-space: nowrap">
                                 (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
                                 <span class="glyphicon glyphicon-menu-right"></span>
                                 <span class="glyphicon glyphicon-eye-open"></span> Putzdienste)
                             </span>
-                        </li>
-                    </ul>
-                {% endif %}
-                {% if some_assignments_invalid %}
-                    <ul style="padding: 0">
-                        <li class="bg-warning">
-                            Bei manchen Putzwochen müssen die Putzdienste aktualisiert werden!
-                            <span style="white-space: nowrap">
+                            </li>
+                        </ul>
+                    {% endif %}
+                    {% if some_assignments_invalid %}
+                        <ul style="padding: 0">
+                            <li class="bg-warning">
+                                Bei manchen Putzwochen müssen die Putzdienste aktualisiert werden!
+                                <span style="white-space: nowrap">
                                 (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
                                 <span class="glyphicon glyphicon-menu-right"></span>
                                 <span class="glyphicon glyphicon-eye-open"></span> Putzdienste)
                             </span>
-                        </li>
-                    </ul>
-                {% endif %}
-                {% if assignments_running_out %}
-                    <ul style="padding: 0">
-                        <li class="bg-warning">
-                            Der letzte Putzdienst ist schon am
-                            <strong>{{ schedule.assignment_set.last.assignment_date }}</strong>.
-                            Es müssen neue Putzdienste erstellt werden!
-                            <span style="white-space: nowrap">
+                            </li>
+                        </ul>
+                    {% endif %}
+                    {% if assignments_running_out %}
+                        <ul style="padding: 0">
+                            <li class="bg-warning">
+                                Der letzte Putzdienst ist schon am
+                                <strong>{{ schedule.assignment_set.last.assignment_date }}</strong>.
+                                Es müssen neue Putzdienste erstellt werden!
+                                <span style="white-space: nowrap">
                                 (<span class="glyphicon glyphicon-cog"></span><span class="caret"></span>
                                 <span class="glyphicon glyphicon-menu-right"></span>
                                 <span class="glyphicon glyphicon-eye-open"></span> Putzdienste)
                             </span>
-                        </li>
-                    </ul>
+                            </li>
+                        </ul>
+                    {% endif %}
                 {% endif %}
             {% endif %}
+            Besitzt <strong>{{ schedule.tasktemplate_set.count }}</strong> Aufgaben, <br>
+            die sich
+            <strong>
+                {% if schedule.frequency == 1 %}
+                    jede Woche
+                {% elif schedule.frequency == 2 %}
+                    an geraden Wochen
+                {% elif schedule.frequency == 3 %}
+                    an ungeraden Wochen
+                {% endif %}
+            </strong><br>
+            am <strong>{{ schedule.weekday_as_name }}</strong> wiederholen.<br>
+
         </div>
     </div>
 </div>
