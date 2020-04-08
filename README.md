@@ -3,6 +3,18 @@
 CleanSys is a *cleaning schedule management system* written in Python (using the Django framework) which is built for 
 large households with many cleaning schedules and time-variant relationships between Cleaners and Schedules. 
 
+### Important sections
+
+[Screenshots](#screenshots)
+[Installation (local)](#installation_local)
+[Installation on Ubuntu Server with Apache](#installation_ubuntu)
+[Update on Ubuntu Server](#updating_ubuntu)
+
+## Introduction
+
+CleanSys strives to distribute cleaning duties equally among Cleaners and manages to do so even when there is 
+a high turnover of Cleaners, with people moving in, out or within the household.  
+
 It makes sure that:   
 - Every Cleaner cleans his/her fair share in each cleaning schedule he/she is assigned
  to *(not cleaning too much or too little)*.
@@ -26,6 +38,7 @@ This project was made with german users in mind, so the interface language is ge
 If you would like to have a translation 
 (and are willing to put some effort into it yourself), please open an Issue for it. 
 
+<a name="screenshots"></a>
 ## Screenshots
 Here is a selection of CleanSys' pages:
 
@@ -47,8 +60,9 @@ Schedule group creation form | Affiliate a Cleaner with a schedule group | Tasks
 --- | --- | --- | ---
 ![schedule-group-new](screenshots/schedule_group_new.png) | ![affiliation-new](screenshots/affiliation_new.png) | ![task-template-vew](screenshots/task_template_view.png) | ![login-page](screenshots/task_template_new.png)
 
+<a name="installation_local"></a>
 # Installation (local)
-> Should work on Unix systems and are verified on Mac OSX
+> Instructions are verified on Mac OSX
 
 ### 1. Clone the project
 Clone the project into your workspace and create the `logs` and `media` directories. 
@@ -139,6 +153,7 @@ If you are getting this error when running tests, do the same to
 `Run/Debug Configurations > Edit Configurations... > Templates > Django Tests` 
 and to your existing tests configurations.
  
+<a name="installation_ubuntu"></a>
 # Deployment on an Ubuntu server
 
 Installing CleanSys on an Ubuntu server is very similar to the installation on a Unix system, such as a Mac. 
@@ -348,7 +363,7 @@ Cron will be sending emails to postbox of user `www-data`,
 so be sure to run the email client with `sudo -H -u www-data mutt`, 
 otherwise you will access your logged-in user's postbox.  
  
-
+<a name="updating_ubuntu"></a>
 ## Updating
 Before updating, make sure to create a backup of your current installation. 
 Then, check to see if there have been any changes since the last pull.
