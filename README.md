@@ -51,12 +51,14 @@ Schedule group creation form | Affiliate a Cleaner with a schedule group | Tasks
 > Should work on Unix systems and are verified on Mac OSX
 
 ### 1. Clone the project
-Clone the project into your workspace: 
+Clone the project into your workspace and create the `logs` and `media` directories. 
 
 ```bash
 cd /path-to-workspace/
 git clone https://github.com/monoclecat/cleansys.git
 cd cleansys
+mkdir logs
+mkdir media
 ```
 
 ### 2. Create a virtual environment and activate it
@@ -317,7 +319,7 @@ The following job will run `cronscripts/create_plots.sh` every Monday at 3:15 in
 These plots will be shown in the Cleaner and Schedule analytics views. 
 Creating these plots once and just loading their html when the page is called saves a lot of ressources.  
 ```bash
-15 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_plots.sh >> /var/www/cleansys/logs/cron.log
+15 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_plotsπ.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
 The following job will create a gzipped backup of `db.sqlite3` and put it in `/var/www/cleansys/backups` 
