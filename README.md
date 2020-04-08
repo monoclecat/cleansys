@@ -5,10 +5,10 @@ large households with many cleaning schedules and time-variant relationships bet
 
 ### Important sections
 
-[Screenshots](#screenshots)
-[Installation (local)](#installation_local)
-[Installation on Ubuntu Server with Apache](#installation_ubuntu)
-[Update on Ubuntu Server](#updating_ubuntu)
+[Screenshots](#screenshots)  
+[Installation (local)](#installation_local)  
+[Installation on Ubuntu Server with Apache](#installation_ubuntu)  
+[Update on Ubuntu Server](#updating_ubuntu)  
 
 ## Introduction
 
