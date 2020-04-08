@@ -197,6 +197,13 @@ Necessary edits include:
 - Setting the SMTP login credentials (if no email fault reporting is wished, remove the line which sets 
 `LOGGING['loggers']['django.request']`)
 
+The last step before setting up the server is to create the `logs` and `media` directories:
+
+```bash
+sudo mkdir /var/www/cleansys/logs
+sudo mkdir /var/www/cleansys/media
+```
+
 ### Setting up the server
 
 Now, we will follow a recommended way of deploying Django: 
@@ -238,6 +245,7 @@ sudo find /var/www -type d -exec chmod 2750 {} \;  # The '2' sets the setgid bit
 chmod g+w /var/www/cleansys  # Add write permissions to group
 chmod g+w /var/www/cleansys/db.sqlite3
 chmod g+w /var/www/cleansys/logs
+chmod g+w /var/www/cleansys/media
 ```
 
 > At any time, you can check if the `www-data` user has sufficient privileges to successfully start the server by 
@@ -303,6 +311,13 @@ The following job will run `cronscripts/create_assignments.sh` (mentioned above)
 Monday at 3:00 in the morning: 
 ```bash
 0 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_assignments.sh >> /var/www/cleansys/logs/cron.log
+``` 
+
+The following job will run `cronscripts/create_plots.sh` every Monday at 3:15 in the morning. 
+These plots will be shown in the Cleaner and Schedule analytics views. 
+Creating these plots once and just loading their html when the page is called saves a lot of ressources.  
+```bash
+15 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_plots.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
 The following job will create a gzipped backup of `db.sqlite3` and put it in `/var/www/cleansys/backups` 

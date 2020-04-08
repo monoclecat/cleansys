@@ -15,12 +15,10 @@ Analytics - {{ schedule }}
 {% block body %}
     <div class="container-fluid">
         <div class="row">
-            <div class="btn btn-group btn-group-md btn-group-justified" role="group">
-                {% include 'webinterface_snippets/button_to_schedule_page.html' %}
-            </div>
-        </div>
-        <div class="row">
             <div class="col-xs-12 col-lg-6 col-lg-offset-3">
+                <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+                    {% include 'webinterface_snippets/button_to_schedule_page.html' %}
+                </div>
                 <h1>Analytics - {{ schedule }}</h1>
                 <i>Bitte auf einem großen Bildschirm betrachten!</i>
             </div>
@@ -72,12 +70,14 @@ Analytics - {{ schedule }}
 
             </div>
             <div class="col-xs-12">
-                {{ ratios|safe }}
+                {{ plot|safe }}
             </div>
         </div>
         <div class="row" style="padding: 5px">
             <div class="col-xs-12 col-lg-6 col-lg-offset-3">
-                {% include 'webinterface_snippets/button_to_schedule_page.html' %}
+                <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+                    {% include 'webinterface_snippets/button_to_schedule_page.html' %}
+                </div>
             </div>
         </div>
     </div>

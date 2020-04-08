@@ -1,8 +1,7 @@
-# CleanSys specific
-*.log
-*.log*
+
+logs/
 .static_storage/
-.media/
+media/
 settings/
 
 

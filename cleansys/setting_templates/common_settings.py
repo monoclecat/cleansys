@@ -103,8 +103,6 @@ USE_L10N = True
 USE_TZ = True
 
 LOGGING_PATH = os.path.join(BASE_DIR, 'logs')
-os.makedirs(LOGGING_PATH, mode=0o755, exist_ok=True)
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -165,6 +163,12 @@ LOGGING = {
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 STATIC_URL = '/static/'
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, MEDIA_URL)
+
+PLOT_PATH = os.path.join(MEDIA_ROOT)
+CLEANER_ANALYTICS_FILE = os.path.join(PLOT_PATH, 'cleaner_analytics.html')
 
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'

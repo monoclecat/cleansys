@@ -5,12 +5,12 @@ from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect
 from django.contrib.auth.views import LoginView
 from django.views.generic import TemplateView
-from django.core.paginator import Paginator
 from django.http import Http404
 from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
 from django.shortcuts import get_object_or_404
 from webinterface.models import *
+from cleansys import settings
 import markdown
 
 
@@ -25,6 +25,98 @@ def back_button_page_context(kwargs: dict) -> dict:
     else:
         context['back_to_cleaner_page'] = -1
     return context
+
+
+def create_cleaner_analytics(weeks_into_past=20, weeks_into_future=20, recreate=False):
+    """
+    This function creates the offline plotly html file which is included in CleanerAnalyticsView
+
+    :param weeks_into_past: Take CleaningWeeks from this many weeks back relative to the current week
+    :param weeks_into_future: Same as weeks_into_past, just into the future
+    :param recreate: If False, only missing plots will be created
+    :return: None
+    """
+    # Cleaner analytics plots
+    if recreate or not os.path.isfile(settings.CLEANER_ANALYTICS_FILE):
+        weeks = set(x['week'] for x in CleaningWeek.objects.filter(
+            week__range=(current_epoch_week() - weeks_into_past, current_epoch_week() + weeks_into_future)).values(
+            "week"))
+        weeks = list(weeks)
+        weeks.sort()
+
+        fig = go.Figure()
+        for cleaner in Cleaner.objects.all():
+            fig.add_trace(go.Scatter(
+                x=[epoch_week_to_sunday(x) for x in weeks],
+                y=[cleaner.assignment_set.filter(cleaning_week__week=x).count() for x in weeks],
+                name=cleaner.name,
+                mode='lines+markers'
+            ))
+
+        fig.update_layout(title='Anzahl Putzdienste',
+                          xaxis={'title': 'Wochen'},
+                          yaxis={'title': 'Anzahl Putzdienste'})
+        plot_html = opy.plot(fig, auto_open=False, output_type='div')
+
+        if os.path.isfile(settings.CLEANER_ANALYTICS_FILE):
+            os.remove(settings.CLEANER_ANALYTICS_FILE)
+        with open(settings.CLEANER_ANALYTICS_FILE, "w") as file:
+            file.write(plot_html)
+
+
+def create_schedule_analytics(weeks_into_past=20, weeks_into_future=20, only=None, recreate=False):
+    """
+    This function creates the offline plotly html files which are included in CleanerAnalyticsView and
+    ScheduleAnalyticsView
+
+    :param weeks_into_past: Take CleaningWeeks from this many weeks back relative to the current week
+    :param weeks_into_future: Same as weeks_into_past, just into the future
+    :param only: List of file paths which should only be regarded. Allows creation of single plots
+    :param recreate: If False, only missing plots will be created
+    :return: None
+    """
+    for schedule in Schedule.objects.enabled():
+        if only is not None and schedule.analytics_plot_path() not in only:
+            continue
+        if not recreate and os.path.isfile(schedule.analytics_plot_path()):
+            continue
+
+        weeks = [x['week']
+                 for x in schedule.cleaningweek_set.filter(
+                week__range=(current_epoch_week() - weeks_into_past,
+                             current_epoch_week() + weeks_into_future)).values("week")]
+        weeks.sort()
+
+        data = {}
+        for week in weeks:
+            cleaners__ratios = schedule.deployment_ratios(week=week)
+            for cleaner, ratio in cleaners__ratios:
+                if cleaner.name not in data:
+                    data[cleaner.name] = {'weeks': [], 'ratios': []}
+                data[cleaner.name]['weeks'].append(week)
+                data[cleaner.name]['ratios'].append(ratio)
+
+        fig = go.Figure()
+        for cleaner, weeks__ratios in data.items():
+            fig.add_trace(go.Scatter(
+                x=[epoch_week_to_sunday(x) for x in weeks__ratios['weeks']],
+                y=weeks__ratios['ratios'],
+                name=cleaner,
+                connectgaps=True,
+                mode='lines+markers'
+            ))
+
+        fig.update_layout(title='Besetzungsverhältnisse',
+                          xaxis_title='Wochen',
+                          yaxis={'title': 'Besetzungsverhältnis',
+                                 'range': [0.0, 1.0]})
+
+        plot_html = opy.plot(fig, auto_open=False, output_type='div')
+
+        if os.path.isfile(schedule.analytics_plot_path()):
+            os.remove(schedule.analytics_plot_path())
+        with open(schedule.analytics_plot_path(), "w") as file:
+            file.write(plot_html)
 
 
 class DocumentationView(TemplateView):
@@ -104,36 +196,10 @@ class ScheduleAnalyticsView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context = {**context, **back_button_page_context(self.kwargs)}
+        create_schedule_analytics(only=context['schedule'].analytics_plot_path(), recreate=False)
+        with open(context['schedule'].analytics_plot_path(), 'r') as plot:
+            context['plot'] = plot.read()
 
-        weeks = [x['week'] for x in self.object.cleaningweek_set.values("week")]
-        weeks.sort()
-
-        data = {}
-        for week in weeks:
-            cleaners__ratios = self.object.deployment_ratios(week=week)
-            for cleaner, ratio in cleaners__ratios:
-                if cleaner.name not in data:
-                    data[cleaner.name] = {'weeks': [], 'ratios': []}
-                data[cleaner.name]['weeks'].append(week)
-                data[cleaner.name]['ratios'].append(ratio)
-
-        fig = go.Figure()
-        for cleaner, weeks__ratios in data.items():
-            fig.add_trace(go.Scatter(
-                x=[epoch_week_to_sunday(x) for x in weeks__ratios['weeks']],
-                y=weeks__ratios['ratios'],
-                name=cleaner,
-                connectgaps=True
-            ))
-
-        fig.update_layout(title='Besetzungsverhältnisse',
-                          xaxis_title='Wochen',
-                          yaxis={'title': 'Besetzungsverhältnis',
-                                 'range': [0.0, 1.0]})
-
-        div = opy.plot(fig, auto_open=False, output_type='div')
-
-        context['ratios'] = div
         return context
 
 
@@ -217,23 +283,9 @@ class CleanerAnalyticsView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context = {**context, **back_button_page_context(self.kwargs)}
-
-        weeks = [x['week'] for x in CleaningWeek.objects.all().values("week")]
-        weeks.sort()
-
-        fig = go.Figure()
-        for cleaner in context['cleaner_list']:
-            fig.add_trace(go.Scatter(
-                x=[epoch_week_to_sunday(x) for x in weeks],
-                y=[cleaner.assignment_set.filter(cleaning_week__week=x).count() for x in weeks],
-                name=cleaner.name,
-                mode='lines+markers'
-            ))
-
-        fig.update_layout(title='Anzahl Putzdienste',
-                          xaxis={'title': 'Wochen'},
-                          yaxis={'title': 'Anzahl Putzdienste'})
-        context['plot'] = opy.plot(fig, auto_open=False, output_type='div')
+        create_cleaner_analytics(recreate=False)  # Skips if already there
+        with open(settings.CLEANER_ANALYTICS_FILE, 'r') as plot:
+            context['plot'] = plot.read()
 
         return context
 

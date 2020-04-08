@@ -14,7 +14,7 @@ import calendar
 import random
 import time
 import os
-from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT, LOGGING, LOGGING_PATH
+from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT, LOGGING, LOGGING_PATH, MEDIA_ROOT
 
 
 def date_to_epoch_week(date: datetime.date) -> int:
@@ -75,6 +75,9 @@ class Schedule(models.Model):
         super(Schedule, self).__init__(*args, **kwargs)
         self.update_previous()
         self.logger = None
+
+    def analytics_plot_path(self):
+        return os.path.join(MEDIA_ROOT, "{}_analytics.html".format(self.slug))
 
     def set_up_logger(self):
         self.logger = logging.getLogger(self.slug)
