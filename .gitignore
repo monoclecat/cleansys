@@ -3,7 +3,7 @@ logs/
 .static_storage/
 media/
 settings/
-static/
+/static/
 .htaccess
 
 
