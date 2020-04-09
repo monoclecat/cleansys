@@ -9,10 +9,13 @@ from django.urls import reverse_lazy
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASE_URL = '/'
 
+# If WSGIScriptAlias of your Apache config already implements the base url, set to False
+APPLY_BASE_URL_TO_URL_PATTERNS = True
+
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    # 'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -38,7 +41,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'cleansys.urls'
 LOGIN_URL = reverse_lazy('webinterface:login-by-click')
 LOGIN_REDIRECT_URL = reverse_lazy('webinterface:cleaner-no-page')
-LOGOUT_REDIRECT_URL = BASE_URL
+LOGOUT_REDIRECT_URL = reverse_lazy('webinterface:welcome')
 
 
 TEMPLATES = [

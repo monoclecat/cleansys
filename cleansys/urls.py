@@ -15,9 +15,15 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-from cleansys.settings import BASE_URL
+from cleansys.settings import BASE_URL, APPLY_BASE_URL_TO_URL_PATTERNS
 
-urlpatterns = [
-    # url(r'^admin/', admin.site.urls),
-    url(r'^{}'.format(BASE_URL[1:]), include('webinterface.urls')),
-]
+if APPLY_BASE_URL_TO_URL_PATTERNS:
+    urlpatterns = [
+        url(r'^{}'.format(BASE_URL[1:]), include('webinterface.urls')),
+
+    ]
+else:
+    urlpatterns = [
+        url(r'^', include('webinterface.urls')),
+    ]
+# urlpatterns += url(r'^admin/', admin.site.urls)
