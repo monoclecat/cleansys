@@ -164,7 +164,7 @@ Follow steps 1 through 6 of the previous instructions, substituting `path-to-wor
 Also, you will run into 'Permission denied' errors if you don't run some of the command as root 
 (prepend `sudo ` to the command). 
 
-I first had to install pip3 `sudo apt install python3-pip`
+I first had to install pip3 `sudo apt install python3-pip` and virtualenv: `pip3 install virtualenv`.
 
 Change the ownership of the directory `cleansys` to your username, create the virtualenv in it without using sudo and
 install the pip packages inside `requirements.txt` without using sudo 
@@ -180,25 +180,15 @@ sudo chown -R "$USER":"$USER" cleansys  # Your user needs ownership of cleansys/
 virtualenv -p python3 cleansys/
 cd cleansys
 
-source bin/activate  # Don't forget to activate the virtual environment!!!
+source bin/activate  # Activate the virtual environment
 python3 -m pip install -r requirements.txt
-
-python3 manage.py makemigrations
-python3 manage.py migrate
-python3 manage.py createsuperuser
-
-
-deactivate  # Deactivate virtualenv
 ```
 
-> You can only run manage.py commands while you own the database file db.sqlite3 and its parent folder, cleansys/. 
-> Later, the ownership will be transferred to Apache's www-data user. 
-
-Don't forget to create the `settings` directory from `settings_template`:
+Create the `settings` directory from `settings_template`:
  
 ```bash
 cd /var/www/cleansys/cleansys
-sudo cp setting_templates/ settings -R  # Duplicate and rename settings_template/
+cp setting_templates/ settings -R  # Don't run with sudo or you'll have to chown again
 ``` 
 
 Adapt `dev_settings.py` and `prod_settings.py`, and make sure `__init__.py` imports the settings you want 
@@ -214,12 +204,24 @@ Necessary edits include:
 - Setting the SMTP login credentials (if no email fault reporting is wished, remove the line which sets 
 `LOGGING['loggers']['django.request']`)
 
-The last step before setting up the server is to create the `logs` and `media` directories:
+Create the `logs` and `media` directories:
 
 ```bash
-sudo mkdir /var/www/cleansys/logs
-sudo mkdir /var/www/cleansys/media
+mkdir /var/www/cleansys/logs
+mkdir /var/www/cleansys/media
 ```
+
+Almost there! Set up the empty database and 
+[set up the static files for deployment](https://docs.djangoproject.com/en/3.0/howto/static-files/deployment/):
+
+```bash
+python3 manage.py makemigrations
+python3 manage.py migrate
+python3 manage.py collectstatic
+
+deactivate  # Deactivate virtualenv
+```
+
 
 ### Setting up the server
 
@@ -276,35 +278,39 @@ sudo vim /etc/apache2/sites-available/cleansys.conf
 This opens the Vim editor. Press <kbd>i</kbd> and paste the following: 
 
 ```html
- WSGIDaemonProcess cleansys python-home=/var/www/cleansys python-path=/var/www/cleansys
- WSGIProcessGroup cleansys
+WSGIDaemonProcess cleansys python-home=/var/www/cleansys python-path=/var/www/cleansys
+WSGIProcessGroup cleansys
 
- <VirtualHost *:80>
-     Alias /static/ /var/www/cleansys/webinterface/static/
-     <Directory /static>
-         Require all granted
-     </Directory>
-     WSGIScriptAlias / /var/www/cleansys/cleansys/wsgi.py process-group=cleansys
-     <Directory /var/www/cleansys/cleansys>
-         <Files wsgi.py>
-             Require all granted
-         </Files>
-     </Directory>
- </VirtualHost>
+<VirtualHost *:80>
+    Alias /static/ /var/www/cleansys/webinterface/static/
+    <Directory /static>
+        Require all granted
+    </Directory>
+    WSGIScriptAlias / /var/www/cleansys/cleansys/wsgi.py process-group=cleansys
+    <Directory /var/www/cleansys/cleansys>
+        <Files wsgi.py>
+            Require all granted
+        </Files>
+    </Directory>
+</VirtualHost>
 ```
 
 Save the file by first pressing <kbd>esc</kbd> to leave insert mode and then 
 pressing <kbd>:wq</kbd> (<kbd>:</kbd>: "Command", <kbd>wq</kbd>: "Write and quit").
+
+> When the server has a domain name, make sure to add `ServerName www.yourdomain.com` in the line after the 
+> VirtualHost opening tag. 
 
 Now, disable apache2 default site that uses port 80, enable cleansys site and restart apache2:
 
 ```bash
 sudo a2dissite 000-default
 sudo a2ensite cleansys
-sudo systemctl restart apache2
+sudo systemctl reload apache2
 ```
 
-Keep in mind that CleanSys is only meant to be accessible inside your local network.  
+Keep in mind that CleanSys has no built-in protection against access from outside of your local network, 
+in case your server is accessible from the internet. 
 
 When changing any file or ownership, you will have to reload Apache for the changes to take effect. 
 ```bash
@@ -332,10 +338,12 @@ Monday at 3:00 in the morning:
 
 The following job will run `cronscripts/create_plots.sh` every Monday at 3:15 in the morning. 
 These plots will be shown in the Cleaner and Schedule analytics views. 
-Creating these plots once and just loading their html when the page is called saves a lot of ressources.  
+Creating these plots once and just loading their html when the page is called saves a lot of resources.  
 ```bash
-15 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_plotsπ.sh >> /var/www/cleansys/logs/cron.log
+15 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_plots.sh >> /var/www/cleansys/logs/cron.log
 ``` 
+I also recommend calling `python3 manage.py create_plots` once after setting up the database and  
+creating the Assignments for the next weeks. 
 
 The following job will create a gzipped backup of `db.sqlite3` and put it in `/var/www/cleansys/backups` 
 every day at 4 in the morning: 
