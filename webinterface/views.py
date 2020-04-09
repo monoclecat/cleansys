@@ -124,7 +124,7 @@ class DocumentationView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        with open('documentation/doc_main.md', 'r') as file:
+        with open(os.path.join(settings.BASE_DIR, 'documentation', 'doc_main.md'), 'r') as file:
             context['content'] = markdown.markdown(text=file.read(), output_format='html5', tab_length=2)
         return context
 
