@@ -3,6 +3,8 @@ logs/
 .static_storage/
 media/
 settings/
+static/
+.htaccess
 
 
 ### Python template
