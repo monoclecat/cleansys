@@ -15,8 +15,9 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
+from cleansys.settings import BASE_URL
 
 urlpatterns = [
     # url(r'^admin/', admin.site.urls),
-    url(r'^', include('webinterface.urls')),
+    url(r'^{}'.format(BASE_URL[1:]), include('webinterface.urls')),
 ]

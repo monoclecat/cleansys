@@ -7,6 +7,7 @@ from django.urls import reverse_lazy
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_URL = '/'
 
 # Application definition
 
@@ -37,7 +38,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'cleansys.urls'
 LOGIN_URL = reverse_lazy('webinterface:login-by-click')
 LOGIN_REDIRECT_URL = reverse_lazy('webinterface:cleaner-no-page')
-LOGOUT_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = BASE_URL
 
 
 TEMPLATES = [
@@ -162,10 +163,13 @@ LOGGING = {
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
-STATIC_URL = '/static/'
+STATIC_DIR = 'static/'
+STATIC_URL = os.path.join(BASE_URL, STATIC_DIR)
+STATIC_ROOT = os.path.join(BASE_DIR, STATIC_DIR)
 
-MEDIA_URL = 'media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, MEDIA_URL)
+MEDIA_DIR = 'media/'
+MEDIA_URL = os.path.join(BASE_URL, MEDIA_DIR)
+MEDIA_ROOT = os.path.join(BASE_DIR, MEDIA_DIR)
 
 PLOT_PATH = os.path.join(MEDIA_ROOT)
 CLEANER_ANALYTICS_FILE = os.path.join(PLOT_PATH, 'cleaner_analytics.html')
