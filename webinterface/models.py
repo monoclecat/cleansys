@@ -335,10 +335,12 @@ class Cleaner(models.Model):
 
     def affiliation_in_week(self, week):
         try:
-            current_affiliation = self.affiliation_set.get(
+            current_affiliation = self.affiliation_set.filter(
                 beginning__lte=week, end__gte=week
             )
-            return current_affiliation
+            if len(current_affiliation.all()) > 1:
+                logging.error("In Cleaner.affiliation_in_week: Cleaner {} has multiple Affiliations!".format(self.name))
+            return current_affiliation.first()
         except Affiliation.DoesNotExist:
             return None
 
@@ -463,6 +465,12 @@ class Affiliation(models.Model):
                                   "mit einer anderen Zugehörigkeit. "
                                   "Bitte passe die andere Zugehörigkeit zuerst an, "
                                   "damit es zu keiner Überlappung kommt.")
+
+        if other_affiliations.filter(beginning__lte=beginning, end__gte=end):
+            raise ValidationError("Der vorgeschlagene Zeitraum wird von einer vorhandenen Zugehörigkeit umschlossen. "
+                                  "Bitte passe die andere Zugehörigkeit zuerst an, "
+                                  "damit es zu keiner Überlappung kommt.")
+
 
     @staticmethod
     def cleaning_week_assignments_invalidator(

@@ -54,19 +54,37 @@ class AffiliationTest(TestCase):
                           self.affiliation.pk, self.cleaner1,
                           beginning=self.start_week, end=self.start_week-1)
 
-    def test__save__end_same_as_beginning(self):
+    def test__date_validator__end_same_as_beginning(self):
         self.assertIsNone(Affiliation.date_validator(self.affiliation.pk, self.cleaner1,
                                                      beginning=self.start_week, end=self.start_week))
 
-    def test__save__beginning_overlaps_with_other_affiliation(self):
+    def test__date_validator__beginning_overlaps_with_existing_affiliation(self):
         self.assertRaises(ValidationError, Affiliation.date_validator,
                           self.affiliation.pk, self.cleaner1,
                           beginning=self.previous_affiliation.end, end=self.end_week)
 
-    def test__save__end_overlaps_with_other_affiliation(self):
+    def test__date_validator__end_overlaps_with_existing_affiliation(self):
         self.assertRaises(ValidationError, Affiliation.date_validator,
                           self.affiliation.pk, self.cleaner1,
                           beginning=self.start_week, end=self.next_affiliation.beginning)
+
+    def test__date_validator__correctly_expand_existing_affiliation(self):
+        self.assertIsNone(Affiliation.date_validator(self.affiliation.pk, self.cleaner1,
+                                                     beginning=self.start_week-1, end=self.end_week+1))
+
+    def test__date_validator__new_affiliation_encases_existing(self):
+        self.assertRaises(ValidationError, Affiliation.date_validator,
+                          None, self.cleaner1,
+                          beginning=self.start_week-1, end=self.end_week+1)
+
+    def test__date_validator__correctly_shrink_existing_affiliation(self):
+        self.assertIsNone(Affiliation.date_validator(self.affiliation.pk, self.cleaner1,
+                                                     beginning=self.start_week+1, end=self.end_week-1))
+
+    def test__date_validator__new_affiliation_inside_existing(self):
+        self.assertRaises(ValidationError, Affiliation.date_validator,
+                          None, self.cleaner1,
+                          beginning=self.start_week+1, end=self.end_week-1)
 
     def test__beginning_as_date(self):
         self.assertEqual(self.affiliation.beginning_as_date(), epoch_week_to_monday(self.start_week))
