@@ -3,7 +3,7 @@
     {% if task.my_time_has_come %}btn-success{% else %}btn-default{% endif %}"
     style="text-align: left">
         {% if task.cleaned_by %}
-            <span class="glyphicon glyphicon-user"></span> <strong>{{ task.cleaned_by|truncatechars:5 }}</strong>:
+            <span class="glyphicon glyphicon-user"></span> <strong>{{ task.cleaned_by|truncatechars:10 }}</strong>:
             {{ task|truncatechars:15 }}
         {% else %}
             {{ task|truncatechars:22 }}
