@@ -31,18 +31,13 @@ Putzdienst erledigen
                         <strong>{{ other_cleaner }}</strong>{% if not forloop.last %},{% endif %}
                     {% endfor %}
                 {% endif %}
-                für den Putzdienst
+                dem Putzplan
                 <span class="glyphicon glyphicon-list-alt"></span>
-                <strong>{{ schedule }}</strong> eingetragen!
+                <strong>{{ schedule }}</strong> zugeteilt!
             </p>
         </div>
-        <p>
-            Wenn du einen Teil geputzt hast, klicke auf die entsprechende
-            Aufgabe, um sie abzuschließen.
-        </p>
     {% endif %}
 
-    <h4>Folgende Aufgaben stehen an.</h4>
 
     <div class="alert alert-info" role="alert">
         <p>
@@ -51,23 +46,52 @@ Putzdienst erledigen
         </p>
     </div>
 
-    <div class="row">
-        {% for task in tasks.uncleaned %}
-            <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
-                {% include 'webinterface_snippets/task_panel.html' %}
+    {% with as_nav=True %}
+        <div class="row well" style="padding: 5px">
+            <h4>Schnellnavigation</h4>
+            <p style="margin: 0">Offene Aufgaben</p>
+            <div class="col-xs-12" style="padding: 5px">
+                {% for task in tasks.uncleaned %}
+                    <div class="col-xs-6" style="padding: 0">
+                        <div style="margin: 2px">
+                            {% include 'webinterface_snippets/task_panel.html' %}
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
-        {% endfor %}
-    </div>
-    <h3>Folgende Aufgaben wurden schon geputzt.</h3>
-    <div class="row">
-        {% for task in tasks.cleaned %}
-            <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
-                {% include 'webinterface_snippets/task_panel.html' %}
+            <p style="margin: 0">Erledigte Aufgaben</p>
+            <div class="col-xs-12" style="padding: 5px">
+            {% for task in tasks.cleaned %}
+                <div class="col-xs-6" style="padding: 0">
+                    <div style="margin: 2px">
+                        {% include 'webinterface_snippets/task_panel.html' %}
+                    </div>
+                </div>
+            {% endfor %}
             </div>
-        {% empty %}
-            <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
-                <p><i>Es wurde noch nichts abgehakt.</i></p>
-            </div>
-        {% endfor %}
-    </div>
+        </div>
+    {% endwith %}
+
+    {% with as_nav=False %}
+        <h3>Folgende Aufgaben stehen an:</h3>
+        <div class="row">
+            {% for task in tasks.uncleaned %}
+                <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
+                    {% include 'webinterface_snippets/task_panel.html' %}
+                </div>
+            {% endfor %}
+        </div>
+        <h3>Folgende Aufgaben wurden schon erledigt:</h3>
+        <div class="row">
+            {% for task in tasks.cleaned %}
+                <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
+                    {% include 'webinterface_snippets/task_panel.html' %}
+                </div>
+            {% empty %}
+                <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+                    <p><i>Es wurde noch nichts abgehakt.</i></p>
+                </div>
+            {% endfor %}
+        </div>
+    {% endwith %}
 {% endblock %}
