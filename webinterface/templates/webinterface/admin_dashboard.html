@@ -35,6 +35,10 @@ Einstellungen
                        class="btn btn-default" role="button">
                         <span class="glyphicon glyphicon-stats"></span> Analytics
                     </a>
+                    <a href="{% url 'webinterface:admin-faq' %}"
+                       class="btn btn-info" role="button">
+                        <span class="glyphicon glyphicon-info-sign"></span> FAQ
+                    </a>
                 </h2>
                 <div class="well">
                     {% if action_needed_cleaners %}

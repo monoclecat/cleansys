@@ -3,7 +3,7 @@
 {% load tz %}
 
 {% block title %}
-    Dokumentation
+    {{ title }}
 {% endblock %}
 
 {% block main %}
@@ -12,5 +12,10 @@
             {% include "webinterface_snippets/home_button.html" %}
         </div>
     </div>
+    <style>
+        ul {
+            padding-left: 20px;
+        }
+    </style>
     {{ content|safe }}
 {% endblock %}

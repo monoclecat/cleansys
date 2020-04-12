@@ -119,14 +119,50 @@ def create_schedule_analytics(weeks_into_past=20, weeks_into_future=20, only=Non
             file.write(plot_html)
 
 
-class DocumentationView(TemplateView):
-    template_name = 'webinterface/docs.html'
+class MarkdownView(TemplateView):
+    template_name = 'webinterface/markdown_view.html'
+    markdown_file_path = ''
+    title = ''
+    create_toc = False
+    toc_depth = '###'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        with open(os.path.join(settings.BASE_DIR, 'documentation', 'doc_main.md'), 'r', encoding="utf-8") as file:
-            context['content'] = markdown.markdown(text=file.read(), output_format='html5', tab_length=2)
+        context['title'] = self.title
+        with open(self.markdown_file_path, 'r', encoding="utf-8") as file:
+            if self.create_toc:
+                content = []
+                toc = []
+                link_pk = 0
+                for line in file:
+                    for i in range(1, len(self.toc_depth) + 1):
+                        if len(line) > i+1 and line[:i+1] == '#' * i + ' ':
+                            link_name = line[i+1:].replace('\n', '')
+                            link_pk += 1
+                            link_id = '{}_{}'.format(str(link_pk), slugify(link_name))
+                            content.append('<a id="{}"></a>\n'.format(link_id))
+                            toc.append('{}- [{}](#{})\n'.format('    '*(i-1), link_name, link_id))
+                            break
+                    content.append(line)
+
+                content = toc + content
+                content = ''.join(content)
+            else:
+                content = file.read()
+            context['content'] = markdown.markdown(text=content, output_format='html5')
         return context
+
+
+class DocumentationView(MarkdownView):
+    markdown_file_path = os.path.join(settings.BASE_DIR, 'documentation', 'doc_main.md')
+    title = "Einführung"
+    create_toc = True
+
+
+class AdminFAQView(MarkdownView):
+    markdown_file_path = os.path.join(settings.BASE_DIR, 'documentation', 'faq.md')
+    title = "FAQ"
+    create_toc = True
 
 
 class AdminView(TemplateView):

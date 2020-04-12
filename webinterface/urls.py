@@ -32,6 +32,7 @@ urlpatterns = [
     path('logout/', login_required(LogoutView.as_view()), name='logout'),
     path('admin/', must_be_admin(AdminView.as_view()), name='admin'),
     path('documentation/', DocumentationView.as_view(), name='docs'),
+    path('admin/faq', AdminFAQView.as_view(), name='admin-faq'),
 
     path('affiliation-edit/<int:pk>/', must_be_admin(AffiliationUpdateView.as_view()), name='affiliation-edit'),
     path('affiliation-delete/<int:pk>/', must_be_admin(AffiliationDeleteView.as_view()),
