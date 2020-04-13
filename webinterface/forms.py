@@ -240,12 +240,10 @@ class TaskCleanedForm(forms.ModelForm):
         labels = {
             'cleaned_by': "Wähle die Person aus, die die Aufgabe erledigt hat:",
         }
-        widgets = {
-            'cleaned_by': forms.RadioSelect
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['cleaned_by'].empty_label = '--- nicht erledigt ---'
         if 'instance' in kwargs and kwargs['instance']:
             self.fields['cleaned_by'].queryset = kwargs['instance'].possible_cleaners()
             self.fields['cleaned_by'].required = False
