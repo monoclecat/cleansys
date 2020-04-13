@@ -305,7 +305,43 @@ class CleanerView(ListView):
         for duty_switch in DutySwitch.objects.all():
             if duty_switch.possible_acceptors().filter(cleaner=self.cleaner).exists():
                 context['answerable_dutyswitch_requests'].append(duty_switch)
+        return context
 
+
+class CleanerCalendarView(TemplateView):
+    template_name = "webinterface/cleaner_calendar.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_superuser:
+            return HttpResponseRedirect(reverse_lazy('webinterface:admin'))
+        self.cleaner = get_object_or_404(Cleaner, user=request.user)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        assignments = self.cleaner.assignment_set.filter(cleaning_week__week__gte=current_epoch_week()-1). \
+            order_by('cleaning_week__week', 'schedule__weekday')
+        assignments = list(assignments)
+
+        context['calendar_header'] = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+        context['calendar_rows'] = []
+
+        all_tasks = Task.objects.filter(cleaning_week__in=[x.cleaning_week for x in assignments],
+                                        cleaned_by__isnull=True)
+        for week in range(min(current_epoch_week(), assignments[0].cleaning_week.week),
+                    assignments[-1].cleaning_week.week):
+            monday = epoch_week_to_monday(week)
+            columns = []
+            for weekday in range(0, 7):
+                day = monday + timezone.timedelta(days=weekday)
+                day_data = {
+                    'date': day.strftime("%d.%m."),
+                    'is_today': timezone.now().date() == day,
+                    'assignments': [x for x in assignments if x.assignment_date() == day],
+                    'task_ready': any(x.is_active_on_date(day) for x in all_tasks)
+                }
+                columns.append(day_data)
+            context['calendar_rows'].append(columns)
         return context
 
 
@@ -340,7 +376,7 @@ class AssignmentTasksView(TemplateView):
             raise Exception("CleaningWeek does not exist on date!")
         context['cleaning_week'] = cleaning_week
         context['schedule'] = cleaning_week.schedule
-        context['tasks'] = cleaning_week.task_set.all()
+        context['tasks'] = cleaning_week.task_set.order_by('-template__end_days_after')
 
         cleaner_for_user = context['view'].request.user.cleaner_set
         if cleaner_for_user.exists():

@@ -716,8 +716,11 @@ class Task(models.Model):
                + datetime.timedelta(days=self.cleaning_week.schedule.weekday) \
                + datetime.timedelta(days=self.template.end_days_after)
 
+    def is_active_on_date(self, date):
+        return self.start_date() <= date <= self.end_date()
+
     def my_time_has_come(self):
-        return self.start_date() <= timezone.now().date() <= self.end_date()
+        return self.is_active_on_date(timezone.now().date())
 
     def has_passed(self):
         return self.end_date() < timezone.now().date()

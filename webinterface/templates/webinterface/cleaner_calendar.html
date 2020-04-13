@@ -1,0 +1,88 @@
+{% extends "webinterface/mobile_first_body.html" %}
+{% load crispy_forms_tags %}
+{% load tz %}
+{% load webinterface_filters %}
+
+{% block title %}
+    Dein Putzkalender
+{% endblock %}
+
+{% block main %}
+    <div class="row">
+        <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+            {% include "webinterface_snippets/home_button.html" %}
+        </div>
+    </div>
+{% with task_ready_color='#5cb85c' assignments_color='#3e8f3e' %}
+    <div class="row">
+        <div class="panel panel-primary" style="margin: 0">
+            <div class="panel-heading">
+                <h4>Dein Putzkalender</h4>
+            </div>
+            <div class="panel-body">
+                <style>
+                    .legend_entry {
+                        position: relative;
+                        padding-left: 20px;
+                    }
+                    .color-box {
+                        width: 13px;
+                        height: 13px;
+                        display: inline-block;
+                        position: absolute;
+                        left: 3px;
+                        top: 3px;
+                    }
+                </style>
+                <p class="legend_entry">
+                    <span class="color-box" style="background-color: {{ assignments_color }}"></span>
+                    An diesen Tagen hast du Putzdienst.
+                </p>
+                <p class="legend_entry">
+                    <span class="color-box" style="background-color: {{ task_ready_color }}"></span>
+                    An diesen Tagen können Aufgaben erledigt werden.
+                    <i>(Aufgaben können i.d.R. ein paar Tage vor und nach dem Putzdienst erledigt werden)</i>
+                </p>
+                <p>
+                    Die Namen der Putzpläne werden verkürzt und ohne Leerzeichen dargestellt.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-12">
+            <table class="table table-bordered table-condensed table-striped">
+                <tr>
+                    {% for week_day in calendar_header %}
+                        <th style="width: 14.28%">{{ week_day }}</th>
+                    {% endfor %}
+                </tr>
+                {% for cal_week in calendar_rows %}
+                    <tr>
+                        {% for cal_day in cal_week %}
+                            <td style="width: 14.28%;
+                                    {% if cal_day.assignments %}
+                                        background-color: {{ assignments_color }};
+                                    {% elif cal_day.task_ready %}
+                                        background-color: {{ task_ready_color }};
+                                    {% endif %}">
+                                <p class="pull-right" style="margin: 0"><small>
+                                    {% if cal_day.is_today%}
+                                        <strong>{{ cal_day.date }}</strong>
+                                    {% else %}
+                                        {{ cal_day.date }}
+                                    {% endif %}</small></p>
+                                {% for assignment in cal_day.assignments %}
+                                    <p style="margin: 0"><small>
+                                        {{ assignment.schedule|cut:' '|truncatechars_noellipses:5 }}
+                                    </small></p>
+                                {% endfor %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endwith %}
+{% endblock %}

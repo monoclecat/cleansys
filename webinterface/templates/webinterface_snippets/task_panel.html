@@ -1,14 +1,14 @@
 {% if as_nav %}
     <a href="#task_{{ task.pk }}" class="btn  btn-xs btn-block
     {% if task.my_time_has_come %}btn-success{% else %}btn-default{% endif %}"
-    style="text-align: left">
+    style="text-align: left; white-space: nowrap; overflow: hidden">
         {% if task.cleaned_by %}
-            <span class="glyphicon glyphicon-user"></span> <strong>{{ task.cleaned_by|truncatechars:10 }}</strong>:
-            {{ task|truncatechars:15 }}
-        {% else %}
-            {{ task|truncatechars:22 }}
+            <span class="glyphicon glyphicon-user"></span> <strong>{{ task.cleaned_by }}</strong>:
         {% endif %}
-
+        {{ task }}
+        <br>
+        <span class="glyphicon glyphicon-calendar"></span>
+        <strong>{{ task.start_date|date:"d.m." }} - {{ task.end_date|date:"d.m." }}</strong>
     </a>
 {% else %}
     <div class="panel {% if task.my_time_has_come %}panel-success{% else %}panel-default{% endif %}"

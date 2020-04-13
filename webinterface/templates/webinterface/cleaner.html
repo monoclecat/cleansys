@@ -3,126 +3,140 @@
 {% load tz %}
 
 {% block title %}
-Deine Putzdienste
+    Deine Putzdienste
 {% endblock %}
 
 {% block main %}
-        <div class="row">
-            <div class="btn btn-group btn-group-md btn-group-justified" role="group">
-                {% include "webinterface_snippets/button_to_schedule_list_page.html" %}
+    <div class="row">
+        <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+            {% include "webinterface_snippets/button_to_schedule_list_page.html" %}
+        </div>
+    </div>
+    <h2>Hallo {{ cleaner.name }}!</h2>
+
+    {% if answerable_dutyswitch_requests %}
+        {% for dutyswitch in answerable_dutyswitch_requests %}
+            <div class="panel panel-info" style="margin-bottom: 0">
+                <div class="panel-body">
+                    <p>
+                        <span class="glyphicon glyphicon-user"></span>
+                        <strong>{{ dutyswitch.requester_assignment.cleaner }}</strong>
+                        möchte einen Putzdienst im Putzplan
+                        <span class="glyphicon glyphicon-list-alt"></span>
+                        <strong>{{ dutyswitch.requester_assignment.schedule }}</strong> am
+                        <span class="glyphicon glyphicon-calendar"></span>
+                        <strong>{{ dutyswitch.requester_assignment.assignment_date }}</strong> tauschen und
+                        <strong>du</strong> kannst helfen!
+                    </p>
+                    <a class="btn btn-info btn-sm"
+                       href="{% url 'webinterface:dutyswitch-accept' dutyswitch.pk page_obj.number %}"
+                       role="button" style="white-space: normal; margin: 0.5em">
+                        Tauschanfrage ansehen <span class="glyphicon glyphicon-eye-open"></span>
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <br>
+
+    <div class="row">
+        <div class="panel panel-primary" style="margin: 0">
+            <div class="panel-heading">
+                <h4>Deine nächsten Putzdienste</h4>
             </div>
         </div>
-        <h2>Hallo {{ cleaner.name }}!</h2>
+    </div>
+    <div class="row" style="padding: 5px">
+        <div class="col-xs-12">
+            <a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:cleaner-calendar' %}">
+                <span class="glyphicon glyphicon-calendar"></span> Dein Putzkalender
+            </a>
+        </div>
+    </div>
 
-        {% if answerable_dutyswitch_requests %}
-            {% for dutyswitch in answerable_dutyswitch_requests %}
-                <div class="panel panel-info" style="margin-bottom: 0">
-                    <div class="panel-body">
-                        <p>
-                            <span class="glyphicon glyphicon-user"></span>
-                            <strong>{{ dutyswitch.requester_assignment.cleaner }}</strong>
-                            möchte einen Putzdienst im Putzplan
-                            <span class="glyphicon glyphicon-list-alt"></span>
-                            <strong>{{ dutyswitch.requester_assignment.schedule }}</strong> am
-                            <span class="glyphicon glyphicon-calendar"></span>
-                            <strong>{{ dutyswitch.requester_assignment.assignment_date }}</strong> tauschen und
-                            <strong>du</strong> kannst helfen!
-                        </p>
-                        <a class="btn btn-info btn-sm"
-                           href="{% url 'webinterface:dutyswitch-accept' dutyswitch.pk page_obj.number %}"
-                           role="button" style="white-space: normal; margin: 0.5em">
-                                Tauschanfrage ansehen <span class="glyphicon glyphicon-eye-open"></span>
-                        </a>
+    <div class="row">
+        <div class="col-xs-12">
+            {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
+        </div>
+    </div>
+    {% for assignment in assignment_list %}
+        <div class="row" style="background-color: {% cycle "#FFFFFF" "#EEEEEE" %};">
+            <div class="col-xs-12">
+                <div class="row" style="padding: 0.25em">
+                    <div class="col-xs-12">
+                        Putzplan <span class="glyphicon glyphicon-play"></span> <b>{{ assignment.schedule.name }}</b>
+                    </div>
+
+                    <div class="col-xs-6">
+                        <span class="glyphicon glyphicon-calendar"></span> {{ assignment.assignment_date|date:"d. M y" }}
+                    </div>
+
+                    <div class="col-xs-6">
+                        {% if assignment.other_cleaners_in_week_for_schedule.exists %}
+                            <span class="glyphicon glyphicon-user"></span> Mit
+                            {% for cleaner in assignment.other_cleaners_in_week_for_schedule.all %}
+                                {{ cleaner.name }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        {% endif %}
                     </div>
                 </div>
-            {% endfor %}
-        {% endif %}
-
-        <br>
-
-        <div class="row">
-            <div class="panel panel-primary" style="margin: 0">
-                <div class="panel-heading">
-                    <h4>Deine nächsten Putzdienste</h4>
-                </div>
-            </div>
-            <div class="col-xs-12">
-                {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
-                {% for assignment in assignment_list %}
-                    <div class="row" style="background-color: {% cycle "#FFFFFF" "#EEEEEE" %};">
-                    <div class="col-xs-12">
-                        <div class="row" style="padding: 0.25em">
-                            <div class="col-xs-12">
-                                Putzplan <span class="glyphicon glyphicon-play"></span> <b>{{ assignment.schedule.name }}</b>
-                            </div>
-
-                            <div class="col-xs-6">
-                                <span class="glyphicon glyphicon-calendar"></span> {{ assignment.assignment_date|date:"d. M y" }}
-                            </div>
-
-                            <div class="col-xs-6">
-                                {% if assignment.other_cleaners_in_week_for_schedule.exists %}
-                                    <span class="glyphicon glyphicon-user"></span> Mit
-                                    {% for cleaner in assignment.other_cleaners_in_week_for_schedule.all %}
-                                        {{ cleaner.name }}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-xs-6">
-                                {% if not assignment.has_passed and not assignment.cleaning_week.all_tasks_are_completed %}
-                                    {% if assignment.switch_requested %}
-                                        <a class="btn btn-warning btn-sm"
-                                           href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page_obj.number %}"
-                                           role="button" style="white-space: normal; margin: 0.5em">
-                                            Tauschanfrage <span class="glyphicon glyphicon-cog"></span>
-                                        </a>
-                                    {% else %}
-                                        <a class="btn btn-default btn-sm"
-                                            href="{% url 'webinterface:dutyswitch-create' assignment.pk page_obj.number %}"
-                                            role="button" style="white-space: normal; margin: 0.5em">
-                                            Tauschen <span class="glyphicon glyphicon-random"></span>
-                                        </a>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                            <div class="col-xs-6">
-                                    <a role="button" style="white-space: normal; margin: 0.5em"
-            class="btn {% if assignment.tasks_are_ready_to_be_done %}btn-success{% else %}btn-default{% endif %} btn-sm"
-            href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.cleaning_week.pk page_obj.number %}">
-                                        {% if assignment.tasks_are_ready_to_be_done %}
-                                            Los <span class="glyphicon glyphicon-play-circle"></span>
-                                        {% else %}
-                                            <span class="glyphicon glyphicon-list"></span> Aufgaben
-                                        {% endif %}
-                                        {% if not assignment.cleaning_week.is_in_future %}
-                                            <span class="label label-default">
+                <div class="row">
+                    <div class="col-xs-6">
+                        {% if not assignment.has_passed and not assignment.cleaning_week.all_tasks_are_completed %}
+                            {% if assignment.switch_requested %}
+                                <a class="btn btn-warning btn-sm"
+                                   href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page_obj.number %}"
+                                   role="button" style="white-space: normal; margin: 0.5em">
+                                    Tauschanfrage <span class="glyphicon glyphicon-cog"></span>
+                                </a>
+                            {% else %}
+                                <a class="btn btn-default btn-sm"
+                                   href="{% url 'webinterface:dutyswitch-create' assignment.pk page_obj.number %}"
+                                   role="button" style="white-space: normal; margin: 0.5em">
+                                    Tauschen <span class="glyphicon glyphicon-random"></span>
+                                </a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="col-xs-6">
+                        <a role="button" style="white-space: nowrap; margin: 0.5em"
+                           class="btn {% if assignment.tasks_are_ready_to_be_done %}btn-success{% else %}btn-default{% endif %} btn-sm"
+                           href="{% url 'webinterface:assignment-tasks-back-to-cleaner' assignment.cleaning_week.pk page_obj.number %}">
+                            {% if assignment.tasks_are_ready_to_be_done %}
+                                Los <span class="glyphicon glyphicon-play-circle"></span>
+                            {% else %}
+                                <span class="glyphicon glyphicon-list"></span> Aufgaben
+                            {% endif %}
+                            {% if not assignment.cleaning_week.is_in_future %}
+                                <span class="label label-default">
                                                 {{ assignment.cleaning_week.completed_tasks.count }} /
                                                 {{ assignment.cleaning_week.task_set.count }}
                                             </span>
-                                        {% endif %}
-                                    </a>
-                            </div>
-                        </div>
+                            {% endif %}
+                        </a>
                     </div>
-                    </div>
-                {% empty %}
-                    Keine Putzdienste zu zeigen
-                {% endfor %}
-                {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
+                </div>
             </div>
         </div>
-        <br>
-        <div class="row" style="padding: 5px">
-            <div class="col-xs-12">
-                <a class="btn btn-default btn-block"
-                   href="{% url 'webinterface:affiliation-list-with-cleaner-page' cleaner.pk page_obj.number %}"
-                   role="button">
-                    <span class="glyphicon glyphicon-th-list"></span> Deine Zugehörigkeiten
-                </a>
-            </div>
+    {% empty %}
+        Keine Putzdienste zu zeigen
+    {% endfor %}
+    <div class="row">
+        <div class="col-xs-12">
+            {% include "webinterface_snippets/cleaner_pagination_buttons.html" %}
         </div>
+    </div>
+    <br>
+    <div class="row" style="padding: 5px">
+        <div class="col-xs-12">
+            <a class="btn btn-default btn-block"
+               href="{% url 'webinterface:affiliation-list-with-cleaner-page' cleaner.pk page_obj.number %}"
+               role="button">
+                <span class="glyphicon glyphicon-th-list"></span> Deine Zugehörigkeiten
+            </a>
+        </div>
+    </div>
 
         <div class="row" style="padding: 5px">
             <div class="col-xs-12">
