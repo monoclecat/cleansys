@@ -582,6 +582,14 @@ class TaskCleanedView(UpdateView):
                                         kwargs={'cleaning_week_pk': self.assignment.cleaning_week.pk})
         return super().dispatch(request, *args, **kwargs)
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        try:
+            kwargs['logged_in_cleaner'] = Cleaner.objects.get(user=self.request.user)
+        except Cleaner.DoesNotExist:
+            pass
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Setze eine Aufgabe als 'geputzt'"

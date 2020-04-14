@@ -241,7 +241,9 @@ class TaskCleanedForm(forms.ModelForm):
             'cleaned_by': "Wähle die Person aus, die die Aufgabe erledigt hat:",
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, logged_in_cleaner=None, *args, **kwargs):
+        if logged_in_cleaner is not None:
+            kwargs['initial'] = {'cleaned_by': logged_in_cleaner}
         super().__init__(*args, **kwargs)
         self.fields['cleaned_by'].empty_label = '--- nicht erledigt ---'
         if 'instance' in kwargs and kwargs['instance']:
