@@ -79,7 +79,7 @@ class CleanerForm(forms.ModelForm):
             'name': "Name des Putzers (bitte nur Vorname der Person oder Spitzname)",
         }
 
-    email = forms.EmailField(label="Email des Putzers")
+    email = forms.EmailField(label="Email des Putzers", required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
