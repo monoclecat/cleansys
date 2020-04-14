@@ -284,9 +284,14 @@ class CleanerView(ListView):
 
         if 'page' not in kwargs:
             if self.assignments.filter(cleaning_week__week__gt=current_epoch_week()).exists():
-                index_of_current_cleaning_week = next(i for i, v
-                                                      in enumerate(self.assignments)
-                                                      if v.cleaning_week.week >= current_epoch_week())
+                if 'assignment_pk' in kwargs:
+                    index_of_current_cleaning_week = next(i for i, v
+                                                          in enumerate(self.assignments)
+                                                          if v.pk == kwargs['assignment_pk'])
+                else:
+                    index_of_current_cleaning_week = next(i for i, v
+                                                          in enumerate(self.assignments)
+                                                          if v.cleaning_week.week >= current_epoch_week())
                 page_nr_with_current_assignments = 1 + (index_of_current_cleaning_week // self.paginate_by)
             else:
                 page_nr_with_current_assignments = 1
@@ -329,7 +334,7 @@ class CleanerCalendarView(TemplateView):
         all_tasks = Task.objects.filter(cleaning_week__in=[x.cleaning_week for x in assignments],
                                         cleaned_by__isnull=True)
         for week in range(min(current_epoch_week(), assignments[0].cleaning_week.week),
-                    assignments[-1].cleaning_week.week):
+                          assignments[-1].cleaning_week.week):
             monday = epoch_week_to_monday(week)
             columns = []
             for weekday in range(0, 7):
@@ -337,6 +342,7 @@ class CleanerCalendarView(TemplateView):
                 day_data = {
                     'date': day.strftime("%d.%m."),
                     'is_today': timezone.now().date() == day,
+                    'equiv_page': CleanerView.paginate_by,
                     'assignments': [x for x in assignments if x.assignment_date() == day],
                     'task_ready': any(x.is_active_on_date(day) for x in all_tasks)
                 }

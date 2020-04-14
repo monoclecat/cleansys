@@ -45,6 +45,8 @@
                 </p>
                 <p>
                     Die Namen der Putzpläne werden verkürzt und ohne Leerzeichen dargestellt.
+                    Klicke auf die Namen um auf die ensprechende Seite deiner nächsten Putzdienste weitergeleitet zu
+                    werden.
                 </p>
             </div>
         </div>
@@ -74,7 +76,10 @@
                                     {% endif %}</small></p>
                                 {% for assignment in cal_day.assignments %}
                                     <p style="margin: 0"><small>
-                                        {{ assignment.schedule|cut:' '|truncatechars_noellipses:5 }}
+                                        <a href="{% url 'webinterface:cleaner-no-page-to-assignment' assignment.pk %}"
+                                           style="color: black">
+                                            {{ assignment.schedule|cut:' '|truncatechars_noellipses:5 }}
+                                        </a>
                                     </small></p>
                                 {% endfor %}
                             </td>

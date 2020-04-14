@@ -58,6 +58,7 @@ urlpatterns = [
 
     path('du/seite<int:page>/', login_required(CleanerView.as_view()), name='cleaner'),
     path('du/', login_required(CleanerView.as_view()), name='cleaner-no-page'),
+    path('du/dienst<int:assignment_pk>/', login_required(CleanerView.as_view()), name='cleaner-no-page-to-assignment'),
     path('du/kalender/', login_required(CleanerCalendarView.as_view()), name='cleaner-calendar'),
     path('putzer-analytics/', login_required(CleanerAnalyticsView.as_view()), name='cleaner-analytics'),
     path('putzer-analytics/p<int:cleaner_page>/', login_required(CleanerAnalyticsView.as_view()),
