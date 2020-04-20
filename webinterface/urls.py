@@ -4,7 +4,7 @@ from django.contrib.auth.views import LogoutView
 from webinterface.views import *
 from webinterface.api_views import *
 from webinterface.form_views import *
-from webinterface.decorators import must_be_admin
+from webinterface.decorators import *
 from django.conf.urls import include
 from rest_framework import routers
 
@@ -65,8 +65,10 @@ urlpatterns = [
          name='cleaner-analytics-with-cleaner-page'),
 
     path('putzer/neu/', must_be_admin(CleanerNewView.as_view()), name='cleaner-new'),
-    path('putzer/<int:pk>/', must_be_admin(CleanerUpdateView.as_view()),
+    path('putzer/<int:pk>/', login_required(CleanerUpdateView.as_view()),
          name='cleaner-edit'),
+    path('putzer/<int:pk>/p<int:cleaner_page>', login_required(CleanerUpdateView.as_view()),
+         name='cleaner-edit-with-cleaner-page'),
     path('cleaner-delete/<int:pk>/', must_be_admin(CleanerDeleteView.as_view()), name='cleaner-delete'),
 
     path('cleaning-week-tasks/<int:pk>/<int:page>/', must_be_admin(TaskCreateView.as_view()),
@@ -80,6 +82,8 @@ urlpatterns = [
          name='dutyswitch-create'),
     path('tauschanfrage-akzeptieren/<int:pk>/<int:page>', login_required(DutySwitchUpdateView.as_view()),
          name='dutyswitch-accept'),
+    path('tauschanfrage-akzeptieren/<int:pk>', login_required(DutySwitchUpdateView.as_view()),
+         name='dutyswitch-accept-no-cleaner-page'),
     path('tauschanfrage-loeschen/<int:pk>/<int:page>', login_required(DutySwitchDeleteView.as_view()),
          name='dutyswitch-delete'),
 

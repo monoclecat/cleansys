@@ -13,3 +13,12 @@ def truncatechars_noellipses(value, arg):
     except ValueError:  # Invalid literal for int().
         return value  # Fail silently.
     return value[:length]
+
+
+@register.filter(is_safe=True)
+@stringfilter
+def as_absolute_url(value, arg):
+    """Add scheme and host to url, needs the request as an argument"""
+    if hasattr(arg, 'scheme') and hasattr(arg, 'get_host'):
+        return "{}://{}{}".format(arg.scheme, arg.get_host(), value)
+    return

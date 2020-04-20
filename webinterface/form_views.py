@@ -137,6 +137,11 @@ class CleanerNewView(CreateView):
                                     'url': reverse_lazy('webinterface:admin')}
         return context
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['request'] = self.request
+        return kwargs
+
     def form_valid(self, form):
         self.object = form.save()
         self.object.user.email = form.cleaned_data.get('email')
@@ -148,18 +153,40 @@ class CleanerNewView(CreateView):
 class CleanerUpdateView(UpdateView):
     form_class = CleanerForm
     model = Cleaner
-    success_url = reverse_lazy('webinterface:admin')
     template_name = 'webinterface/generic_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_superuser:
+            self.success_url = reverse_lazy('webinterface:admin')
+        else:
+            if 'cleaner_page' in kwargs:
+                self.success_url = reverse_lazy('webinterface:cleaner', kwargs={'page': kwargs['cleaner_page']})
+            else:
+                self.success_url = reverse_lazy('webinterface:cleaner-no-page')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        object = super().get_object(queryset)
+        if self.request.user.is_superuser or object.user.pk == self.request.user.pk:
+            return object
+        raise Http404("User doesn't match requested page")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['request'] = self.request
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = "Ändere Putzerprofil"
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:admin')}
-        context['delete_button'] = {'text': "Lösche Putzer",
-                                    'url': reverse_lazy('webinterface:cleaner-delete',
-                                                        kwargs={'pk': self.object.pk})}
+                                    'url': self.success_url}
+        if self.request.user.is_superuser:
+            context['delete_button'] = {'text': "Lösche Putzer",
+                                        'url': reverse_lazy('webinterface:cleaner-delete',
+                                                            kwargs={'pk': self.object.pk})}
         return context
 
     def form_valid(self, form):
@@ -168,7 +195,7 @@ class CleanerUpdateView(UpdateView):
             self.object.user.email = form.cleaned_data.get('email')
             self.object.user.save()
 
-        return HttpResponseRedirect(self.get_success_url())
+        return HttpResponseRedirect(self.success_url)
 
 
 class CleanerDeleteView(DeleteView):
@@ -656,7 +683,10 @@ class DutySwitchUpdateView(UpdateView):
             self.cleaner = Cleaner.objects.get(slug=request.user.username)
         except Cleaner.DoesNotExist:
             Http404('Du bist als ein Nutzer angemeldet, der keinem Putzer zugeordnet ist!')
-        self.success_url = reverse_lazy('webinterface:cleaner', kwargs={'page': self.kwargs['page']})
+        if 'page' in self.kwargs:
+            self.success_url = reverse_lazy('webinterface:cleaner', kwargs={'page': self.kwargs['page']})
+        else:
+            self.success_url = reverse_lazy('webinterface:cleaner-no-page')
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
