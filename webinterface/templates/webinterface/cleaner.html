@@ -88,7 +88,7 @@
                                 <a class="btn btn-warning btn-sm"
                                    href="{% url 'webinterface:dutyswitch-delete' assignment.switch_requested.pk page_obj.number %}"
                                    role="button" style="white-space: normal; margin: 0.5em">
-                                    Tauschanfrage <span class="glyphicon glyphicon-cog"></span>
+                                    <span class="glyphicon glyphicon-trash"></span> Tauschanfrage
                                 </a>
                             {% else %}
                                 <a class="btn btn-default btn-sm"
@@ -138,20 +138,30 @@
         </div>
     </div>
 
-        <div class="row" style="padding: 5px">
-            <div class="col-xs-12">
-                <a href="{% url 'webinterface:cleaner-analytics-with-cleaner-page' page_obj.number %}"
-                   class="btn btn-default btn-block" role="button">
-                    <span class="glyphicon glyphicon-stats"></span> Analytics zu allen Putzern
-                </a>
-            </div>
+    <div class="row" style="padding: 5px">
+        <div class="col-xs-12">
+            <a class="btn btn-default btn-block"
+               href="{% url 'webinterface:cleaner-edit-with-cleaner-page' cleaner.pk page_obj.number %}"
+               role="button">
+                <span class="glyphicon glyphicon-envelope"></span> Email-Einstellungen
+            </a>
         </div>
+    </div>
 
-        <div class="row" style="padding: 5px">
-            <div class="col-xs-12">
-                <a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:logout' %}">
-                    Du bist nicht {{ cleaner.name }}? <span class="glyphicon glyphicon-arrow-right"></span> Logout
-                </a>
-            </div>
+    <div class="row" style="padding: 5px">
+        <div class="col-xs-12">
+            <a href="{% url 'webinterface:cleaner-analytics-with-cleaner-page' page_obj.number %}"
+               class="btn btn-default btn-block" role="button">
+                <span class="glyphicon glyphicon-stats"></span> Analytics zu allen Putzern
+            </a>
         </div>
+    </div>
+
+    <div class="row" style="padding: 5px">
+        <div class="col-xs-12">
+            <a class="btn btn-default btn-block" role="button" href="{% url 'webinterface:logout' %}">
+                Du bist nicht {{ cleaner.name }}? <span class="glyphicon glyphicon-arrow-right"></span> Logout
+            </a>
+        </div>
+    </div>
 {% endblock %}

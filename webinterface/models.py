@@ -137,7 +137,6 @@ class Schedule(models.Model):
 
         return minimal_week_set
 
-
     def deployment_ratios(self, week: int) -> list:
         """week must be a epoch week number as returned by date_to_epoch_week()"""
         ratios = []
@@ -289,21 +288,6 @@ class ScheduleGroup(models.Model):
         super().save(force_insert, force_update, using, update_fields)
 
 
-def schedule_group_changed(instance, action, model, pk_set, **kwargs):
-    if action == 'post_add' or action == 'post_remove':
-        if model == Schedule:
-            schedules = Schedule.objects.filter(pk__in=pk_set)
-        else:
-            schedules = Schedule.objects.filter(pk=instance.pk)
-        if schedules.exists():
-            for schedule in schedules.all():
-                [x.set_assignments_valid_field(False) for x in schedule.cleaningweek_set.in_future()]
-    return
-
-
-m2m_changed.connect(schedule_group_changed, sender=ScheduleGroup.schedules.through)
-
-
 class CleanerQuerySet(models.QuerySet):
     def active(self) -> QuerySet:
         return self.filter(
@@ -322,11 +306,17 @@ class Cleaner(models.Model):
     """
     class Meta:
         ordering = ('name',)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=20, unique=True)
     slug = models.CharField(max_length=20, unique=True)
-
     time_zone = models.CharField(max_length=30, default="Europe/Berlin")
+
+    # If set to True, email notifications are activated for that topic
+    email_pref_assignment_coming_up = models.BooleanField(default=True)
+    email_pref_new_acceptable_dutyswitch = models.BooleanField(default=True)
+    email_pref_accepted_foreign_dutyswitch = models.BooleanField(default=True)
+    email_pref_own_dutyswitch_accepted = models.BooleanField(default=True)
+    email_pref_assignments_updated = models.BooleanField(default=True)
 
     objects = CleanerQuerySet.as_manager()
 
@@ -470,7 +460,6 @@ class Affiliation(models.Model):
             raise ValidationError("Der vorgeschlagene Zeitraum wird von einer vorhandenen Zugehörigkeit umschlossen. "
                                   "Bitte passe die andere Zugehörigkeit zuerst an, "
                                   "damit es zu keiner Überlappung kommt.")
-
 
     @staticmethod
     def cleaning_week_assignments_invalidator(
@@ -752,8 +741,8 @@ class DutySwitch(models.Model):
         ordering = ('created',)
     created = models.DateField(auto_now_add=timezone.now().date())
 
-    requester_assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="requester",
-                                             editable=False)
+    requester_assignment = models.OneToOneField(Assignment, on_delete=models.CASCADE, related_name="requester",
+                                                editable=False)
     acceptor_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="acceptor")
 
     message = models.CharField(max_length=100)
