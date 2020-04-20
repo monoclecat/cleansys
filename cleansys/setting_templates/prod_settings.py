@@ -3,7 +3,8 @@ Production settings.
 Make sure you have changed the SECRET_KEY!
 Please follow the guidelines for production: https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 """
-from .common_settings import LOGGING
+from .common_settings import LOGGING, BASE_DIR
+import os
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "tn[&Vf+),$GA/}uf[iQ!&w?aaBkqay_,4+sRNPTqLvS@'&]/X&4Y{&tHv{H"
@@ -39,7 +40,7 @@ ADMINS = [('Anne', 'anne@cleansys.headquarters')]
 # Don't forget to comment them back out again
 # https://docs.djangoproject.com/en/3.0/topics/email/#file-backend
 # EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-# EMAIL_FILE_PATH = '/logs/emails'
+# EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'logs/emails')
 
 # Logging settings
 LOGGING['LOG_SCHEDULE_CREATE_ASSIGNMENT_TO_FILE'] = True

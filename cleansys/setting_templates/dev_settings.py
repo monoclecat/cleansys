@@ -1,7 +1,8 @@
 """
 Development settings. NOT FOR PRODUCTION.
 """
-from .common_settings import LOGGING
+from .common_settings import LOGGING, BASE_DIR
+import os
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
@@ -40,7 +41,7 @@ ADMINS = [('Anne', 'anne@cleansys.headquarters')]
 # Don't forget to comment them back out again
 # https://docs.djangoproject.com/en/3.0/topics/email/#file-backend
 # EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-# EMAIL_FILE_PATH = '/logs/emails'
+# EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'logs/emails')
 
 # Logging settings
 LOGGING['LOG_SCHEDULE_CREATE_ASSIGNMENT_TO_FILE'] = False
