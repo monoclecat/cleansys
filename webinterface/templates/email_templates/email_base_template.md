@@ -10,3 +10,5 @@ Hallo {{ cleaner }}!
 
 Mit freundlichen Grüßen,  
 Dein Putzplan-System
+
+P.S.: Du kannst deine Email-Benachrichtigungen <a href="{{ host }}{% url 'webinterface:cleaner-edit' cleaner.pk %}">hier</a> anpassen.
