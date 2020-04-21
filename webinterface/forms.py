@@ -52,7 +52,7 @@ class ScheduleForm(forms.ModelForm):
 class ScheduleGroupForm(forms.ModelForm):
     class Meta:
         model = ScheduleGroup
-        fields = '__all__'
+        fields = ['name', 'schedules']
         labels = {
             'name': "Name der Putzplan-Gruppe",
             'schedules': "Putzpläne, die dieser Putzplan-Gruppe angehören",
