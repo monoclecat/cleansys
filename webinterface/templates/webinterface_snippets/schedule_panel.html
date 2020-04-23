@@ -114,22 +114,31 @@
                     {% endif %}
                 {% endif %}
             {% endif %}
-            Besitzt <span class="glyphicon glyphicon-send"></span>
-            <strong>{{ schedule.tasktemplate_set.count }}</strong> Aufgaben. <br>
-            <span class="glyphicon glyphicon-repeat"></span>
-            <strong>
-                {% if schedule.frequency == 1 %}
-                    jede Woche
-                {% elif schedule.frequency == 2 %}
-                    in geraden Wochen
-                {% elif schedule.frequency == 3 %}
-                    in ungeraden Wochen
-                {% endif %}
-            </strong>
-            am <span class="glyphicon glyphicon-calendar"></span>
-            <strong>{{ schedule.weekday_as_name }}</strong><br>
-            Zur Zeit <span class=" glyphicon glyphicon-user "></span>
-            <strong>{{ schedule.currently_active_affiliations.count }}</strong> zugewiesene Putzer.
+            <p>
+                Besitzt <span class="glyphicon glyphicon-send"></span>
+                <strong>{{ schedule.tasktemplate_set.count }}</strong> Aufgaben.
+            </p>
+            <p>
+                <span class="glyphicon glyphicon-repeat"></span>
+                <strong>
+                    {% if schedule.frequency == 1 %}
+                        jede Woche
+                    {% elif schedule.frequency == 2 %}
+                        in geraden Wochen
+                    {% elif schedule.frequency == 3 %}
+                        in ungeraden Wochen
+                    {% endif %}
+                </strong>
+                am <span class="glyphicon glyphicon-calendar"></span>
+                <strong>{{ schedule.weekday_as_name }}</strong> mit
+                <span class=" glyphicon glyphicon-user "></span> <strong>{{ schedule.cleaners_per_date }}</strong>
+                Putzenden pro Dienst.
+            </p>
+            <p>
+                <span class=" glyphicon glyphicon-user "></span>
+                <strong>{{ schedule.currently_active_affiliations.count }}</strong> Putzende haben derzeit eine
+                Zugehörigkeit mit diesem Putzplan.
+            </p>
         </div>
     </div>
 </div>
