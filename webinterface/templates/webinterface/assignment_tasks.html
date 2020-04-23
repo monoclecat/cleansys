@@ -42,14 +42,15 @@ Putzdienst erledigen
     <div class="alert alert-info" role="alert">
         <p>
             <strong>{{ tasks.cleaned.count }}</strong> von <strong>{{ tasks.count }}</strong> Aufgaben sind
-            abgehakt. Aufgaben, die zu diesem Zeitpunkt bearbeitbar sind, sind grün eingefärbt.
+            abgehakt. <br>
+            Offene Aufgaben, die zu diesem Zeitpunkt bearbeitbar sind, sind grün eingefärbt.
         </p>
     </div>
 
     {% with as_nav=True %}
         <div class="row well" style="padding: 5px">
             <h4>Schnellnavigation</h4>
-            <p style="margin: 0">Offene Aufgaben</p>
+            <p style="margin: 0">Offene Aufgaben <span class="glyphicon glyphicon-play"></span></p>
             <div class="col-xs-12" style="padding: 5px">
                 {% for task in tasks.uncleaned %}
                     <div class="col-xs-6" style="padding: 0">
@@ -59,7 +60,7 @@ Putzdienst erledigen
                     </div>
                 {% endfor %}
             </div>
-            <p style="margin: 0">Erledigte Aufgaben</p>
+            <p style="margin: 0">Erledigte Aufgaben <span class="glyphicon glyphicon-ok"></span></p>
             <div class="col-xs-12" style="padding: 5px">
             {% for task in tasks.cleaned %}
                 <div class="col-xs-6" style="padding: 0">

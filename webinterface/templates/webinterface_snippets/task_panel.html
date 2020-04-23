@@ -1,6 +1,6 @@
 {% if as_nav %}
     <a href="#task_{{ task.pk }}" class="btn  btn-xs btn-block
-    {% if task.my_time_has_come %}btn-success{% else %}btn-default{% endif %}"
+    {% if task.my_time_has_come and not task.cleaned_by %}btn-success{% else %}btn-default{% endif %}"
     style="text-align: left; white-space: nowrap; overflow: hidden">
         {% if task.cleaned_by %}
             <span class="glyphicon glyphicon-user"></span> <strong>{{ task.cleaned_by }}</strong>:
@@ -11,10 +11,17 @@
         <strong>{{ task.start_date|date:"d.m." }} - {{ task.end_date|date:"d.m." }}</strong>
     </a>
 {% else %}
-    <div class="panel {% if task.my_time_has_come %}panel-success{% else %}panel-default{% endif %}"
+    <div class="panel {% if task.my_time_has_come and not task.cleaned_by %}panel-success{% else %}panel-default{% endif %}"
          id="task_{{ task.pk }}">
         <div class="panel-heading">
-            <p><span class="glyphicon glyphicon-play"></span> <strong>{{ task }}</strong></p>
+            <p>
+                {% if task.cleaned_by %}
+                    <span class="glyphicon glyphicon-ok"></span>
+                {% else %}
+                    <span class="glyphicon glyphicon-play"></span>
+                {% endif %}
+                <strong>{{ task }}</strong>
+            </p>
             {% if assignment %}
                 {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come or user.is_superuser %}
                     <a class="btn {% if task.my_time_has_come and not task.cleaned_by %}btn-success{% else %}btn-default{% endif %}"
