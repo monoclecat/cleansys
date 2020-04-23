@@ -45,11 +45,11 @@ class ScheduleGroupSerializer(HyperlinkedModelSerializer):
 class UserSerializer(HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'id', 'username', 'email', 'cleaner_set']
+        fields = ['url', 'id', 'username', 'email', 'cleaner']
         ref = api_view_reference()
         extra_kwargs = {
             'url': ref['user'],
-            'cleaner_set': ref['cleaner'],
+            'cleaner': ref['cleaner'],
         }
 
 

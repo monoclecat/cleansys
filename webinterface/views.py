@@ -385,9 +385,8 @@ class AssignmentTasksView(TemplateView):
         context['schedule'] = cleaning_week.schedule
         context['tasks'] = cleaning_week.task_set.order_by('-template__end_days_after')
 
-        cleaner_for_user = context['view'].request.user.cleaner_set
-        if cleaner_for_user.exists():
-            context['cleaner'] = cleaner_for_user.first()
+        if not context['view'].request.user.is_superuser:
+            context['cleaner'] = context['view'].request.user.cleaner
             context['assignment'] = context['cleaner'].assignment_in_cleaning_week(cleaning_week)
         else:
             context['cleaner'] = None
