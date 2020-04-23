@@ -333,21 +333,22 @@ class CleanerCalendarView(TemplateView):
 
         all_tasks = Task.objects.filter(cleaning_week__in=[x.cleaning_week for x in assignments],
                                         cleaned_by__isnull=True)
-        for week in range(min(current_epoch_week(), assignments[0].cleaning_week.week),
-                          assignments[-1].cleaning_week.week):
-            monday = epoch_week_to_monday(week)
-            columns = []
-            for weekday in range(0, 7):
-                day = monday + timezone.timedelta(days=weekday)
-                day_data = {
-                    'date': day.strftime("%d.%m."),
-                    'is_today': timezone.now().date() == day,
-                    'equiv_page': CleanerView.paginate_by,
-                    'assignments': [x for x in assignments if x.assignment_date() == day],
-                    'task_ready': any(x.is_active_on_date(day) for x in all_tasks)
-                }
-                columns.append(day_data)
-            context['calendar_rows'].append(columns)
+        if len(assignments) >= 1:
+            for week in range(min(current_epoch_week(), assignments[0].cleaning_week.week),
+                              assignments[-1].cleaning_week.week):
+                monday = epoch_week_to_monday(week)
+                columns = []
+                for weekday in range(0, 7):
+                    day = monday + timezone.timedelta(days=weekday)
+                    day_data = {
+                        'date': day.strftime("%d.%m."),
+                        'is_today': timezone.now().date() == day,
+                        'equiv_page': CleanerView.paginate_by,
+                        'assignments': [x for x in assignments if x.assignment_date() == day],
+                        'task_ready': any(x.is_active_on_date(day) for x in all_tasks)
+                    }
+                    columns.append(day_data)
+                context['calendar_rows'].append(columns)
         return context
 
 
