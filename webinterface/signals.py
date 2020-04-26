@@ -1,7 +1,6 @@
-from django.db.models.signals import post_save, m2m_changed
+from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
 from webinterface.models import *
-from webinterface import emailing
 
 
 @receiver(signal=m2m_changed, sender=ScheduleGroup.schedules.through)
@@ -14,11 +13,4 @@ def schedule_group_changed(instance, action, model, pk_set, **kwargs):
         if schedules.exists():
             for schedule in schedules.all():
                 [x.set_assignments_valid_field(False) for x in schedule.cleaningweek_set.in_future()]
-    return
-
-
-@receiver(signal=post_save, sender=DutySwitch)
-def send_email__new_acceptable_dutyswitch(instance: DutySwitch, created, **kwargs):
-    if created:
-        emailing.send_email__new_acceptable_dutyswitch(instance)
     return

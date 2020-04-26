@@ -15,6 +15,7 @@ import random
 import time
 import os
 from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT, LOGGING, LOGGING_PATH, MEDIA_ROOT
+from webinterface import emailing
 
 
 def date_to_epoch_week(date: datetime.date) -> int:
@@ -769,6 +770,7 @@ class DutySwitch(models.Model):
 
     def update_previous(self):
         self.__previous_acceptor = self.acceptor_assignment
+        self.__previous_pk = self.pk
 
     def __init__(self, *args, **kwargs):
         super(DutySwitch, self).__init__(*args, **kwargs)
@@ -805,13 +807,19 @@ class DutySwitch(models.Model):
         if self.__previous_acceptor is None and self.acceptor_assignment is not None:
             self.requester_assignment.cleaning_week.excluded.add(self.requester_assignment.cleaner)
 
-            source_cleaner = self.requester_assignment.cleaner
+            requester_cleaner = self.requester_assignment.cleaner
 
             self.requester_assignment.cleaner = self.acceptor_assignment.cleaner
             self.requester_assignment.save()
 
-            self.acceptor_assignment.cleaner = source_cleaner
+            self.acceptor_assignment.cleaner = requester_cleaner
             self.acceptor_assignment.save()
             self.update_previous()
 
+            emailing.send_email__dutyswitch_complete(self)
+
         super().save(force_insert, force_update, using, update_fields)
+
+        if not self.__previous_pk:
+            emailing.send_email__new_acceptable_dutyswitch(self)
+
