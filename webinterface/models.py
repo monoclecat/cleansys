@@ -320,7 +320,7 @@ class Cleaner(models.Model):
     email_pref_new_acceptable_dutyswitch = models.BooleanField(default=True)
     email_pref_accepted_foreign_dutyswitch = models.BooleanField(default=True)
     email_pref_own_dutyswitch_accepted = models.BooleanField(default=True)
-    email_pref_assignments_updated = models.BooleanField(default=True)
+    email_pref_assignments_updated = models.BooleanField(default=True)  # Not implemented (see issue #25)
 
     objects = CleanerQuerySet.as_manager()
 

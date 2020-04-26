@@ -74,12 +74,14 @@ class ScheduleGroupForm(forms.ModelForm):
 class CleanerForm(forms.ModelForm):
     class Meta:
         model = Cleaner
-        fields = ['name',
-                  'email_pref_assignment_coming_up',
-                  'email_pref_new_acceptable_dutyswitch',
-                  'email_pref_accepted_foreign_dutyswitch',
-                  'email_pref_own_dutyswitch_accepted',
-                  'email_pref_assignments_updated']
+        fields = [
+            'name',
+            'email_pref_assignment_coming_up',
+            'email_pref_new_acceptable_dutyswitch',
+            'email_pref_accepted_foreign_dutyswitch',
+            'email_pref_own_dutyswitch_accepted',
+            # 'email_pref_assignments_updated',  # Leaving this out as it's not implemented yet (see Issue #25)
+        ]
         labels = {
             'name': "Name des Putzenden (bitte nur Vorname der Person oder Spitzname)",
             'email_pref_assignment_coming_up': "Email erhalten, wenn bald ein Putzdienst kommt.",
@@ -114,8 +116,8 @@ class CleanerForm(forms.ModelForm):
                 self.fields['email_pref_accepted_foreign_dutyswitch'].help_text = text
                 self.fields['email_pref_own_dutyswitch_accepted'].disabled = True
                 self.fields['email_pref_own_dutyswitch_accepted'].help_text = text
-                self.fields['email_pref_assignments_updated'].disabled = True
-                self.fields['email_pref_assignments_updated'].help_text = text
+                # self.fields['email_pref_assignments_updated'].disabled = True
+                # self.fields['email_pref_assignments_updated'].help_text = text
             else:
                 self.fields['name'].disabled = True
                 self.fields['name'].help_text = "Dieses Feld darf nur der Administrator bearbeiten."
