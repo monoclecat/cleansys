@@ -297,6 +297,9 @@ class CleanerQuerySet(models.QuerySet):
         return self.exclude(
             affiliation__beginning__lte=current_epoch_week(), affiliation__end__gte=current_epoch_week())
 
+    def has_email(self) -> QuerySet:
+        return self.exclude(user__email__isnull=True)
+
 
 class Cleaner(models.Model):
     """

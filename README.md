@@ -330,37 +330,61 @@ append the examples below to the file.
 
 > To test a Cronjob you can initially set its interval to `*/1 * * * *` to run it every minute. 
 
+#### Auto-create Assignments
+
 The following job will run `cronscripts/create_assignments.sh` (mentioned above) every
 Monday at 3:00 in the morning: 
+
 ```bash
 0 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_assignments.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
+#### Pre-generate plots
+
 The following job will run `cronscripts/create_plots.sh` every Monday at 3:15 in the morning. 
 These plots will be shown in the Cleaner and Schedule analytics views. 
+It makes sense to run this Cronjob *after* the create_assignments Cronjob 
 Creating these plots once and just loading their html when the page is called saves a lot of resources.  
+
 ```bash
 15 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_plots.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 I also recommend calling `python3 manage.py create_plots` once after setting up the database and  
 creating the Assignments for the next weeks. 
 
+#### Create a local backup of the database
+
 The following job will create a gzipped backup of `db.sqlite3` and put it in `/var/www/cleansys/backups` 
 every day at 4 in the morning: 
+
 ```bash
 0 4 * * * www-data bash /var/www/cleansys/cronscripts/create_backup.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
+#### Send a backup of the database to ADMINS
+
 The following job will send the database file to all admins mentioned in the ADMINS setting every Monday at 
 3:30 in the morning:
+
 ```bash
 30 3 * * 0 www-data bash /var/www/cleansys/cronscripts/send_database_backup.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
+#### Notify Cleaners of upcoming Assignments
+
+The following job will call the `send_email__assignment_coming_up()` function in the module `webinterface.emailing` 
+every day at 12 o'clock noon. 
+For each Assignment whose `assignment_date()` is *exactly* today+5 days in the future, a notification email 
+is sent to that Cleaner. The Cleaner can turn these notifications on or off in his/her Email preferences. 
+
+```bash
+0 12 * * * www-data bash /var/www/cleansys/cronscripts/send_assignment_coming_up_emails.sh >> /var/www/cleansys/logs/cron.log
+``` 
 
 #### Cronjobs aren't working?
 Debugging Cronjobs is a bit tricky. The log output given by `tail /var/log/syslog` will not give you any 
-information useful for debugging. Instead, Cronjobs will send errors by *email*. 
+information useful for debugging. Instead, Cronjobs will send errors by *email* - not via the 
+email server set up in your Django settings, but over your server's email server.  
 If you have no email server set up, you will find messages such as *"No MTA installed"* in `/var/log/syslog`. 
 
 Setting up an email server and client is actually very simple. 
