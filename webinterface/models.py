@@ -338,9 +338,8 @@ class Cleaner(models.Model):
         return self.affiliation_in_week(current_epoch_week())
 
     def deployment_ratio(self, schedule: Schedule, from_week: int, to_week: int) -> float:
-        all_assignments = Assignment.objects.filter(
-                cleaning_week__week__gte=from_week, cleaning_week__week__lte=to_week,
-                cleaning_week__schedule=schedule, cleaning_week__disabled=False)
+        all_assignments = schedule.assignment_set.in_enabled_cleaning_weeks().filter(
+                cleaning_week__week__gte=from_week, cleaning_week__week__lte=to_week)
 
         all_assignment_count = all_assignments.count()
         own_assignment_count = all_assignments.filter(cleaner=self).count()
@@ -354,10 +353,10 @@ class Cleaner(models.Model):
         return self.current_affiliation() is not None
 
     def nr_assignments_in_week(self, week: int):
-        return self.assignment_set.filter(cleaning_week__week=week).count()
+        return self.assignment_set.in_enabled_cleaning_weeks().filter(cleaning_week__week=week).count()
 
     def assignment_in_cleaning_week(self, cleaning_week):
-        query = self.assignment_set.filter(cleaning_week__pk=cleaning_week.pk)
+        query = self.assignment_set.in_enabled_cleaning_weeks().filter(cleaning_week__pk=cleaning_week.pk)
         if query.exists():
             return query.first()
         else:
@@ -609,6 +608,14 @@ class CleaningWeek(models.Model):
         self.save()
 
 
+class AssignmentQuerySet(models.QuerySet):
+    def in_enabled_cleaning_weeks(self):
+        return self.filter(cleaning_week__disabled=False)
+
+    def in_week_or_later(self, week: int):
+        return self.in_enabled_cleaning_weeks().filter(cleaning_week__week__gte=week)
+
+
 class Assignment(models.Model):
     cleaner = models.ForeignKey(Cleaner, on_delete=models.CASCADE)
     cleaners_comment = models.CharField(max_length=200)
@@ -617,8 +624,10 @@ class Assignment(models.Model):
     cleaning_week = models.ForeignKey(CleaningWeek, on_delete=models.CASCADE, editable=False)
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, editable=False)
 
+    objects = AssignmentQuerySet.as_manager()
+
     class Meta:
-        ordering = ('cleaning_week__week',)
+        ordering = ('cleaning_week__week', 'schedule__weekday')
 
     def __str__(self):
         return "{}: {}, {} ".format(
@@ -724,16 +733,22 @@ class Task(models.Model):
 
 class DutySwitchQuerySet(models.QuerySet):
     def open(self, schedule=None):
+        base_filter = self.filter(acceptor_assignment__isnull=True).\
+            filter(requester_assignment__cleaning_week__disabled=False)
         if schedule:
-            return self.filter(acceptor_assignment__isnull=True).filter(requester_assignment__schedule=schedule)
+            return base_filter.filter(requester_assignment__schedule=schedule)
         else:
-            return self.filter(acceptor_assignment__isnull=True)
+            return base_filter
+
+    def inaccessible(self):
+        return self.filter(acceptor_assignment__isnull=True).filter(requester_assignment__cleaning_week__disabled=True)
 
     def closed(self, schedule=None):
+        base_filter = self.exclude(acceptor_assignment__isnull=True)
         if schedule:
-            return self.exclude(acceptor_assignment__isnull=True).filter(requester_assignment__schedule=schedule)
+            return base_filter.filter(requester_assignment__schedule=schedule)
         else:
-            return self.exclude(acceptor_assignment__isnull=True)
+            return base_filter
 
 
 class DutySwitch(models.Model):
@@ -774,7 +789,8 @@ class DutySwitch(models.Model):
         active_affiliations = Affiliation.objects.active_in_week(self.requester_assignment.cleaning_week.week)
         active_cleaners = [x.cleaner for x in active_affiliations.all()]
 
-        return Assignment.objects.filter(schedule=self.requester_assignment.schedule). \
+        return Assignment.objects.in_enabled_cleaning_weeks(). \
+            filter(schedule=self.requester_assignment.schedule). \
             filter(cleaning_week__week__range=(self.requester_assignment.cleaning_week.week + 1,
                                                self.requester_assignment.cleaning_week.week + 12)). \
             filter(cleaner__in=active_cleaners). \

@@ -94,7 +94,7 @@ class AssignmentViewSet(ModelViewSet):
     API endpoint that returns Assignments. Assignments link Cleaners with CleaningWeeks.
     CleaningWeeks contain the Tasks which must be done by its Assignments.
     """
-    queryset = Assignment.objects.all()  # Actually only the ones for a single Cleaner
+    queryset = Assignment.objects.in_enabled_cleaning_weeks()  # Actually only the ones for a single Cleaner
     serializer_class = AssignmentSerializer
     permission_classes = [IsAdminOrReadOnly]
 

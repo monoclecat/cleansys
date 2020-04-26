@@ -233,7 +233,7 @@ class AffiliationNewView(CreateView):
         try:
             self.cleaner = Cleaner.objects.get(pk=kwargs['pk'])
         except Cleaner.DoesNotExist:
-            Http404('Putzer, für den Zugehörigkeit geändert werden soll, existiert nicht!')
+            raise Http404('Putzer, für den Zugehörigkeit geändert werden soll, existiert nicht!')
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -464,7 +464,7 @@ class TaskTemplateNewView(CreateView):
         try:
             self.schedule = Schedule.objects.get(pk=self.kwargs['pk'])
         except Cleaner.DoesNotExist:
-            Http404('Putzplan, für den eine Aufgabe erstellt werden soll, existiert nicht!')
+            raise Http404('Putzplan, für den eine Aufgabe erstellt werden soll, existiert nicht!')
         self.success_url = reverse_lazy('webinterface:schedule-task-list', kwargs={'pk': self.kwargs['pk']})
         return super().dispatch(request, *args, **kwargs)
 
@@ -565,7 +565,7 @@ class TaskCreateView(FormView):
         try:
             self.cleaning_week = CleaningWeek.objects.get(pk=kwargs['pk'])
         except Cleaner.DoesNotExist:
-            Http404('Putzplan, für den Zugehörigkeit geändert werden soll, existiert nicht!')
+            raise Http404('Putzplan, für den Zugehörigkeit geändert werden soll, existiert nicht!')
         self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': self.cleaning_week.schedule.slug,
                                                                          'page': kwargs['page']})
         return super().dispatch(request, *args, **kwargs)
@@ -682,12 +682,19 @@ class DutySwitchUpdateView(UpdateView):
         try:
             self.cleaner = Cleaner.objects.get(slug=request.user.username)
         except Cleaner.DoesNotExist:
-            Http404('Du bist als ein Nutzer angemeldet, der keinem Putzer zugeordnet ist!')
+            raise Http404('Du bist als ein Nutzer angemeldet, der keinem Putzer zugeordnet ist!')
+
         if 'page' in self.kwargs:
             self.success_url = reverse_lazy('webinterface:cleaner', kwargs={'page': self.kwargs['page']})
         else:
             self.success_url = reverse_lazy('webinterface:cleaner-no-page')
         return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        object = super().get_object(queryset)
+        if object.requester_assignment.cleaning_week.disabled:
+            raise Http404('Der Putzdienst, der getauscht werden sollte, wurde zwischenzeitlich deaktiviert.')
+        return object
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

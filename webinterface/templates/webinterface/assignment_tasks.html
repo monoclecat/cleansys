@@ -13,86 +13,98 @@ Putzdienst erledigen
         </div>
     </div>
 
-    {% if already_cleaned_error %}
-        <h3 style="padding: 1em;" class="bg-danger">{{ already_cleaned_error }}</h3>
-    {% endif %}
+    {% if not cleaning_week.disabled %}
+        {% if cleaner in cleaning_week.assigned_cleaners %}
+            <div class="alert alert-info" role="alert">
+                <p><strong>Hallo {{ cleaner }}!</strong></p>
+                <p>
+                    Du bist am
+                    <span class="glyphicon glyphicon-calendar"></span>
+                    <strong>{{ cleaning_week.assignment_date|date:"d. M. y" }}</strong>
+                    {% if assignment.cleaning_buddies %}
+                        zusammen mit
+                        {% for other_cleaner in assignment.cleaning_buddies %}
+                            <span class="glyphicon glyphicon-user"></span>
+                            <strong>{{ other_cleaner }}</strong>{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    dem Putzplan
+                    <span class="glyphicon glyphicon-list-alt"></span>
+                    <strong>{{ schedule }}</strong> zugeteilt!
+                </p>
+            </div>
+        {% endif %}
 
-    {% if cleaner in cleaning_week.assigned_cleaners %}
+
         <div class="alert alert-info" role="alert">
-            <p><strong>Hallo {{ cleaner }}!</strong></p>
             <p>
-                Du bist am
-                <span class="glyphicon glyphicon-calendar"></span>
-                <strong>{{ cleaning_week.assignment_date|date:"d. M. y" }}</strong>
-                {% if assignment.cleaning_buddies %}
-                    zusammen mit
-                    {% for other_cleaner in assignment.cleaning_buddies %}
-                        <span class="glyphicon glyphicon-user"></span>
-                        <strong>{{ other_cleaner }}</strong>{% if not forloop.last %},{% endif %}
-                    {% endfor %}
-                {% endif %}
-                dem Putzplan
-                <span class="glyphicon glyphicon-list-alt"></span>
-                <strong>{{ schedule }}</strong> zugeteilt!
+                <strong>{{ tasks.cleaned.count }}</strong> von <strong>{{ tasks.count }}</strong> Aufgaben sind
+                abgehakt. <br>
+                Offene Aufgaben, die zu diesem Zeitpunkt bearbeitbar sind, sind grün eingefärbt.
             </p>
         </div>
-    {% endif %}
 
-
-    <div class="alert alert-info" role="alert">
-        <p>
-            <strong>{{ tasks.cleaned.count }}</strong> von <strong>{{ tasks.count }}</strong> Aufgaben sind
-            abgehakt. <br>
-            Offene Aufgaben, die zu diesem Zeitpunkt bearbeitbar sind, sind grün eingefärbt.
-        </p>
-    </div>
-
-    {% with as_nav=True %}
-        <div class="row well" style="padding: 5px">
-            <h4>Schnellnavigation</h4>
-            <p style="margin: 0">Offene Aufgaben <span class="glyphicon glyphicon-play"></span></p>
-            <div class="col-xs-12" style="padding: 5px">
-                {% for task in tasks.uncleaned %}
-                    <div class="col-xs-6" style="padding: 0">
-                        <div style="margin: 2px">
-                            {% include 'webinterface_snippets/task_panel.html' %}
+        {% with as_nav=True %}
+            <div class="row well" style="padding: 5px">
+                <h4>Schnellnavigation</h4>
+                <p style="margin: 0">Offene Aufgaben <span class="glyphicon glyphicon-play"></span></p>
+                <div class="col-xs-12" style="padding: 5px">
+                    {% for task in tasks.uncleaned %}
+                        <div class="col-xs-6" style="padding: 0">
+                            <div style="margin: 2px">
+                                {% include 'webinterface_snippets/task_panel.html' %}
+                            </div>
                         </div>
+                    {% endfor %}
+                </div>
+                <p style="margin: 0">Erledigte Aufgaben <span class="glyphicon glyphicon-ok"></span></p>
+                <div class="col-xs-12" style="padding: 5px">
+                    {% for task in tasks.cleaned %}
+                        <div class="col-xs-6" style="padding: 0">
+                            <div style="margin: 2px">
+                                {% include 'webinterface_snippets/task_panel.html' %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endwith %}
+
+        {% with as_nav=False %}
+            <h3>Folgende Aufgaben stehen an:</h3>
+            <div class="row">
+                {% for task in tasks.uncleaned %}
+                    <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
+                        {% include 'webinterface_snippets/task_panel.html' %}
                     </div>
                 {% endfor %}
             </div>
-            <p style="margin: 0">Erledigte Aufgaben <span class="glyphicon glyphicon-ok"></span></p>
-            <div class="col-xs-12" style="padding: 5px">
-            {% for task in tasks.cleaned %}
-                <div class="col-xs-6" style="padding: 0">
-                    <div style="margin: 2px">
+            <h3>Folgende Aufgaben wurden schon erledigt:</h3>
+            <div class="row">
+                {% for task in tasks.cleaned %}
+                    <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
                         {% include 'webinterface_snippets/task_panel.html' %}
                     </div>
-                </div>
-            {% endfor %}
+                {% empty %}
+                    <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
+                        <p><i>Es wurde noch nichts abgehakt.</i></p>
+                    </div>
+                {% endfor %}
             </div>
+        {% endwith %}
+    {% else %}
+        <div class="alert alert-danger" role="alert">
+           <p><strong>Putzdienst deaktiviert!</strong></p>
+                <p>
+                    Der Putzdienst am <span class="glyphicon glyphicon-calendar"></span>
+                    <strong>{{ cleaning_week.assignment_date|date:"d. M. y" }}</strong>
+                    im Putzplan
+                    <span class="glyphicon glyphicon-list-alt"></span>
+                    <strong>{{ schedule }}</strong> ist deaktiviert worden!
+                </p>
+                <p>
+                    In dieser Woche müssen keine Putzdienste erledigt werden.
+                </p>
         </div>
-    {% endwith %}
-
-    {% with as_nav=False %}
-        <h3>Folgende Aufgaben stehen an:</h3>
-        <div class="row">
-            {% for task in tasks.uncleaned %}
-                <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
-                    {% include 'webinterface_snippets/task_panel.html' %}
-                </div>
-            {% endfor %}
-        </div>
-        <h3>Folgende Aufgaben wurden schon erledigt:</h3>
-        <div class="row">
-            {% for task in tasks.cleaned %}
-                <div class="col-xs-12 col-sm-6" style="padding: 5px; white-space: normal">
-                    {% include 'webinterface_snippets/task_panel.html' %}
-                </div>
-            {% empty %}
-                <div class="col-xs-12 col-sm-6 col-lg-4" style="padding: 5px; white-space: normal">
-                    <p><i>Es wurde noch nichts abgehakt.</i></p>
-                </div>
-            {% endfor %}
-        </div>
-    {% endwith %}
+    {% endif %}
 {% endblock %}

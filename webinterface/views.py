@@ -48,7 +48,7 @@ def create_cleaner_analytics(weeks_into_past=20, weeks_into_future=20, recreate=
         for cleaner in Cleaner.objects.all():
             fig.add_trace(go.Scatter(
                 x=[epoch_week_to_sunday(x) for x in weeks],
-                y=[cleaner.assignment_set.filter(cleaning_week__week=x).count() for x in weeks],
+                y=[cleaner.assignment_set.in_enabled_cleaning_weeks().filter(cleaning_week__week=x).count() for x in weeks],
                 name=cleaner.name,
                 mode='lines+markers'
             ))
@@ -262,7 +262,7 @@ class ScheduleList(ListView):
             if current_affiliation:
                 self.queryset = current_affiliation.group.schedules.enabled()
             else:
-                return Http404("Putzer ist nicht aktiv.")
+                raise Http404("Putzer ist nicht aktiv.")
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -280,10 +280,10 @@ class CleanerView(ListView):
         if request.user.is_superuser:
             return HttpResponseRedirect(reverse_lazy('webinterface:admin'))
         self.cleaner = get_object_or_404(Cleaner, user=request.user)
-        self.assignments = self.cleaner.assignment_set.order_by('cleaning_week__week', 'schedule__weekday')
+        self.assignments = self.cleaner.assignment_set.in_enabled_cleaning_weeks()
 
         if 'page' not in kwargs:
-            if self.assignments.filter(cleaning_week__week__gt=current_epoch_week()).exists():
+            if self.assignments.in_week_or_later(week=current_epoch_week()+1).exists():
                 if 'assignment_pk' in kwargs:
                     index_of_current_cleaning_week = next(i for i, v
                                                           in enumerate(self.assignments)
@@ -307,7 +307,7 @@ class CleanerView(ListView):
         context = super().get_context_data(**kwargs)
         context['cleaner'] = self.cleaner
         context['answerable_dutyswitch_requests'] = []
-        for duty_switch in DutySwitch.objects.all():
+        for duty_switch in DutySwitch.objects.open():
             if duty_switch.possible_acceptors().filter(cleaner=self.cleaner).exists():
                 context['answerable_dutyswitch_requests'].append(duty_switch)
         return context
@@ -324,8 +324,7 @@ class CleanerCalendarView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        assignments = self.cleaner.assignment_set.filter(cleaning_week__week__gte=current_epoch_week()-1). \
-            order_by('cleaning_week__week', 'schedule__weekday')
+        assignments = self.cleaner.assignment_set.in_week_or_later(week=current_epoch_week()-1)
         assignments = list(assignments)
 
         context['calendar_header'] = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
