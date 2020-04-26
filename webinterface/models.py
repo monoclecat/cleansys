@@ -804,6 +804,7 @@ class DutySwitch(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
+        delete_self = False
         if self.__previous_acceptor is None and self.acceptor_assignment is not None:
             self.requester_assignment.cleaning_week.excluded.add(self.requester_assignment.cleaner)
 
@@ -815,6 +816,7 @@ class DutySwitch(models.Model):
             self.acceptor_assignment.cleaner = requester_cleaner
             self.acceptor_assignment.save()
             self.update_previous()
+            delete_self = True
 
             emailing.send_email__dutyswitch_complete(self)
 
@@ -822,4 +824,7 @@ class DutySwitch(models.Model):
 
         if not self.__previous_pk:
             emailing.send_email__new_acceptable_dutyswitch(self)
+
+        if delete_self:
+            self.delete()
 
