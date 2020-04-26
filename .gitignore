@@ -5,6 +5,7 @@ media/
 settings/
 /static/
 .htaccess
+backups/
 
 
 ### Python template
