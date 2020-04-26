@@ -5,6 +5,7 @@ from django.http import HttpResponseRedirect
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from .views import back_button_page_context
+from webinterface.email_sending import send_welcome_email, send_email_changed
 
 
 class ScheduleNewView(CreateView):
@@ -147,6 +148,7 @@ class CleanerNewView(CreateView):
         self.object.user.email = form.cleaned_data.get('email')
         self.object.user.save()
 
+        send_welcome_email(self.object)
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -190,11 +192,13 @@ class CleanerUpdateView(UpdateView):
         return context
 
     def form_valid(self, form):
+        previous_email = self.object.user.email
         self.object = form.save()
-        if self.object.user.email != form.cleaned_data.get('email'):
+        if previous_email != form.cleaned_data.get('email'):
             self.object.user.email = form.cleaned_data.get('email')
             self.object.user.save()
-
+            send_welcome_email(cleaner=self.object)
+            send_email_changed(cleaner=self.object, previous_address=previous_email)
         return HttpResponseRedirect(self.success_url)
 
 

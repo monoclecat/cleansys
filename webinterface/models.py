@@ -15,7 +15,7 @@ import random
 import time
 import os
 from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT, LOGGING, LOGGING_PATH, MEDIA_ROOT
-from webinterface import emailing
+from webinterface import email_sending
 
 
 def date_to_epoch_week(date: datetime.date) -> int:
@@ -818,12 +818,12 @@ class DutySwitch(models.Model):
             self.update_previous()
             delete_self = True
 
-            emailing.send_email__dutyswitch_complete(self)
+            email_sending.send_email__dutyswitch_complete(self)
 
         super().save(force_insert, force_update, using, update_fields)
 
         if not self.__previous_pk:
-            emailing.send_email__new_acceptable_dutyswitch(self)
+            email_sending.send_email__new_acceptable_dutyswitch(self)
 
         if delete_self:
             self.delete()

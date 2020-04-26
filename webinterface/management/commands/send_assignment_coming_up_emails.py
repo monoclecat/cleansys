@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from webinterface.emailing import send_email__assignment_coming_up
+from webinterface.email_sending import send_email__assignment_coming_up
 
 
 class Command(BaseCommand):

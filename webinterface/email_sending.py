@@ -5,6 +5,45 @@ from django.template.loader import get_template
 from cleansys.settings import EMAIL_FROM_ADDRESS, BASE_URL_WITH_HOST
 
 
+def send_welcome_email(cleaner):
+    outbox = []
+
+    template = get_template('email_templates/email_welcome.md')
+    context = {  # for base_template, context MUST contain cleaner and host
+        'cleaner': cleaner,
+        'host': BASE_URL_WITH_HOST,
+    }
+    plaintext = template.render(context)
+    html = markdown(template.render(context), extensions=['tables'])
+    msg = mail.EmailMultiAlternatives(
+        "Willkommen im Putzplan-System CleanSys!",
+        plaintext, EMAIL_FROM_ADDRESS, [cleaner.user.email])
+    msg.attach_alternative(html, "text/html")
+    outbox.append(msg)
+    connection = mail.get_connection()
+    connection.send_messages(outbox)
+
+
+def send_email_changed(cleaner, previous_address):
+    outbox = []
+
+    template = get_template('email_templates/email_changed.md')
+    context = {  # for base_template, context MUST contain cleaner and host
+        'cleaner': cleaner,
+        'host': BASE_URL_WITH_HOST,
+        'previous_address': previous_address,
+    }
+    plaintext = template.render(context)
+    html = markdown(template.render(context), extensions=['tables'])
+    msg = mail.EmailMultiAlternatives(
+        "Deine Email-Addresse wurde geändert",
+        plaintext, EMAIL_FROM_ADDRESS, [previous_address])
+    msg.attach_alternative(html, "text/html")
+    outbox.append(msg)
+    connection = mail.get_connection()
+    connection.send_messages(outbox)
+
+
 def send_email__new_acceptable_dutyswitch(dutyswitch):
     cleaners = set(x.cleaner for x in dutyswitch.possible_acceptors()
                    if x.cleaner.email_pref_new_acceptable_dutyswitch and x.cleaner.user.email)
