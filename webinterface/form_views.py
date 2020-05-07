@@ -8,6 +8,23 @@ from .views import back_button_page_context
 from webinterface.email_sending import send_welcome_email, send_email_changed
 
 
+class AdminUpdateView(UpdateView):
+    form_class = AdminSettingsForm
+    success_url = reverse_lazy('webinterface:admin')
+    template_name = 'webinterface/generic_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Admin-Einstellungen"
+        context['submit_button'] = {'text': "Speichern"}
+        context['cancel_button'] = {'text': "Abbrechen",
+                                    'url': self.success_url}
+        return context
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+
 class ScheduleNewView(CreateView):
     form_class = ScheduleForm
     model = Schedule
@@ -19,7 +36,7 @@ class ScheduleNewView(CreateView):
         context['title'] = "Erzeuge neuen Putzplan"
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:admin')}
+                                    'url': self.success_url}
         return context
 
     def form_valid(self, form):
@@ -41,7 +58,7 @@ class ScheduleUpdateView(UpdateView):
         context['title'] = "Ändere Putzplan"
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
-                                    'url': reverse_lazy('webinterface:admin')}
+                                    'url': self.success_url}
         context['delete_button'] = {'text': "Lösche Putzplan",
                                     'url': reverse_lazy('webinterface:schedule-delete', kwargs={'pk': self.object.pk})}
         return context

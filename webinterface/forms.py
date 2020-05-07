@@ -11,6 +11,12 @@ def html_alert_banner(content: str, alert_level='info'):
     return HTML("<div class=\"alert alert-{}\" role=\"alert\">{}</div>".format(alert_level, content))
 
 
+class AdminSettingsForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ('email',)
+
+
 class ScheduleForm(forms.ModelForm):
     class Meta:
         model = Schedule

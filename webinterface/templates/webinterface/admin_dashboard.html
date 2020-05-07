@@ -26,6 +26,15 @@ Einstellungen
         </div>
         <div class="row">
             <div class="col-xs-12 col-sm-6">
+                <h2>Admin Daten
+                    <a class="btn btn-default %}"
+                       href="{% url 'webinterface:admin-edit' %}" role="button">
+                        <span class="glyphicon glyphicon-cog"></span> Bearbeiten
+                    </a>
+                </h2>
+                <div class="well">
+                    Admin Email: <strong>{{ request.user.email }}</strong>
+                </div>
                 <h2>Putzer
                     <a class="btn btn-default %}"
                        href="{% url 'webinterface:cleaner-new' %}" role="button">
