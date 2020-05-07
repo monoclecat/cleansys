@@ -245,7 +245,7 @@ class SchedulePrintView(TemplateView):
     def get_context_data(self, **kwargs):
         schedule = Schedule.objects.get(slug=kwargs['slug'])
         context = {'schedule': schedule,
-                   'cleaning_weeks': schedule.cleaningweek_set.filter(week__gte=kwargs['week']).order_by('week'),
+                   'cleaning_weeks': schedule.cleaningweek_set.filter(week__gte=kwargs['week']),
                    'task_templates': schedule.tasktemplate_set.all()}
         return context
 

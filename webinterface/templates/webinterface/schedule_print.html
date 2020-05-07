@@ -71,12 +71,18 @@
             <tr>
                 <td class="date">{{ cleaning_week.assignment_date|date:"d. M Y" }}</td>
                 <td class="cleaner">
+                {% if cleaning_week.disabled %}
+                    <i>Kein Putzdienst</i>
+                {% else %}
                     {% for cleaner in cleaning_week.assigned_cleaners %}
                         {{ cleaner }}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
+                {% endif %}
                 </td>
                 {% for task_template in task_templates %}
-                    {% if task_template in cleaning_week.completed_tasks__as_templates %}
+                    {% if cleaning_week.disabled %}
+                        <td class="checkmark"><span class="glyphicon glyphicon-minus"></span></td>
+                    {% elif task_template in cleaning_week.completed_tasks__as_templates %}
                         <td class="checkmark"><span class="glyphicon glyphicon-ok"></span></td>
                     {% else %}
                         <td class="checkmark"> </td>
