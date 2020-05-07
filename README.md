@@ -378,7 +378,7 @@ For each Assignment whose `assignment_date()` is *exactly* today+5 days in the f
 is sent to that Cleaner. The Cleaner can turn these notifications on or off in his/her Email preferences. 
 
 ```bash
-0 12 * * * www-data bash /var/www/cleansys/cronscripts/send_assignment_coming_up_emails.sh >> /var/www/cleansys/logs/cron.log
+0 12 * * * www-data bash /var/www/cleansys/cronscripts/send_emails.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
 #### Cronjobs aren't working?
