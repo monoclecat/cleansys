@@ -20,6 +20,10 @@ ALLOWED_HOSTS = []
 # If the last Assignment of a Schedule is only these many weeks away from current_epoch_week, a warning is displayed
 WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT = 4
 
+# If the current Affiliation of a Cleaner ends in less than / equal these many weeks away from current_epoch_week()
+# without a follow-up Affiliation right after (= no gap), then a warning is displayed
+WARN_WEEKS_IN_ADVANCE__CLEANER_SOON_HOMELESS = 4
+
 
 # Email settings
 EMAIL_HOST = 'localhost'

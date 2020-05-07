@@ -186,7 +186,8 @@ class AdminView(TemplateView):
 
         # webinterface_snippets/cleaner_panel.html needs to cover the same cases!
         context['action_needed_cleaners'] = \
-            Cleaner.objects.filter(affiliation__isnull=True)
+            set(Cleaner.objects.filter(affiliation__isnull=True)) | \
+            set(x for x in Cleaner.objects.all() if x.is_homeless_soon())
         action_needed_cleaner_pks = [x.pk for x in context['action_needed_cleaners']]
         context['active_cleaner_list'] = Cleaner.objects.active().exclude(pk__in=action_needed_cleaner_pks)
         context['inactive_cleaner_list'] = Cleaner.objects.inactive().exclude(pk__in=action_needed_cleaner_pks)

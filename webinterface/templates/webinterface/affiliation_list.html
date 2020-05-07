@@ -22,6 +22,46 @@
         <p>Bei Fragen wende dich bitte an den Administrator.</p>
     {% endif %}
 
+    {% if user.is_superuser %}
+        <div class="row">
+            {% if cleaner.is_homeless_soon %}
+                <div class="alert alert-warning" role="alert" style="margin: 5px 0">
+                    <p>
+                        {{ cleaner }}'s jetzige Zugehörigkeit endet in Woche
+                        <strong>{{ cleaner.current_affiliation.end }} </strong>
+                        <i>(letzter Tag: {{ cleaner.current_affiliation.end_as_date|date:'d. b. Y' }})</i>.
+                    </p>
+
+                    <p>
+                        Es gibt keine direkt darauf folgende Zugehörigkeit, die in Woche
+                        <strong>{{ cleaner.current_affiliation.end|add:1 }} </strong> beginnt!
+                    </p>
+
+                    <p>
+                        Bitte überprüfe folgende Kriterien:
+                    </p>
+                    <ol>
+                        <li>
+                            <strong>Es gibt eine Zugehörigkeit, die auf die jetzige folgt.</strong>
+                            Ist dies der Fall, so wird diese Meldung angezeigt weil die Anschluss-Zugehörigkeit nicht
+                            direkt auf die jetzige folgt. In der Zwischenzeit wird {{ cleaner }} keine Putzdienste
+                            haben. <br>
+                            Wenn dies so gewollt ist, ignoriere diese Meldung.
+                            Ansonsten, passe bitte die Zugehörigkeiten an.
+                        </li>
+                        <li>
+                            <strong>Die jetzige Zugehörigkeit ist die letzte für {{ cleaner }}.</strong>
+                            In diesem Fall zieht {{ cleaner }} aus oder es wurde vergessen eine
+                            Nachfolge-Zugehörigkeit zu erstellen. <br>
+                            Falls {{ cleaner }} wirklich auszieht, ignoriere diese Meldung.
+                        </li>
+                    </ol>
+
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
     <table class="table">
         {% for affiliation in cleaner.affiliation_set.all %}
             <tr>

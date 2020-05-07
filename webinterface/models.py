@@ -14,7 +14,8 @@ import calendar
 import random
 import time
 import os
-from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT, LOGGING, LOGGING_PATH, MEDIA_ROOT
+from cleansys.settings import WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT, LOGGING, LOGGING_PATH, MEDIA_ROOT, \
+    WARN_WEEKS_IN_ADVANCE__CLEANER_SOON_HOMELESS
 from webinterface import email_sending
 
 
@@ -340,6 +341,13 @@ class Cleaner(models.Model):
 
     def current_affiliation(self):
         return self.affiliation_in_week(current_epoch_week())
+
+    def is_homeless_soon(self):
+        current_affiliation = self.current_affiliation()
+        if current_affiliation is not None:
+            return current_affiliation.end <= current_epoch_week() + WARN_WEEKS_IN_ADVANCE__CLEANER_SOON_HOMELESS and \
+                    not self.affiliation_set.filter(beginning=current_affiliation.end+1).exists()
+        return False
 
     def deployment_ratio(self, schedule: Schedule, from_week: int, to_week: int) -> float:
         all_assignments = schedule.assignment_set.in_enabled_cleaning_weeks().filter(
