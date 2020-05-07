@@ -342,11 +342,16 @@ class Cleaner(models.Model):
     def current_affiliation(self):
         return self.affiliation_in_week(current_epoch_week())
 
-    def is_homeless_soon(self):
+    def is_homeless_soon(self, less_than_equal=True):
         current_affiliation = self.current_affiliation()
         if current_affiliation is not None:
-            return current_affiliation.end <= current_epoch_week() + WARN_WEEKS_IN_ADVANCE__CLEANER_SOON_HOMELESS and \
-                    not self.affiliation_set.filter(beginning=current_affiliation.end+1).exists()
+            if not self.affiliation_set.filter(beginning=current_affiliation.end+1).exists():
+                if less_than_equal:
+                    return current_affiliation.end <= current_epoch_week() + \
+                           WARN_WEEKS_IN_ADVANCE__CLEANER_SOON_HOMELESS
+                else:
+                    return current_affiliation.end == current_epoch_week() + \
+                           WARN_WEEKS_IN_ADVANCE__CLEANER_SOON_HOMELESS
         return False
 
     def deployment_ratio(self, schedule: Schedule, from_week: int, to_week: int) -> float:

@@ -114,6 +114,7 @@ def send_email__dutyswitch_complete(dutyswitch):
 
 
 def send_email__assignment_coming_up(notify_days_before=5):
+    from webinterface.models import Cleaner, current_epoch_week
     outbox = []
     for cleaner in Cleaner.objects.has_email().filter(email_pref_assignment_coming_up=True):
         assignments = cleaner.assignment_set.in_enabled_cleaning_weeks().\
@@ -140,3 +141,39 @@ def send_email__assignment_coming_up(notify_days_before=5):
     connection = mail.get_connection()
     connection.send_messages(outbox)
 
+
+def send_email__warn_admin_assignments_running_out():
+    from webinterface.models import Schedule
+    schedules_with_warning = [x for x in Schedule.objects.enabled() if x.assignments_are_running_out()]
+    if schedules_with_warning:
+        outbox = []
+        for admin in User.objects.filter(is_superuser=True):
+            template = get_template('email_templates/email_warn_admin_assignments_running_out.md')
+            plaintext = template.render()
+            html = markdown(template.render(), extensions=['tables'])
+            msg = mail.EmailMultiAlternatives(
+                "CleanSys erfordert dein Eingreifen!",
+                plaintext, EMAIL_FROM_ADDRESS, [admin.email])
+            msg.attach_alternative(html, "text/html")
+            outbox.append(msg)
+        connection = mail.get_connection()
+        connection.send_messages(outbox)
+
+
+def send_email__warn_admin_cleaner_soon_homeless():
+    from webinterface.models import Cleaner
+    cleaners_with_warning = [x for x in Cleaner.objects.all() if x.is_homeless_soon(less_than_equal=False)]
+    # less_than_equal=False prevents the email being sent every week for the same Cleaner
+    if cleaners_with_warning:
+        outbox = []
+        for admin in User.objects.filter(is_superuser=True):
+            template = get_template('email_templates/email_warn_admin_cleaners_moving_out.md')
+            plaintext = template.render()
+            html = markdown(template.render(), extensions=['tables'])
+            msg = mail.EmailMultiAlternatives(
+                "CleanSys erfordert vielleicht dein Eingreifen!",
+                plaintext, EMAIL_FROM_ADDRESS, [admin.email])
+            msg.attach_alternative(html, "text/html")
+            outbox.append(msg)
+        connection = mail.get_connection()
+        connection.send_messages(outbox)

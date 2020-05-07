@@ -370,15 +370,30 @@ The following job will send the database file to all admins mentioned in the ADM
 30 3 * * 0 www-data bash /var/www/cleansys/cronscripts/send_database_backup.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
-#### Notify Cleaners of upcoming Assignments
+#### Send daily notification emails
 
-The following job will call the `send_email__assignment_coming_up()` function in the module `webinterface.emailing` 
-every day at 12 o'clock noon. 
-For each Assignment whose `assignment_date()` is *exactly* today+5 days in the future, a notification email 
-is sent to that Cleaner. The Cleaner can turn these notifications on or off in his/her Email preferences. 
+The following job will call functions which send emails every day at 12 o'clock noon when specific conditions are met:
+
+- `send_email__assignment_coming_up()`: For each Assignment whose `assignment_date()` is *exactly* today+5 days 
+in the future, a notification email is sent to that Cleaner. 
+The Cleaner can turn these notifications on or off in his/her Email preferences.  
 
 ```bash
-0 12 * * * www-data bash /var/www/cleansys/cronscripts/send_emails.sh >> /var/www/cleansys/logs/cron.log
+0 12 * * * www-data bash /var/www/cleansys/cronscripts/send_daily_emails.sh >> /var/www/cleansys/logs/cron.log
+``` 
+
+#### Send weekly notification emails
+
+The following job will call functions which send emails on the Monday of every week at 12 o'clock noon 
+when specific conditions are met:
+
+- `send_email__warn_admin_assignments_running_out()`: Sends a notification email to the Admin if 
+Schedule.assignments_are_running_out() returns True for any enabled Schedule. 
+- `send_email__warn_admin_cleaner_soon_homeless()`: Sends a notification email to the Admin if 
+Cleaner.is_homeless_soon(less_than_equal=False) returns True for any Cleaner. 
+
+```bash
+0 12 * * 0 www-data bash /var/www/cleansys/cronscripts/send_weekly_emails.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
 #### Cronjobs aren't working?
