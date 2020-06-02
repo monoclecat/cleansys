@@ -14,7 +14,7 @@ def send_welcome_email(cleaner):
         'host': BASE_URL_WITH_HOST,
     }
     plaintext = template.render(context)
-    html = markdown(template.render(context), extensions=['tables'])
+    html = markdown(plaintext, extensions=['tables'])
     msg = mail.EmailMultiAlternatives(
         "Willkommen im Putzplan-System CleanSys!",
         plaintext, EMAIL_FROM_ADDRESS, [cleaner.user.email])
@@ -34,7 +34,7 @@ def send_email_changed(cleaner, previous_address):
         'previous_address': previous_address,
     }
     plaintext = template.render(context)
-    html = markdown(template.render(context), extensions=['tables'])
+    html = markdown(plaintext, extensions=['tables'])
     msg = mail.EmailMultiAlternatives(
         "Deine Email-Addresse wurde geändert",
         plaintext, EMAIL_FROM_ADDRESS, [previous_address])
@@ -60,7 +60,7 @@ def send_email__new_acceptable_dutyswitch(dutyswitch):
             'tradeable': tradeable_assignments,
         }
         plaintext = template.render(context)
-        html = markdown(template.render(context), extensions=['tables'])
+        html = markdown(plaintext, extensions=['tables'])
         msg = mail.EmailMultiAlternatives(
             "{} möchte einen Putzdienst tauschen".format(dutyswitch.requester_assignment.cleaner.name),
             plaintext, EMAIL_FROM_ADDRESS, [cleaner.user.email])
@@ -86,7 +86,7 @@ def send_email__dutyswitch_complete(dutyswitch):
             'acceptor_cleaner': acceptor_cleaner,
         }
         plaintext = template.render(context)
-        html = markdown(template.render(context), extensions=['tables'])
+        html = markdown(plaintext, extensions=['tables'])
         msg = mail.EmailMultiAlternatives(
             "{} hat deine Putzdienst-Tauschanfrage angenommen".format(acceptor_cleaner.name),
             plaintext, EMAIL_FROM_ADDRESS, [requester_cleaner.user.email])
@@ -102,7 +102,7 @@ def send_email__dutyswitch_complete(dutyswitch):
             'requester_cleaner': requester_cleaner,
         }
         plaintext = template.render(context)
-        html = markdown(template.render(context), extensions=['tables'])
+        html = markdown(plaintext, extensions=['tables'])
         msg = mail.EmailMultiAlternatives(
             "Du hast eine Putzdienst-Tauschanfrage angenommen".format(requester_cleaner.name),
             plaintext, EMAIL_FROM_ADDRESS, [requester_cleaner.user.email])
@@ -131,7 +131,7 @@ def send_email__assignment_coming_up(notify_days_before=5):
                 'assignment': assignment,
             }
             plaintext = template.render(context)
-            html = markdown(template.render(context), extensions=['tables'])
+            html = markdown(plaintext, extensions=['tables'])
             msg = mail.EmailMultiAlternatives(
                 "Dein Putzdienst in {} am {}".format(assignment.schedule,
                                                      assignment.assignment_date().strftime("%a, %d.%b.%Y")),
@@ -150,7 +150,7 @@ def send_email__warn_admin_assignments_running_out():
         for admin in User.objects.filter(is_superuser=True):
             template = get_template('email_templates/email_warn_admin_assignments_running_out.md')
             plaintext = template.render()
-            html = markdown(template.render(), extensions=['tables'])
+            html = markdown(plaintext, extensions=['tables'])
             msg = mail.EmailMultiAlternatives(
                 "CleanSys erfordert dein Eingreifen!",
                 plaintext, EMAIL_FROM_ADDRESS, [admin.email])
@@ -169,7 +169,7 @@ def send_email__warn_admin_cleaner_soon_homeless():
         for admin in User.objects.filter(is_superuser=True):
             template = get_template('email_templates/email_warn_admin_cleaners_moving_out.md')
             plaintext = template.render()
-            html = markdown(template.render(), extensions=['tables'])
+            html = markdown(plaintext, extensions=['tables'])
             msg = mail.EmailMultiAlternatives(
                 "CleanSys erfordert vielleicht dein Eingreifen!",
                 plaintext, EMAIL_FROM_ADDRESS, [admin.email])
@@ -205,7 +205,7 @@ def send_email__warn_admin_tasks_forgotten():
                     'cleaning_week': cleaning_week,
                 }
                 plaintext = template.render(context)
-                html = markdown(template.render(context), extensions=['tables'])
+                html = markdown(plaintext, extensions=['tables'])
                 msg = mail.EmailMultiAlternatives(
                     "Bei einem Putzdienst wurden Aufgaben vergessen",
                     plaintext, EMAIL_FROM_ADDRESS, [admin.email])
