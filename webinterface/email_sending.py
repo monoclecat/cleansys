@@ -177,3 +177,41 @@ def send_email__warn_admin_cleaner_soon_homeless():
             outbox.append(msg)
         connection = mail.get_connection()
         connection.send_messages(outbox)
+
+
+def send_email__warn_admin_tasks_forgotten():
+    from webinterface.models import CleaningWeek, current_epoch_week
+    this_week = current_epoch_week()
+    relevant_cleaning_weeks = CleaningWeek.objects.filter(week__range=(this_week-1, this_week))
+    for cleaning_week in relevant_cleaning_weeks.all():
+        if all([task.has_passed() for task in cleaning_week.task_set.all()]) \
+                and any([task.end_date() + timezone.timedelta(days=1) == timezone.now().date()
+                         for task in cleaning_week.task_set.all()]):
+            ratio = cleaning_week.ratio_of_completed_tasks()
+            if ratio == 0.0:
+                # No Task was completed
+                all_forgotten = True
+            elif ratio < 1.0:
+                # Not all Tasks were completed
+                all_forgotten = False
+            else:
+                continue
+            outbox = []
+            for admin in User.objects.filter(is_superuser=True):
+                template = get_template('email_templates/email_warn_admin_tasks_forgotten.md')
+                context = {  # for base_template, context MUST contain cleaner and host
+                    'all_forgotten': all_forgotten,
+                    'host': BASE_URL_WITH_HOST,
+                    'cleaning_week': cleaning_week,
+                }
+                plaintext = template.render(context)
+                html = markdown(template.render(context), extensions=['tables'])
+                msg = mail.EmailMultiAlternatives(
+                    "Bei einem Putzdienst wurden Aufgaben vergessen",
+                    plaintext, EMAIL_FROM_ADDRESS, [admin.email])
+                msg.attach_alternative(html, "text/html")
+                outbox.append(msg)
+            connection = mail.get_connection()
+            connection.send_messages(outbox)
+
+

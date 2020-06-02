@@ -372,11 +372,17 @@ The following job will send the database file to all admins mentioned in the ADM
 
 #### Send daily notification emails
 
-The following job will call functions which send emails every day at 12 o'clock noon when specific conditions are met:
+The following job will call functions which will send these emails every day at 12 o'clock noon:
 
 - `send_email__assignment_coming_up()`: For each Assignment whose `assignment_date()` is *exactly* today+5 days 
 in the future, a notification email is sent to that Cleaner. 
 The Cleaner can turn these notifications on or off in his/her Email preferences.  
+- `send_email__warn_admin_tasks_forgotten()`: If the Task of a CleaningWeek with the latest do-until date has just 
+passed *(that is, its do-until date ended yesterday)* and there are Tasks which have not been completed, an email
+is sent to the Admin.  
+
+> An "email to the Admin" means an email to the address of the Django superuser, not to the address specified in 
+> Django's ADMINS setting. The address in Django's ADMINS setting is only for server fault tracebacks if these are enabled.
 
 ```bash
 0 12 * * * www-data bash /var/www/cleansys/cronscripts/send_daily_emails.sh >> /var/www/cleansys/logs/cron.log
@@ -391,6 +397,9 @@ when specific conditions are met:
 Schedule.assignments_are_running_out() returns True for any enabled Schedule. 
 - `send_email__warn_admin_cleaner_soon_homeless()`: Sends a notification email to the Admin if 
 Cleaner.is_homeless_soon(less_than_equal=False) returns True for any Cleaner. 
+
+> Again, an "email to the Admin" means an email to the address of the Django superuser, 
+> not to the address specified in Django's ADMINS setting. 
 
 ```bash
 0 12 * * 0 www-data bash /var/www/cleansys/cronscripts/send_weekly_emails.sh >> /var/www/cleansys/logs/cron.log
