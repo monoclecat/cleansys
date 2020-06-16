@@ -9,7 +9,8 @@ from unittest.mock import *
 class DutySwitchQuerySetTest(BaseFixtureWithDutySwitch, TestCase):
     def test__open__no_schedule(self):
         self.assertSetEqual(set(DutySwitch.objects.open()),
-                            {self.angie_bathroom_dutyswitch_2502, self.dave_garage_dutyswitch_2500})
+                            {self.angie_bathroom_dutyswitch_2502, self.dave_garage_dutyswitch_2500,
+                             self.bob_bedroom_dutyswitch_2503, self.bob_garage_dutyswitch_2503})
 
     def test__open__with_schedule(self):
         self.assertSetEqual(set(DutySwitch.objects.open(self.bathroom_schedule)), {self.angie_bathroom_dutyswitch_2502})
@@ -33,19 +34,53 @@ class DutySwitchTest(BaseFixtureWithDutySwitch, TestCase):
         self.assertIn(self.angie.name, string)
 
     @patch('webinterface.models.Assignment.has_passed', autospec=True, return_value=False)
-    def test__possible_acceptors(self, mock_has_passed):
+    @patch('webinterface.models.current_epoch_week', autospec=True)
+    def test__possible_acceptors(self, mock_current_epoch_week, mock_has_passed):
+        mock_current_epoch_week.return_value = self.start_week
+
         self.assertSetEqual(set(self.angie_bathroom_dutyswitch_2502.possible_acceptors()),
-                            {Assignment.objects.get(schedule=self.bathroom_schedule,
-                                                    cleaning_week__week=self.start_week+3)})
+                            set(Assignment.objects.filter(
+                                schedule=self.bathroom_schedule,
+                                cleaning_week__week=self.start_week+3))
+                            )
 
         self.assertSetEqual(set(self.dave_garage_dutyswitch_2500.possible_acceptors()),
-                            {Assignment.objects.get(schedule=self.garage_schedule,
-                                                    cleaning_week__week=self.start_week + 3)})
+                            set(Assignment.objects.filter(
+                                schedule=self.garage_schedule,
+                                cleaning_week__week=self.start_week + 3))
+                            )
+
+        self.assertSetEqual(set(self.bob_bedroom_dutyswitch_2503.possible_acceptors()),
+                            set(Assignment.objects.filter(
+                                schedule=self.bedroom_schedule,
+                                cleaning_week__week=self.start_week + 1))
+                            )
+
+        self.assertSetEqual(set(self.bob_garage_dutyswitch_2503.possible_acceptors()),
+                            set(Assignment.objects.filter(
+                                schedule=self.garage_schedule,
+                                cleaning_week__week__range=(self.start_week, self.start_week + 2)))
+                            )
+
 
     @patch('webinterface.models.Assignment.has_passed', autospec=True, return_value=True)
-    def test__possible_acceptors__requester_has_passed(self, mock_has_passed):
+    @patch('webinterface.models.current_epoch_week', autospec=True)
+    def test__requester_assignment_has_passed(self, mock_current_epoch_week, mock_has_passed):
+        mock_current_epoch_week.return_value = self.start_week
         self.assertFalse(self.angie_bathroom_dutyswitch_2502.possible_acceptors().exists())
         self.assertFalse(self.dave_garage_dutyswitch_2500.possible_acceptors().exists())
+
+    @patch('webinterface.models.Assignment.has_passed', autospec=True, side_effect=[False, True, False, False, False])
+    @patch('webinterface.models.current_epoch_week', autospec=True)
+    def test__one_acceptor_has_passed(self, mock_current_epoch_week, mock_has_passed):
+        mock_current_epoch_week.return_value = self.start_week
+
+        # has_passed will return True on its second call, on dave's garage duty in start_week
+        self.assertSetEqual(set(self.bob_garage_dutyswitch_2503.possible_acceptors()),
+                            set(Assignment.objects.filter(
+                                schedule=self.garage_schedule,
+                                cleaning_week__week__range=(self.start_week+1, self.start_week + 2)))
+                            )
 
 
 class DutySwitchDatabaseTests(TestCase):

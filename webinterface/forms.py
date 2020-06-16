@@ -310,6 +310,10 @@ class DutySwitchAcceptForm(forms.ModelForm):
         labels = {
             'acceptor_assignment': "Welchen deiner Putzdienst möchtest du mit dem obigen tauschen?"
         }
+        help_texts = {
+            'acceptor_assignment': "Es werden noch nicht abgeschlossene Putzdienste bis 12 Wochen nach dem "
+                                   "zum Tausch angebotenen Putzdienst angezeigt."
+        }
 
     def __init__(self, cleaner=None, *args, **kwargs):
         super().__init__(*args, **kwargs)

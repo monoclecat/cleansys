@@ -807,13 +807,20 @@ class DutySwitch(models.Model):
         active_affiliations = Affiliation.objects.active_in_week(self.requester_assignment.cleaning_week.week)
         active_cleaners = [x.cleaner for x in active_affiliations.all()]
 
-        return Assignment.objects.in_enabled_cleaning_weeks(). \
+        acceptors = Assignment.objects.in_enabled_cleaning_weeks(). \
             filter(schedule=self.requester_assignment.schedule). \
-            filter(cleaning_week__week__range=(self.requester_assignment.cleaning_week.week + 1,
+            filter(cleaning_week__week__range=(current_epoch_week() - 1,
                                                self.requester_assignment.cleaning_week.week + 12)). \
             filter(cleaner__in=active_cleaners). \
             exclude(cleaner=self.requester_assignment.cleaner). \
             exclude(cleaning_week__excluded=self.requester_assignment.cleaner)
+
+        for could_have_passed in acceptors.filter(
+                cleaning_week__week__range=(current_epoch_week() - 1, current_epoch_week())).all():
+            if could_have_passed.has_passed():
+                acceptors = acceptors.exclude(pk=could_have_passed.pk)
+
+        return acceptors
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
