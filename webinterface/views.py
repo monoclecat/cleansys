@@ -251,6 +251,34 @@ class SchedulePrintView(TemplateView):
         return context
 
 
+class ScheduleOverView(TemplateView):
+    template_name = "webinterface/schedule_overview.html"
+
+    def get_context_data(self, **kwargs):
+        weeks_into_past = 10
+        weeks_into_future = 1
+
+        displayed_weeks = [x for x in range(current_epoch_week()-weeks_into_past, current_epoch_week()+1)]
+
+        # week_ranges = \
+        #     [f"{epoch_week_to_monday(x).strftime('%d. %b %Y')} bis {epoch_week_to_sunday(x).strftime('%d. %b %Y')}"
+        #      for x in displayed_weeks]
+
+        enabled_schedules = Schedule.objects.enabled()
+        rows = [
+            {
+                'week': x,
+                'timeframe': [epoch_week_to_monday(x), epoch_week_to_sunday(x)],
+                'cleaning_weeks': [s.cleaningweek_set.filter(week=x).first() for s in enabled_schedules]
+            } for x in displayed_weeks]
+
+        context = {'schedules': Schedule.objects.enabled(),
+                   'rows': rows,
+                   'current_week': current_epoch_week(),
+                   'weeks_into_past': weeks_into_past}
+        return context
+
+
 class ScheduleList(ListView):
     template_name = "webinterface/schedule_list.html"
     model = Schedule

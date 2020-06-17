@@ -84,7 +84,10 @@ Einstellungen
             <div class="col-xs-12 col-sm-6">
                 <h2>Putzpläne
                     <a class="btn btn-default" href="{% url 'webinterface:schedule-new' %}" role="button">
-                    <span class="glyphicon glyphicon-plus"></span> Neuer Putzplan</a></h2>
+                        <span class="glyphicon glyphicon-plus"></span> Neuer Putzplan</a>
+                    <a class="btn btn-info" href="{% url 'webinterface:schedule-overview' %}" role="button">
+                        <span class="glyphicon glyphicon-search"></span> Übersicht</a>
+                </h2>
                 <div class="well">
                     {% if action_needed_schedules %}
                         <div class="row">

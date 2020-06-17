@@ -208,7 +208,7 @@
     {% if page_obj.0.week %}
         <div class="row" style="padding: 5px">
             <div class="col-xs-12">
-                <a href="{% url 'webinterface:schedule-analystics-view-with-schedule-page' schedule.slug page_obj.number %}"
+                <a href="{% url 'webinterface:schedule-analytics-view-with-schedule-page' schedule.slug page_obj.number %}"
                    class="btn btn-default btn-block" role="button">
                     <span class="glyphicon glyphicon-stats"></span> Analytics zu {{ schedule }}
                 </a>

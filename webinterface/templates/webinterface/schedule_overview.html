@@ -1,0 +1,88 @@
+{% extends "webinterface/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+{{ schedule.name }}
+{% endblock %}
+
+{% block body %}
+    <style>
+        .date {
+            width: 9em;
+        }
+
+        .status {
+            width: 7em;
+        }
+    </style>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3">
+                <div class="row">
+                    <div class="btn btn-group btn-group-md btn-group-justified" role="group">
+                        {% include "webinterface_snippets/home_button.html" %}
+                    </div>
+                </div>
+
+                <h2>Übersicht über erledigte Aufgaben</h2>
+                <p>
+                    In der folgenden Tabelle werden die Anteile an erledigten Aufgaben aller Putzpläne angezeigt.
+                    Der Zeitraum beinhaltet die letzten {{ weeks_into_past }} Wochen inklusive der aktuellen Woche.
+                </p>
+                <p>
+                    Bitte beachte, dass Putzdienste aus der vorherigen Woche immernoch aktiv sein können.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <table id="printtable" class="table table-condensed table-bordered"
+           style="width: auto; border:none;">
+        <tr style="background: #ffffff">
+            <th class="text_bottom date" style="border: none"><div><span>Zeitraum</span></div></th>
+            {% for schedule in schedules %}
+                <th class="status" style="border: none">
+                    <div>
+                        <span>{{ schedule }}</span>
+                    </div>
+                </th>
+            {% endfor %}
+        </tr>
+        {% for row in rows %}
+            <tr>
+                <td class="date {% if row.week == current_week %}info{% endif %}">
+                    <strong>{{ row.timeframe.0|date:"d. M, Y" }}</strong> bis <br>
+                    <strong>{{ row.timeframe.1|date:"d. M, Y" }}</strong>
+                </td>
+                {% for cleaning_week in row.cleaning_weeks %}
+                    {% if cleaning_week and not cleaning_week.disabled %}
+                        <td class="status
+                            {% with ratio=cleaning_week.ratio_of_completed_tasks %}
+                                {% if ratio == 1 %}
+                                    success
+                                {% elif ratio > 0.7 %}
+                                    warning
+                                {% else %}
+                                    danger
+                                {% endif %}
+                            {% endwith %}">
+                            <span class="label label-default">
+                                {{ cleaning_week.completed_tasks.count }} /
+                                {{ cleaning_week.task_set.count }}
+                            </span>
+                            <a class="btn btn-info btn-xs" role="button"
+                                    href="{% url 'webinterface:assignment-tasks' cleaning_week.pk %}" target="_blank">
+                                <span class="glyphicon glyphicon-share-alt"></span>
+                            </a>
+                        </td>
+                    {% else %}
+                        <td class="status active">
+                            <i>Keine Dienste</i>
+                        </td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

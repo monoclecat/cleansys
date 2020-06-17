@@ -97,9 +97,9 @@ urlpatterns = [
     #      name='schedule-highlight'),
     path('putzplan/<slug:slug>/seite<int:page>/', login_required(ScheduleView.as_view()), name='schedule'),
     path('putzplan/<slug:slug>/analytics/', login_required(ScheduleAnalyticsView.as_view()),
-         name='schedule-analystics-view'),
+         name='schedule-analytics-view'),
     path('putzplan/<slug:slug>/analytics/s<int:schedule_page>/', login_required(ScheduleAnalyticsView.as_view()),
-         name='schedule-analystics-view-with-schedule-page'),
+         name='schedule-analytics-view-with-schedule-page'),
     path('putzplan/<slug:slug>/', login_required(ScheduleView.as_view()), name='schedule-no-page'),
 
     path('schedule-new/', must_be_admin(ScheduleNewView.as_view()), name='schedule-new'),
@@ -111,6 +111,8 @@ urlpatterns = [
          name='schedule-task-list'),
     path('schedule/<int:pk>/tasks/new/', must_be_admin(TaskTemplateNewView.as_view()),
          name='schedule-task-new'),
+    path('schedule-overview', must_be_admin(ScheduleOverView.as_view()),
+         name='schedule-overview'),
 
     path('schedule-group-new/', must_be_admin(ScheduleGroupNewView.as_view()),
          name='schedule-group-new'),
