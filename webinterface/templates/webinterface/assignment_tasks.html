@@ -33,6 +33,16 @@ Putzdienst erledigen
                     <strong>{{ schedule }}</strong> zugeteilt!
                 </p>
             </div>
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                <p>
+                    Für diesen Putzdienst eingeteilt:
+                    {% for cleaner in cleaning_week.assigned_cleaners %}
+                        <span class="glyphicon glyphicon-user"></span>
+                        <strong>{{ cleaner }}</strong>{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                </p>
+            </div>
         {% endif %}
 
 
