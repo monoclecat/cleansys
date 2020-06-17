@@ -2,7 +2,7 @@ from .forms import *
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, DeleteView, UpdateView, FormView
 from django.http import HttpResponseRedirect
-from django.http import Http404
+from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from .views import back_button_page_context
 from webinterface.email_sending import send_welcome_email, send_email_changed
@@ -628,6 +628,16 @@ class TaskCleanedView(UpdateView):
         self.assignment = get_object_or_404(Assignment, pk=kwargs['assignment_pk'])
         self.success_url = reverse_lazy('webinterface:assignment-tasks',
                                         kwargs={'cleaning_week_pk': self.assignment.cleaning_week.pk})
+        try:
+            self.cleaner = Cleaner.objects.get(user=self.request.user)
+        except Cleaner.DoesNotExist:
+            self.cleaner = None
+            if not self.request.user.is_superuser:
+                return HttpResponseForbidden("Kein Putzer ist mit deinem Nutzer verbunden.")
+
+        if self.assignment.cleaner != self.cleaner and not self.request.user.is_superuser:
+            return HttpResponseForbidden("Du bist nicht in der Liste erlaubter Putzer für diesen Putzdienst.")
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -635,7 +645,8 @@ class TaskCleanedView(UpdateView):
         try:
             kwargs['logged_in_cleaner'] = Cleaner.objects.get(user=self.request.user)
         except Cleaner.DoesNotExist:
-            pass
+            kwargs['logged_in_cleaner'] = None
+
         return kwargs
 
     def get_context_data(self, **kwargs):

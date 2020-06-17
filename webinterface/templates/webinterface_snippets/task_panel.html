@@ -24,11 +24,25 @@
             </p>
             {% if assignment %}
                 {% if cleaner in cleaning_week.assigned_cleaners and task.my_time_has_come or user.is_superuser %}
+                    {% if not user.is_superuser and task.my_time_has_come and not task.cleaned_by %}
+                        <form method="POST" id="{{ assignment.pk }}__{{ task.pk }}"
+                              action="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="save" value="">
+                            <input type="hidden" name="cleaned_by" value="{{ cleaner.pk }}">
+                        </form>
+                        <button type="submit" class="btn {% if task.my_time_has_come and not task.cleaned_by %}btn-success{% else %}btn-default{% endif %}"
+
+                                form="{{ assignment.pk }}__{{ task.pk }}">
+                            <span class="glyphicon glyphicon-saved"></span> Abhaken
+                        </button>
+                    {% endif %}
                     <a class="btn {% if task.my_time_has_come and not task.cleaned_by %}btn-success{% else %}btn-default{% endif %}"
                        href="{% url 'webinterface:task-cleaned' assignment.pk task.pk %}"
                        role="button">
+                        <span class="glyphicon glyphicon-cog"></span>
                         {% if not task.cleaned_by %}
-                            <span class="glyphicon glyphicon-saved"></span> Abhaken
+                            Mehr Optionen
                         {% else %}
                             Bearbeiten
                         {% endif %}
