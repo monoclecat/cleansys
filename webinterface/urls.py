@@ -81,9 +81,11 @@ urlpatterns = [
 
     path('tauschen/<int:assignment_pk>/<int:page>', login_required(DutySwitchNewView.as_view()),
          name='dutyswitch-create'),
-    path('tauschanfrage-akzeptieren/<int:pk>/<int:page>', login_required(DutySwitchUpdateView.as_view()),
+    path('tausch-bearbeiten/<int:dutyswitch_pk>/<int:page>', login_required(DutySwitchUpdateView.as_view()),
+         name='dutyswitch-update'),
+    path('tauschanfrage-akzeptieren/<int:pk>/<int:page>', login_required(DutySwitchAcceptView.as_view()),
          name='dutyswitch-accept'),
-    path('tauschanfrage-akzeptieren/<int:pk>', login_required(DutySwitchUpdateView.as_view()),
+    path('tauschanfrage-akzeptieren/<int:pk>', login_required(DutySwitchAcceptView.as_view()),
          name='dutyswitch-accept-no-cleaner-page'),
     path('tauschanfrage-loeschen/<int:pk>/<int:page>', login_required(DutySwitchDeleteView.as_view()),
          name='dutyswitch-delete'),

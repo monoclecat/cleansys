@@ -10,6 +10,7 @@ import logging
 from logging.config import dictConfig
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.db import OperationalError
 import calendar
 import random
 import time
@@ -562,9 +563,11 @@ class CleaningWeek(models.Model):
     objects = CleaningWeekQuerySet.as_manager()
 
     def __str__(self):
-        return "CleaningWeek in Schedule {}, week nr. {} ({} to {})".format(
-            self.schedule.name, self.week,
-            self.week_start().strftime("%d. %b %Y"), self.week_end().strftime("%d. %b %Y"))
+        return "{} am {}".format(
+            self.schedule.name, self.assignment_date().strftime("%d. %b %Y"))
+        # return "{} am {} in der Woche von {} bis {}".format(
+        #     self.schedule.name, self.assignment_date().strftime("%d. %b %Y"),
+        #     self.week_start().strftime("%d. %b %Y"), self.week_end().strftime("%d. %b %Y"))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -776,6 +779,7 @@ class DutySwitch(models.Model):
     requester_assignment = models.OneToOneField(Assignment, on_delete=models.CASCADE, related_name="requester",
                                                 editable=False)
     acceptor_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="acceptor")
+    acceptor_weeks = models.ManyToManyField(CleaningWeek)
 
     message = models.CharField(max_length=100)
 
@@ -800,17 +804,28 @@ class DutySwitch(models.Model):
         else:
             return base_str
 
+    @staticmethod
+    def default_acceptor_weeks(requester_assignment: Assignment):
+        return requester_assignment.schedule.cleaningweek_set. \
+            filter(week__range=(current_epoch_week() - 1, requester_assignment.cleaning_week.week + 12)). \
+            exclude(pk=requester_assignment.cleaning_week.pk). \
+            exclude(excluded=requester_assignment.cleaner)
+
     def possible_acceptors(self):
         if self.requester_assignment.has_passed():
             return Assignment.objects.none()
+
+        if self.acceptor_weeks.all().count() == 0:
+            acceptor_weeks = DutySwitch.default_acceptor_weeks(self.requester_assignment).all()
+        else:
+            acceptor_weeks = self.acceptor_weeks.all()
 
         active_affiliations = Affiliation.objects.active_in_week(self.requester_assignment.cleaning_week.week)
         active_cleaners = [x.cleaner for x in active_affiliations.all()]
 
         acceptors = Assignment.objects.in_enabled_cleaning_weeks(). \
             filter(schedule=self.requester_assignment.schedule). \
-            filter(cleaning_week__week__range=(current_epoch_week() - 1,
-                                               self.requester_assignment.cleaning_week.week + 12)). \
+            filter(cleaning_week__in=acceptor_weeks). \
             filter(cleaner__in=active_cleaners). \
             exclude(cleaner=self.requester_assignment.cleaner). \
             exclude(cleaning_week__excluded=self.requester_assignment.cleaner)

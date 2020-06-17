@@ -72,7 +72,6 @@ class CleaningWeekTest(TestCase):
     def test__str(self):
         string_repr = self.cw1.__str__()
         self.assertIn(self.schedule.name, string_repr)
-        self.assertIn(str(self.cw1.week), string_repr)
 
     def test__assignment_date(self):
         self.assertEqual(self.cw1.assignment_date(),

@@ -62,7 +62,6 @@ class DutySwitchTest(BaseFixtureWithDutySwitch, TestCase):
                                 cleaning_week__week__range=(self.start_week, self.start_week + 2)))
                             )
 
-
     @patch('webinterface.models.Assignment.has_passed', autospec=True, return_value=True)
     @patch('webinterface.models.current_epoch_week', autospec=True)
     def test__requester_assignment_has_passed(self, mock_current_epoch_week, mock_has_passed):

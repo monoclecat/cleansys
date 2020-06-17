@@ -291,16 +291,38 @@ class TaskCleanedForm(forms.ModelForm):
             self.fields['cleaned_by'].required = False
 
 
-class DutySwitchCreateForm(forms.ModelForm):
+class DutySwitchForm(forms.ModelForm):
     class Meta:
         model = DutySwitch
         exclude = ('acceptor_assignment',)
         labels = {
-            'message': "Wieso möchtest du tauschen?"
+            'message': "Wieso möchtest du tauschen?",
+            'acceptor_weeks': "Zu welchen Terminen kannst du dafür einen Putzdienst übernehmen?"
         }
         help_texts = {
-            'message': "Max. 100 Zeichen. Diese Nachricht wird den Putzenden angezeigt, die mit dir tauschen können."
+            'message': "Max. 100 Zeichen. Diese Nachricht wird den Putzenden angezeigt, die mit dir tauschen können.",
+            'acceptor_weeks': "Ob ein Termin letztendlich in Frage kommt hängt von weiteren Kriterien ab. "
+                              "Es kann z.B. kein Dienst getauscht werden, der schon abgelaufen ist. "
         }
+        widgets = {
+            'acceptor_weeks': forms.CheckboxSelectMultiple
+        }
+
+    def __init__(self, requester_assignment=None, *args, **kwargs):
+        if 'instance' in kwargs and kwargs['instance']:
+            requester_assignment = kwargs['instance'].requester_assignment
+        super().__init__(*args, **kwargs)
+        if requester_assignment:
+            self.fields['acceptor_weeks'].queryset = DutySwitch.default_acceptor_weeks(requester_assignment)
+            self.fields['acceptor_weeks'].initial = self.fields['acceptor_weeks'].queryset
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        if cleaned_data['acceptor_weeks'].count() < self.fields['acceptor_weeks'].queryset.count() / 2:
+            raise forms.ValidationError("Es müssen mindestens die Hälfte der Termine ausgewählt sein!")
+
+        return cleaned_data
 
 
 class DutySwitchAcceptForm(forms.ModelForm):

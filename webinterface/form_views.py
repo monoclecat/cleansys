@@ -650,7 +650,7 @@ class TaskCleanedView(UpdateView):
 
 
 class DutySwitchNewView(CreateView):
-    form_class = DutySwitchCreateForm
+    form_class = DutySwitchForm
     model = DutySwitch
     template_name = 'webinterface/generic_form.html'
 
@@ -663,6 +663,11 @@ class DutySwitchNewView(CreateView):
         self.assignment = Assignment.objects.get(pk=self.kwargs['assignment_pk'])
         self.success_url = reverse_lazy('webinterface:cleaner', kwargs={'page': kwargs['page']})
         return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['requester_assignment'] = self.assignment
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -691,6 +696,29 @@ class DutySwitchNewView(CreateView):
 
 
 class DutySwitchUpdateView(UpdateView):
+    form_class = DutySwitchForm
+    model = DutySwitch
+    template_name = 'webinterface/generic_form.html'
+    pk_url_kwarg = "dutyswitch_pk"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.success_url = reverse_lazy('webinterface:cleaner', kwargs={'page': kwargs['page']})
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Gib einen Putzdienst-Tausch in Auftrag"
+        context['info_banner'] = {'text': "<p>Andere Putzer werden nicht über deine Änderungen benachrichtigt.</p>"}
+        context['submit_button'] = {'text': "Speichern"}
+        context['cancel_button'] = {'text': "Abbrechen",
+                                    'url': self.success_url}
+        context['delete_button'] = {'text': "Tauschanfrage löschen",
+                                    'url': reverse_lazy('webinterface:dutyswitch-delete',
+                                                        kwargs={'pk': self.object.pk, 'page': self.kwargs['page']})}
+        return context
+
+
+class DutySwitchAcceptView(UpdateView):
     form_class = DutySwitchAcceptForm
     model = DutySwitch
     template_name = 'webinterface/generic_form.html'
