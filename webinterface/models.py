@@ -357,7 +357,9 @@ class Cleaner(models.Model):
 
     def deployment_ratio(self, schedule: Schedule, from_week: int, to_week: int) -> float:
         all_assignments = schedule.assignment_set.in_enabled_cleaning_weeks().filter(
-                cleaning_week__week__gte=from_week, cleaning_week__week__lte=to_week)
+                cleaning_week__week__gte=from_week,
+                cleaning_week__week__lte=to_week,
+                cleaning_week__assignments_valid=True)
 
         all_assignment_count = all_assignments.count()
         own_assignment_count = all_assignments.filter(cleaner=self).count()
