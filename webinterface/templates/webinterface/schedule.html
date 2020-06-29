@@ -187,6 +187,10 @@
                                             Diese Woche {% if cleaning_week.disabled %}aktivieren{% else %}deaktivieren{% endif %}
                                         </a>
                                     </li>
+                                    <li role="separator" class="divider"></li>
+                                    <li>
+                                        <p><i>Wochennummer: {{ cleaning_week.week }}</i></p>
+                                    </li>
                                     {% comment %}
                                     CleaningWeeks shall not be deleted, rather disabled!
                                     <li role="separator" class="divider"></li>

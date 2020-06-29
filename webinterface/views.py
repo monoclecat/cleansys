@@ -206,7 +206,7 @@ class ScheduleView(ListView):
         self.cleaning_weeks = self.schedule.cleaningweek_set.all()
 
         if 'page' not in kwargs:
-            if self.cleaning_weeks.filter(week__gt=current_epoch_week()).exists():
+            if self.cleaning_weeks.filter(week__gt=current_epoch_week()-1).exists():
                 index_of_current_cleaning_week = next(i for i, v
                                                       in enumerate(self.cleaning_weeks)
                                                       if v.week >= current_epoch_week())
