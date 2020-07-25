@@ -2,7 +2,7 @@ from webinterface.models import *
 from markdown import markdown
 from django.core import mail
 from django.template.loader import get_template
-from cleansys.settings import EMAIL_FROM_ADDRESS, BASE_URL_WITH_HOST
+from cleansys.settings import EMAIL_FROM_ADDRESS, HOST
 
 
 def create_email_message(subject, rendered_markdown, to):
@@ -25,7 +25,7 @@ def send_welcome_email(cleaner):
     template = get_template('email_templates/email_welcome.md')
     context = {  # for base_template, context MUST contain cleaner and host
         'cleaner': cleaner,
-        'host': BASE_URL_WITH_HOST,
+        'host': HOST,
     }
     outbox.append(create_email_message(
         subject="Willkommen im Putzplan-System CleanSys!",
@@ -41,7 +41,7 @@ def send_email_changed(cleaner, previous_address):
     template = get_template('email_templates/email_changed.md')
     context = {  # for base_template, context MUST contain cleaner and host
         'cleaner': cleaner,
-        'host': BASE_URL_WITH_HOST,
+        'host': HOST,
         'previous_address': previous_address,
     }
     outbox.append(create_email_message(
@@ -62,7 +62,7 @@ def send_email__new_acceptable_dutyswitch(dutyswitch):
         template = get_template('email_templates/email_new_acceptable_dutyswitch.md')
         context = {  # for base_template, context MUST contain cleaner and host
             'cleaner': cleaner,
-            'host': BASE_URL_WITH_HOST,
+            'host': HOST,
             'dutyswitch': dutyswitch,
             'requester': dutyswitch.requester_assignment,
             'tradeable': tradeable_assignments,
@@ -86,7 +86,7 @@ def send_email__dutyswitch_complete(dutyswitch):
         template = get_template('email_templates/email_own_dutyswitch_was_accepted.md')
         context = {  # for base_template, context MUST contain cleaner and host
             'cleaner': requester_cleaner,
-            'host': BASE_URL_WITH_HOST,
+            'host': HOST,
             'dutyswitch': dutyswitch,
             'acceptor_cleaner': acceptor_cleaner,
         }
@@ -99,7 +99,7 @@ def send_email__dutyswitch_complete(dutyswitch):
         template = get_template('email_templates/email_accepted_foreign_dutyswitch.md')
         context = {  # for base_template, context MUST contain cleaner and host
             'cleaner': acceptor_cleaner,
-            'host': BASE_URL_WITH_HOST,
+            'host': HOST,
             'dutyswitch': dutyswitch,
             'requester_cleaner': requester_cleaner,
         }
@@ -126,7 +126,7 @@ def send_email__assignment_coming_up(notify_days_before=5):
             template = get_template('email_templates/email_assignment_coming_up.md')
             context = {  # for base_template, context MUST contain cleaner and host
                 'cleaner': cleaner,
-                'host': BASE_URL_WITH_HOST,
+                'host': HOST,
                 'assignment': assignment,
             }
             outbox.append(create_email_message(
@@ -189,7 +189,7 @@ def send_email__warn_admin_tasks_forgotten():
             template = get_template('email_templates/email_warn_admin_tasks_forgotten.md')
             context = {  # for base_template, context MUST contain cleaner and host
                 'all_forgotten': all_forgotten,
-                'host': BASE_URL_WITH_HOST,
+                'host': HOST,
                 'cleaning_week': cleaning_week,
             }
             outbox.append(create_email_message(subject="Bei einem Putzdienst wurden Aufgaben vergessen",
