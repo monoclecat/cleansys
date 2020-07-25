@@ -703,6 +703,8 @@ class DutySwitchNewView(CreateView):
         self.object = form.save(commit=False)
         self.object.requester_assignment = self.assignment
         self.object.save()
+        # When setting commit=False in form.save(), you must call form.save_m2m() to save ManytoMany relationships!
+        form.save_m2m()
         return HttpResponseRedirect(self.get_success_url())
 
 
