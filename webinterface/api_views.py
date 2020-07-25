@@ -38,16 +38,6 @@ class ScheduleGroupViewSet(ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
 
 
-class UserViewSet(ModelViewSet):
-    """
-    API endpoint that returns Cleaners
-    """
-    queryset = User.objects.exclude(is_superuser=True)
-    serializer_class = UserSerializer
-    lookup_field = 'username'
-    permission_classes = [IsAdminOrReadOnly]
-
-
 class CleanerViewSet(ModelViewSet):
     """
     API endpoint that returns Cleaners

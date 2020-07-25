@@ -5,7 +5,6 @@ from webinterface.models import *
 def api_view_reference():
     return {
         'schedule': {'view_name': 'webinterface:api:schedule-detail', 'lookup_field': 'slug'},
-        'user': {'view_name': 'webinterface:api:user-detail', 'lookup_field': 'username'},
         'cleaner': {'view_name': 'webinterface:api:cleaner-detail', 'lookup_field': 'slug'},
         'schedulegroup': {'view_name': 'webinterface:api:schedulegroup-detail', 'lookup_field': 'slug'},
         'affiliation': {'view_name': 'webinterface:api:affiliation-detail'},
@@ -42,25 +41,13 @@ class ScheduleGroupSerializer(HyperlinkedModelSerializer):
         }
 
 
-class UserSerializer(HyperlinkedModelSerializer):
-    class Meta:
-        model = User
-        fields = ['url', 'id', 'username', 'email', 'cleaner']
-        ref = api_view_reference()
-        extra_kwargs = {
-            'url': ref['user'],
-            'cleaner': ref['cleaner'],
-        }
-
-
 class CleanerSerializer(HyperlinkedModelSerializer):
     class Meta:
         model = Cleaner
-        fields = ['url', 'id', 'user', 'name', 'affiliation_set', 'assignment_set']
+        fields = ['url', 'id', 'name', 'affiliation_set', 'assignment_set']
         ref = api_view_reference()
         extra_kwargs = {
             'url': ref['cleaner'],
-            'user': ref['user'],
             'affiliation_set': ref['affiliation'],
             'assignment_set': ref['assignment'],
         }

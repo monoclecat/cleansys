@@ -13,7 +13,6 @@ from django.views.generic.base import RedirectView
 router = routers.DefaultRouter()  # https://www.django-rest-framework.org/api-guide/routers/#defaultrouter
 router.register(r'schedules', ScheduleViewSet)
 router.register(r'schedulegroups', ScheduleGroupViewSet)
-router.register(r'users', UserViewSet)
 router.register(r'cleaners', CleanerViewSet)
 router.register(r'affiliations', AffiliationViewSet)
 router.register(r'cleaningweeks', CleaningWeekViewSet)
