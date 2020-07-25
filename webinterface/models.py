@@ -850,6 +850,9 @@ class DutySwitch(models.Model):
             self.requester_assignment.cleaner = self.acceptor_assignment.cleaner
             self.requester_assignment.save()
 
+            # if there is an open DutySwitch with acceptor_assignment as the requester, we delete it
+            DutySwitch.objects.filter(requester_assignment=self.acceptor_assignment).delete()
+
             self.acceptor_assignment.cleaner = requester_cleaner
             self.acceptor_assignment.save()
             self.update_previous()
