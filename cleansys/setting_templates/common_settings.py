@@ -8,7 +8,7 @@ from django.urls import reverse_lazy
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASE_URL = '/'
-BASE_URL_WITH_HOST = 'http://127.0.0.1'  # This is for links in emails, must not end with a slash
+HOST = 'http://127.0.0.1'  # This is for links in emails, must not end with a slash
 
 # If WSGIScriptAlias of your Apache config already implements the base url, set to False
 APPLY_BASE_URL_TO_URL_PATTERNS = True
