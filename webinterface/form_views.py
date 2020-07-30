@@ -1,5 +1,5 @@
 from .forms import *
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.views.generic.edit import CreateView, DeleteView, UpdateView, FormView
 from django.http import HttpResponseRedirect
 from django.http import Http404, HttpResponseForbidden
@@ -673,6 +673,8 @@ class DutySwitchNewView(CreateView):
     def dispatch(self, request, *args, **kwargs):
         self.assignment = Assignment.objects.get(pk=self.kwargs['assignment_pk'])
         self.success_url = reverse_lazy('webinterface:cleaner', kwargs={'page': kwargs['page']})
+        if DutySwitch.objects.filter(requester_assignment=self.assignment).exists():
+            return HttpResponseRedirect(self.success_url)
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -720,8 +722,11 @@ class DutySwitchUpdateView(UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = "Gib einen Putzdienst-Tausch in Auftrag"
-        context['info_banner'] = {'text': "<p>Andere Putzer werden nicht über deine Änderungen benachrichtigt.</p>"}
+        context['title'] = "Ändere deine Putzdienst-Tausch Anfrage"
+        context['info_banner'] = {
+            'text': "<p>Du bearbeitest deine Putzdienst-Tausch Anfrage für deinen "
+                    f"Dienst am {self.object.requester_assignment.assignment_date().strftime('%d. %b. %Y')}.</p>"
+                    "<p>Andere Putzer werden nicht über deine Änderungen benachrichtigt.</p>"}
         context['submit_button'] = {'text': "Speichern"}
         context['cancel_button'] = {'text': "Abbrechen",
                                     'url': self.success_url}
