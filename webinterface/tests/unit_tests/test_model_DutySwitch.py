@@ -85,23 +85,48 @@ class DutySwitchTest(BaseFixtureWithDutySwitch, TestCase):
 class DutySwitchDatabaseTests(TestCase):
     def setUp(self) -> None:
         self.schedule = Schedule.objects.create(name='schedule')
-        self.cleaning_week_1 = CleaningWeek.objects.create(week=300, schedule=self.schedule)
-        self.cleaning_week_2 = CleaningWeek.objects.create(week=301, schedule=self.schedule)
+        self.group = ScheduleGroup.objects.create(name='group')
+        self.group.schedules.add(self.schedule)
+
+        self.start_week = 300
+        self.end_week = 301
+
+        self.cleaning_week_1 = CleaningWeek.objects.create(week=self.start_week, schedule=self.schedule)
+        self.cleaning_week_2 = CleaningWeek.objects.create(week=self.end_week, schedule=self.schedule)
 
         self.cleaner1 = Cleaner.objects.create(name='cleaner1')
         self.cleaner2 = Cleaner.objects.create(name='cleaner2')
+
+        self.affiliation1 = Affiliation.objects.create(cleaner=self.cleaner1, group=self.group,
+                                                       beginning=self.start_week, end=self.end_week)
+        self.affiliation2 = Affiliation.objects.create(cleaner=self.cleaner2, group=self.group,
+                                                       beginning=self.start_week, end=self.end_week)
 
         self.assignment1 = Assignment.objects.create(cleaner=self.cleaner1, cleaning_week=self.cleaning_week_1,
                                                      schedule=self.schedule)
         self.assignment2 = Assignment.objects.create(cleaner=self.cleaner2, cleaning_week=self.cleaning_week_2,
                                                      schedule=self.schedule)
 
+        self.dutyswitch = DutySwitch.objects.create(requester_assignment=self.assignment1)
+
+    def assert_switch_completed(self):
+        self.assertEqual(Assignment.objects.get(pk=self.assignment1.pk).cleaner, self.cleaner2)
+        self.assertEqual(Assignment.objects.get(pk=self.assignment2.pk).cleaner, self.cleaner1)
+        self.assertIn(self.cleaner1, CleaningWeek.objects.get(pk=self.cleaning_week_1.pk).excluded.all())
+        self.assertFalse(DutySwitch.objects.filter(pk=self.dutyswitch.pk).exists())
+
     def test__save__acceptor_is_set(self):
+        self.dutyswitch.acceptor_assignment = self.assignment2
+        self.dutyswitch.save()
+        self.assert_switch_completed()
 
-        temp_dutyswitch = DutySwitch.objects.create(requester_assignment=self.assignment1)
-        temp_dutyswitch.acceptor_assignment = self.assignment2
-        temp_dutyswitch.save()
+    @patch('webinterface.models.Assignment.has_passed', autospec=True, return_value=False)
+    def test__automatic_accepting(self, mock_has_passed):
+        new_request = DutySwitch.objects.create(requester_assignment=self.assignment2)
+        new_request.acceptor_weeks.add(self.cleaning_week_1)
 
-        self.assertEqual(self.assignment1.cleaner, self.cleaner2)
-        self.assertEqual(self.assignment2.cleaner, self.cleaner1)
-        self.assertIn(self.cleaner1, self.cleaning_week_1.excluded.all())
+        # Now the automatic accepting will happen
+        self.dutyswitch.acceptor_weeks.add(self.cleaning_week_2)
+
+        self.assert_switch_completed()
+        self.assertFalse(DutySwitch.objects.filter(pk=new_request.pk).exists())

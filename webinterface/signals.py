@@ -14,3 +14,20 @@ def schedule_group_changed(instance, action, model, pk_set, **kwargs):
             for schedule in schedules.all():
                 [x.set_assignments_valid_field(False) for x in schedule.cleaningweek_set.in_future()]
     return
+
+
+@receiver(signal=m2m_changed, sender=DutySwitch.acceptor_weeks.through)
+def automatic_dutyswitch_accepting(instance: DutySwitch, action, model, pk_set, **kwargs):
+    if action == 'post_add':
+        instance_can_accept = instance.possible_acceptors().all()
+        open_dutyswitch_requests = DutySwitch.objects.filter(requester_assignment__in=instance_can_accept)
+
+        can_accept_instance = [x for x in open_dutyswitch_requests
+                               if instance.requester_assignment in x.possible_acceptors()]
+
+        if can_accept_instance:
+            # We set the acceptor of the other DutySwitch object, so that the emails make sense,
+            # as it then tells the other Cleaner that the Cleaner of instance accepted it.
+            can_accept_instance[0].acceptor_assignment = instance.requester_assignment
+            can_accept_instance[0].save()
+    return
