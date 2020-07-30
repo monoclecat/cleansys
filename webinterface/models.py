@@ -817,17 +817,12 @@ class DutySwitch(models.Model):
         if self.requester_assignment.has_passed():
             return Assignment.objects.none()
 
-        if self.acceptor_weeks.all().count() == 0:
-            acceptor_weeks = DutySwitch.default_acceptor_weeks(self.requester_assignment).all()
-        else:
-            acceptor_weeks = self.acceptor_weeks.all()
-
         active_affiliations = Affiliation.objects.active_in_week(self.requester_assignment.cleaning_week.week)
         active_cleaners = [x.cleaner for x in active_affiliations.all()]
 
         acceptors = Assignment.objects.in_enabled_cleaning_weeks(). \
             filter(schedule=self.requester_assignment.schedule). \
-            filter(cleaning_week__in=acceptor_weeks). \
+            filter(cleaning_week__in=self.acceptor_weeks.all()). \
             filter(cleaner__in=active_cleaners). \
             exclude(cleaner=self.requester_assignment.cleaner). \
             exclude(cleaning_week__excluded=self.requester_assignment.cleaner)
