@@ -237,6 +237,15 @@ class AssignmentForm(forms.ModelForm):
             'cleaner': "Putzer für diesen Putzdienst",
         }
 
+    def __init__(self, schedule=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'instance' in kwargs and kwargs['instance']:
+            assignment = kwargs['instance']
+            active_affiliations = Affiliation.objects.active_in_week_for_schedule(
+                week=assignment.cleaning_week.week, schedule=assignment.schedule)
+            active_cleaners = [x.cleaner.pk for x in active_affiliations.all()]
+            self.fields['cleaner'].queryset = Cleaner.objects.filter(pk__in=active_cleaners)
+
 
 class TaskTemplateForm(forms.ModelForm):
     class Meta:

@@ -397,7 +397,7 @@ class AssignmentCreateView(FormView):
         if 'schedule_pk' in kwargs:
             self.schedule = get_object_or_404(Schedule, pk=kwargs['schedule_pk'])
             self.success_url = reverse_lazy('webinterface:schedule', kwargs={'slug': self.schedule.slug,
-                                                                                  'page': kwargs['page']})
+                                                                             'page': kwargs['page']})
         else:
             self.schedule = None
             self.success_url = reverse_lazy('webinterface:admin')
