@@ -1,0 +1,21 @@
+{% extends "webinterface/mobile_first_body.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+{{ schedule.name }}
+{% endblock %}
+
+{% block main %}
+    <h2>Tauschvorschlag abgelehnt</h2>
+    <h3>Hallo {{ dutyswitch.proposed_acceptor.cleaner }}!</h3>
+    <p>
+        Der Vorschlag, den zum Tausch ausstehenden Putzdienst von {{ dutyswitch.requester_assignment.cleaner }}
+        am {{ dutyswitch.requester_assignment.assignment_date|date:"d. M. Y" }} im Putzplan
+        {{ dutyswitch.requester_assignment.schedule }}
+        gegen deinen Dienst am {{ dutyswitch.proposed_acceptor.assignment_date|date:"d. M. Y" }} zu tauschen wurde
+        abgelehnt.
+    </p>
+    <p>
+        Du kannst dieses Fenster nun schließen.
+    </p>
+{% endblock %}

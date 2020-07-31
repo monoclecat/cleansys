@@ -130,3 +130,21 @@ class DutySwitchDatabaseTests(TestCase):
 
         self.assert_switch_completed()
         self.assertFalse(DutySwitch.objects.filter(pk=new_request.pk).exists())
+
+    @patch('webinterface.models.DutySwitch.possible_acceptors', autospec=True)
+    def test__set_new_proposal(self, mock_possible_acceptors):
+        mock_possible_acceptors.return_value = Assignment.objects.filter(pk=self.assignment1.pk)
+        dutyswitch = DutySwitch.objects.get(pk=self.dutyswitch.pk)
+
+        self.assertIsNone(dutyswitch.proposed_acceptor)
+        dutyswitch.set_new_proposal()
+        dutyswitch = DutySwitch.objects.get(pk=self.dutyswitch.pk)
+        self.assertIsNotNone(dutyswitch.proposed_acceptor)
+
+        proposed = dutyswitch.proposed_acceptor
+        dutyswitch.set_new_proposal()
+        dutyswitch = DutySwitch.objects.get(pk=self.dutyswitch.pk)
+        new_proposed = dutyswitch.proposed_acceptor
+        self.assertIn(proposed, dutyswitch.dont_propose.all())
+        self.assertNotEqual(proposed, new_proposed)
+        self.assertIsNone(dutyswitch.proposed_acceptor)

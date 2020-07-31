@@ -75,6 +75,25 @@ def send_email__new_acceptable_dutyswitch(dutyswitch):
     connection.send_messages(outbox)
 
 
+def send_email__dutyswitch_proposal(dutyswitch):
+    outbox = []
+    cleaner = dutyswitch.proposed_acceptor.cleaner
+
+    template = get_template('email_templates/email_new_dutyswitch_proposal.md')
+    context = {  # for base_template, context MUST contain cleaner and host
+        'cleaner': cleaner,
+        'host': HOST,
+        'dutyswitch': dutyswitch,
+        'requester': dutyswitch.requester_assignment,
+    }
+    outbox.append(create_email_message(
+        subject="Dein Putzdienst wurde zum Tausch vorgeschlagen",
+        rendered_markdown=template.render(context),
+        to=cleaner.user.email))
+    connection = mail.get_connection()
+    connection.send_messages(outbox)
+
+
 def send_email__dutyswitch_complete(dutyswitch):
     outbox = []
 

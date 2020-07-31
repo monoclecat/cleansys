@@ -88,6 +88,8 @@ urlpatterns = [
          name='dutyswitch-accept-no-cleaner-page'),
     path('tauschanfrage-loeschen/<int:pk>/<int:page>', login_required(DutySwitchDeleteView.as_view()),
          name='dutyswitch-delete'),
+    path('tauschvorschlag-ablehnen/<int:pk>', login_required(DutySwitchRejectProposalView.as_view()),
+         name='dutyswitch-reject-proposal'),
 
     path('putzplan-liste/', login_required(ScheduleList.as_view()), name='schedule-list'),
     path('putzplan/<slug:slug>/ab<int:week>/druckansicht/', login_required(SchedulePrintView.as_view()),

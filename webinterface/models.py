@@ -783,6 +783,10 @@ class DutySwitch(models.Model):
     acceptor_assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="acceptor")
     acceptor_weeks = models.ManyToManyField(CleaningWeek)
 
+    proposed_acceptor = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="proposed")
+    dont_propose = models.ManyToManyField(Assignment)
+    execute_proposal = models.DateTimeField(null=True)
+
     message = models.CharField(max_length=100)
 
     objects = DutySwitchQuerySet.as_manager()
@@ -834,6 +838,20 @@ class DutySwitch(models.Model):
 
         return acceptors
 
+    def set_new_proposal(self):
+        self.dont_propose.add(self.proposed_acceptor)
+        choices = set(self.possible_acceptors()) ^ set(self.dont_propose.all())
+        if choices:
+            self.proposed_acceptor = random.choice(list(choices))
+            self.execute_proposal = timezone.now().date() + timezone.timedelta(days=2)
+            email_sending.send_email__dutyswitch_proposal(self)
+        else:
+            self.proposed_acceptor = None
+            self.execute_proposal = None
+
+        self.save()
+        return self.proposed_acceptor
+
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         delete_self = False
@@ -855,14 +873,15 @@ class DutySwitch(models.Model):
 
             self.acceptor_assignment.cleaner = requester_cleaner
             self.acceptor_assignment.save()
-            self.update_previous()
             delete_self = True
 
             email_sending.send_email__dutyswitch_complete(self)
 
+        self.update_previous()
         super().save(force_insert, force_update, using, update_fields)
 
         if not self.__previous_pk:
+            self.set_new_proposal()
             email_sending.send_email__new_acceptable_dutyswitch(self)
 
         if delete_self:
