@@ -349,7 +349,7 @@ The following job will run `cronscripts/process_dutyswitch_proposals.sh` every
 day at 1:00 in the morning: 
 
 ```bash
-0 1 * * 0 www-data bash /var/www/cleansys/cronscripts/process_dutyswitch_proposals.sh >> /var/www/cleansys/logs/cron.log
+0 1 * * * www-data bash /var/www/cleansys/cronscripts/process_dutyswitch_proposals.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
 #### Pre-generate plots
