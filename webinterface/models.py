@@ -785,7 +785,7 @@ class DutySwitch(models.Model):
 
     proposed_acceptor = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, related_name="proposed")
     dont_propose = models.ManyToManyField(Assignment)
-    execute_proposal = models.DateTimeField(null=True)
+    execute_proposal = models.DateField(null=True)
 
     message = models.CharField(max_length=100)
 
@@ -852,6 +852,10 @@ class DutySwitch(models.Model):
         self.save()
         return self.proposed_acceptor
 
+    def set_proposal_as_acceptor(self):
+        self.acceptor_assignment = self.proposed_acceptor
+        self.save()
+
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         delete_self = False
@@ -881,7 +885,6 @@ class DutySwitch(models.Model):
         super().save(force_insert, force_update, using, update_fields)
 
         if not self.__previous_pk:
-            self.set_new_proposal()
             email_sending.send_email__new_acceptable_dutyswitch(self)
 
         if delete_self:

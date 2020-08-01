@@ -20,7 +20,7 @@ class Command(BaseCommand):
                                  "Defaults to WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT + 4.")
 
     def handle(self, *args, **options):
-        if options['weeks_ahead'] is not None and options['weeks_ahead'] and options['weeks_ahead'] >= 0:
+        if options['weeks_ahead'] and options['weeks_ahead'][0] >= 0:
             weeks_ahead = options['weeks_ahead'][0]
         else:
             weeks_ahead = WARN_WEEKS_IN_ADVANCE__ASSIGNMENTS_RUNNING_OUT + 4

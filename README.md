@@ -339,6 +339,19 @@ Monday at 3:00 in the morning:
 0 3 * * 0 www-data bash /var/www/cleansys/cronscripts/create_assignments.sh >> /var/www/cleansys/logs/cron.log
 ``` 
 
+#### Enable automated parts of Assignment trading
+
+The DutySwitch model enables the trading of Assignments between Cleaners and requires a daily-run 
+cron script to work properly. If this cronjob is not set, the `DUTYSWITCH_HAS_CRON` setting in 
+`common_settings.py` must be set to `False`. 
+
+The following job will run `cronscripts/process_dutyswitch_proposals.sh` every
+day at 1:00 in the morning: 
+
+```bash
+0 1 * * 0 www-data bash /var/www/cleansys/cronscripts/process_dutyswitch_proposals.sh >> /var/www/cleansys/logs/cron.log
+``` 
+
 #### Pre-generate plots
 
 The following job will run `cronscripts/create_plots.sh` every Monday at 3:15 in the morning. 

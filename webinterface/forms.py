@@ -303,7 +303,7 @@ class TaskCleanedForm(forms.ModelForm):
 class DutySwitchForm(forms.ModelForm):
     class Meta:
         model = DutySwitch
-        exclude = ('acceptor_assignment',)
+        fields = ('acceptor_weeks', 'message')
         labels = {
             'message': "Wieso möchtest du tauschen?",
             'acceptor_weeks': "Zu welchen Terminen kannst du dafür einen Putzdienst übernehmen?"
