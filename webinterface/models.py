@@ -1,7 +1,6 @@
 from django.db import models
 from django.core.exceptions import *
 from django.db.models.query import QuerySet
-from django.db.models.signals import m2m_changed
 from operator import itemgetter
 import datetime
 from django.contrib.auth.hashers import make_password
@@ -10,7 +9,6 @@ import logging
 from logging.config import dictConfig
 from django.contrib.auth.models import User
 from django.utils import timezone
-from django.db import OperationalError
 import calendar
 import random
 import time
@@ -762,6 +760,9 @@ class DutySwitchQuerySet(models.QuerySet):
         else:
             return base_filter
 
+    def no_proposal(self):
+        return self.filter(proposed_acceptor__isnull=True)
+
     def inaccessible(self):
         return self.filter(acceptor_assignment__isnull=True).filter(requester_assignment__cleaning_week__disabled=True)
 
@@ -817,26 +818,33 @@ class DutySwitch(models.Model):
             exclude(pk=requester_assignment.cleaning_week.pk). \
             exclude(excluded=requester_assignment.cleaner)
 
-    def possible_acceptors(self):
-        if self.requester_assignment.has_passed():
+    @staticmethod
+    def possible_acceptors_of_assignment(assignment: Assignment, acceptor_weeks=None):
+        if assignment.has_passed():
             return Assignment.objects.none()
 
-        active_affiliations = Affiliation.objects.active_in_week(self.requester_assignment.cleaning_week.week)
+        if not acceptor_weeks:
+            acceptor_weeks = DutySwitch.default_acceptor_weeks(assignment)
+
+        active_affiliations = Affiliation.objects.active_in_week(assignment.cleaning_week.week)
         active_cleaners = [x.cleaner for x in active_affiliations.all()]
 
-        acceptors = Assignment.objects.in_enabled_cleaning_weeks(). \
-            filter(schedule=self.requester_assignment.schedule). \
-            filter(cleaning_week__in=self.acceptor_weeks.all()). \
-            filter(cleaner__in=active_cleaners). \
-            exclude(cleaner=self.requester_assignment.cleaner). \
-            exclude(cleaning_week__excluded=self.requester_assignment.cleaner)
+        p_a_set = Assignment.objects.in_enabled_cleaning_weeks()
+        p_a_set = p_a_set.filter(schedule=assignment.schedule)
+        p_a_set = p_a_set.filter(cleaning_week__in=acceptor_weeks.all())
+        p_a_set = p_a_set.filter(cleaner__in=active_cleaners)
+        p_a_set = p_a_set.exclude(cleaner=assignment.cleaner)
+        p_a_set = p_a_set.exclude(cleaning_week__excluded=assignment.cleaner)
 
-        for could_have_passed in acceptors.filter(
+        for could_have_passed in p_a_set.filter(
                 cleaning_week__week__range=(current_epoch_week() - 1, current_epoch_week())).all():
             if could_have_passed.has_passed():
-                acceptors = acceptors.exclude(pk=could_have_passed.pk)
+                p_a_set = p_a_set.exclude(pk=could_have_passed.pk)
 
-        return acceptors
+        return p_a_set
+
+    def possible_acceptors(self):
+        return DutySwitch.possible_acceptors_of_assignment(self.requester_assignment, self.acceptor_weeks)
 
     def set_new_proposal(self):
         self.dont_propose.add(self.proposed_acceptor)
@@ -883,9 +891,6 @@ class DutySwitch(models.Model):
 
         self.update_previous()
         super().save(force_insert, force_update, using, update_fields)
-
-        if not self.__previous_pk:
-            email_sending.send_email__new_acceptable_dutyswitch(self)
 
         if delete_self:
             self.delete()

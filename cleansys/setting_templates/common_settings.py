@@ -13,8 +13,6 @@ HOST = 'http://127.0.0.1'  # This is for links in emails, must not end with a sl
 # If WSGIScriptAlias of your Apache config already implements the base url, set to False
 APPLY_BASE_URL_TO_URL_PATTERNS = True
 
-DUTYSWITCH_HAS_CRON = True
-
 # Application definition
 
 INSTALLED_APPS = [

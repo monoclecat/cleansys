@@ -3,7 +3,6 @@ from .models import *
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import *
-from crispy_forms.bootstrap import *
 from django.contrib.auth.forms import AuthenticationForm
 
 
@@ -303,15 +302,22 @@ class TaskCleanedForm(forms.ModelForm):
 class DutySwitchForm(forms.ModelForm):
     class Meta:
         model = DutySwitch
-        fields = ('acceptor_weeks', 'message')
+        fields = ('acceptor_weeks', 'message', 'proposed_acceptor')
         labels = {
             'message': "Wieso möchtest du tauschen?",
-            'acceptor_weeks': "Zu welchen Terminen kannst du dafür einen Putzdienst übernehmen?"
+            'acceptor_weeks': "Zu welchen Terminen kannst du dafür einen Putzdienst übernehmen?",
+            'proposed_acceptor': "Wunsch-Ziel angeben"
         }
         help_texts = {
             'message': "Max. 100 Zeichen. Diese Nachricht wird den Putzenden angezeigt, die mit dir tauschen können.",
             'acceptor_weeks': "Ob ein Termin letztendlich in Frage kommt hängt von weiteren Kriterien ab. "
-                              "Es kann z.B. kein Dienst getauscht werden, der schon abgelaufen ist. "
+                              "Es kann z.B. kein Dienst getauscht werden, der schon abgelaufen ist.",
+            'proposed_acceptor': "Bei Angabe eines Wunsch-Ziels wird der/die Putzende benachrichtigt und der Tausch "
+                                 "automatisch vollzogen, wenn diese/r nicht innerhalb von 2 Tagen den Link in seiner "
+                                 "erhaltenen Email anklickt. "
+                                 "Wenn die Person ablehnt, so wird der nächste mögliche Tauschpartner "
+                                 "<i>zufällig</i> ausgewählt und wieder eine Email geschickt. <br>"
+                                 "Dieses Feld kann nach Absenden dieses Formulars nicht mehr verändert werden!"
         }
         widgets = {
             'acceptor_weeks': forms.CheckboxSelectMultiple
@@ -320,10 +326,17 @@ class DutySwitchForm(forms.ModelForm):
     def __init__(self, requester_assignment=None, *args, **kwargs):
         if 'instance' in kwargs and kwargs['instance']:
             requester_assignment = kwargs['instance'].requester_assignment
+
         super().__init__(*args, **kwargs)
+        if 'instance' in kwargs and kwargs['instance']:
+            self.fields['proposed_acceptor'].widget = forms.HiddenInput()
+
         if requester_assignment:
             self.fields['acceptor_weeks'].queryset = DutySwitch.default_acceptor_weeks(requester_assignment)
             self.fields['acceptor_weeks'].initial = self.fields['acceptor_weeks'].queryset
+
+            self.fields['proposed_acceptor'].queryset = \
+                DutySwitch.possible_acceptors_of_assignment(requester_assignment)
 
     def clean(self):
         cleaned_data = super().clean()

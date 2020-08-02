@@ -342,9 +342,7 @@ Monday at 3:00 in the morning:
 #### Enable automated parts of Assignment trading
 
 The DutySwitch model enables the trading of Assignments between Cleaners and requires a daily-run 
-cron script to work properly. If this cronjob is not set, the `DUTYSWITCH_HAS_CRON` setting in 
-`common_settings.py` must be set to `False`. 
-
+cron script to work properly. 
 The following job will run `cronscripts/process_dutyswitch_proposals.sh` every
 day at 1:00 in the morning: 
 
