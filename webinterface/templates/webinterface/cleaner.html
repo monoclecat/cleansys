@@ -14,32 +14,6 @@
     </div>
     <h2>Hallo {{ cleaner.name }}!</h2>
 
-    {% if answerable_dutyswitch_requests %}
-        {% for dutyswitch in answerable_dutyswitch_requests %}
-            <div class="panel panel-info" style="margin-bottom: 0">
-                <div class="panel-body">
-                    <p>
-                        <span class="glyphicon glyphicon-user"></span>
-                        <strong>{{ dutyswitch.requester_assignment.cleaner }}</strong>
-                        möchte einen Putzdienst im Putzplan
-                        <span class="glyphicon glyphicon-list-alt"></span>
-                        <strong>{{ dutyswitch.requester_assignment.schedule }}</strong> am
-                        <span class="glyphicon glyphicon-calendar"></span>
-                        <strong>{{ dutyswitch.requester_assignment.assignment_date }}</strong> tauschen und
-                        <strong>du</strong> kannst helfen!
-                    </p>
-                    <a class="btn btn-info btn-sm"
-                       href="{% url 'webinterface:dutyswitch-accept' dutyswitch.pk page_obj.number %}"
-                       role="button" style="white-space: normal; margin: 0.5em">
-                        Tauschanfrage ansehen <span class="glyphicon glyphicon-eye-open"></span>
-                    </a>
-                </div>
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    <br>
-
     <div class="row">
         <div class="panel panel-primary" style="margin: 0">
             <div class="panel-heading">

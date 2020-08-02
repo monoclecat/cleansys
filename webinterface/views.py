@@ -335,10 +335,6 @@ class CleanerView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['cleaner'] = self.cleaner
-        context['answerable_dutyswitch_requests'] = []
-        for duty_switch in DutySwitch.objects.open():
-            if duty_switch.possible_acceptors().filter(cleaner=self.cleaner).exists():
-                context['answerable_dutyswitch_requests'].append(duty_switch)
         return context
 
 
