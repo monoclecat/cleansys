@@ -5,13 +5,17 @@
 **{{ requester.assignment_date|date:"d. b. Y" }}** 
 im Putzplan **{{ requester.schedule }}** tauschen. 
 
-Dein Dienst am {{ dutyswitch.proposed_acceptor.assignment_date|date:"d. b. Y" }} wurde zum 
-Tausch vorgeschlagen. 
-**Wenn du nicht auf diese Email reagierst, wird der Tausch nach dem 
-{{ dutyswitch.execute_proposal|date:"d. b. Y" }} ausgeführt.**
+Begründung für den Tausch:  
+{{ dutyswitch.message }}
+
+Dein Dienst im Putzplan {{ requester.schedule }} am 
+**{{ dutyswitch.proposed_acceptor.assignment_date|date:"d. b. Y" }}** wurde als Tausch-Ziel vorgeschlagen.  
+
+Wenn du **nicht** auf diese Email reagierst, wird der Tausch nach dem 
+{{ dutyswitch.execute_proposal|date:"d. b. Y" }} automatisch ausgeführt.
 
 Wenn dieser Vorschlag ok für dich ist, kannst du diese Email ignorieren. 
-Wenn du stattdessen einen anderen PutzdienstV tauschen möchtest, kannst du das 
+Wenn du stattdessen einen anderen Putzdienst tauschen möchtest, kannst du das 
 <a href="{{ host }}{% url 'webinterface:dutyswitch-accept-no-cleaner-page' dutyswitch.pk %}">hier tun</a>. 
 
 Den Vorschlag einfach nur ablehnen kannst du 

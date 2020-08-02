@@ -686,16 +686,14 @@ class DutySwitchNewView(CreateView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Gib einen Putzdienst-Tausch in Auftrag"
         context['info_banner'] = {'text': "<p>Möchtest du deinen Putzdienst "
-                                          "im Putzplan <b>{}</b> in der Woche von "
-                                          "<b>{}</b> bis <b>{}</b> tauschen?</p><br>"
+                                          "im Putzplan <b>{}</b> am <b>{}</b> tauschen?</p><br>"
                                           "<p><i>Wenn du den Putzdienst-Tausch in Auftrag gibst, wird auf der "
                                           "Startseite jeder Person, die mit dir tauschen kann, "
                                           "eine Nachricht eingeblendet. <br>"
                                           "Der Tausch erfolgt, wenn die Person eine ihrer Putzdienste "
                                           "zum Tauschen auswählt und den Tausch bestätigt.</i></p>".format(
                                             self.assignment.schedule,
-                                            self.assignment.cleaning_week.week_start().strftime("%d. %b %Y"),
-                                            self.assignment.cleaning_week.week_end().strftime("%d. %b %Y"))}
+                                            self.assignment.assignment_date().strftime("%d. %b %Y"))}
         context['submit_button'] = {'text': "Ja, ich möchte den Putzdienst-Tausch in Auftrag geben"}
         context['cancel_button'] = {'text': "Nein, hol mich hier raus!",
                                     'url': self.success_url}
@@ -707,6 +705,7 @@ class DutySwitchNewView(CreateView):
         self.object.save()
         # When setting commit=False in form.save(), you must call form.save_m2m() to save ManytoMany relationships!
         form.save_m2m()
+        email_sending.send_email__dutyswitch_proposal(self.object)
         return HttpResponseRedirect(self.get_success_url())
 
 
