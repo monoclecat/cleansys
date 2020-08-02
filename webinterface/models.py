@@ -317,7 +317,6 @@ class Cleaner(models.Model):
 
     # If set to True, email notifications are activated for that topic
     email_pref_assignment_coming_up = models.BooleanField(default=True)
-    email_pref_new_acceptable_dutyswitch = models.BooleanField(default=True)
     email_pref_accepted_foreign_dutyswitch = models.BooleanField(default=True)
     email_pref_own_dutyswitch_accepted = models.BooleanField(default=True)
     email_pref_assignments_updated = models.BooleanField(default=True)  # Not implemented (see issue #25)

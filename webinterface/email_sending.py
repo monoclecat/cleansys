@@ -52,29 +52,6 @@ def send_email_changed(cleaner, previous_address):
     connection.send_messages(outbox)
 
 
-def send_email__new_acceptable_dutyswitch(dutyswitch):
-    cleaners = set(x.cleaner for x in dutyswitch.possible_acceptors()
-                   if x.cleaner.email_pref_new_acceptable_dutyswitch and x.cleaner.user.email)
-    outbox = []
-    for cleaner in cleaners:
-        tradeable_assignments = dutyswitch.possible_acceptors().filter(cleaner=cleaner).all()
-
-        template = get_template('email_templates/email_new_acceptable_dutyswitch.md')
-        context = {  # for base_template, context MUST contain cleaner and host
-            'cleaner': cleaner,
-            'host': HOST,
-            'dutyswitch': dutyswitch,
-            'requester': dutyswitch.requester_assignment,
-            'tradeable': tradeable_assignments,
-        }
-        outbox.append(create_email_message(
-            subject="{} möchte einen Putzdienst tauschen".format(dutyswitch.requester_assignment.cleaner.name),
-            rendered_markdown=template.render(context),
-            to=cleaner.user.email))
-    connection = mail.get_connection()
-    connection.send_messages(outbox)
-
-
 def send_email__dutyswitch_proposal(dutyswitch):
     outbox = []
     cleaner = dutyswitch.proposed_acceptor.cleaner

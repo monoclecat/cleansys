@@ -82,7 +82,6 @@ class CleanerForm(forms.ModelForm):
         fields = [
             'name',
             'email_pref_assignment_coming_up',
-            'email_pref_new_acceptable_dutyswitch',
             'email_pref_accepted_foreign_dutyswitch',
             'email_pref_own_dutyswitch_accepted',
             # 'email_pref_assignments_updated',  # Leaving this out as it's not implemented yet (see Issue #25)
@@ -90,8 +89,6 @@ class CleanerForm(forms.ModelForm):
         labels = {
             'name': "Name des Putzenden (bitte nur Vorname der Person oder Spitzname)",
             'email_pref_assignment_coming_up': "Email erhalten, wenn bald ein Putzdienst kommt.",
-            'email_pref_new_acceptable_dutyswitch': "Email erhalten, wenn eine Putzdienst-Tauschanfrage erzeugt wird,"
-                                                    "die du annehmen könntest.",
             'email_pref_accepted_foreign_dutyswitch': "Email erhalten, wenn du eine Putzdienst-Tauschanfrage annimmst.",
             'email_pref_own_dutyswitch_accepted': "Email erhalten, wenn jemand deine Putzdienst-Tauschanfrage annimmt.",
             'email_pref_assignments_updated': "Email erhalten, wenn sich deine Putzdienste geändert haben oder wenn "
@@ -115,8 +112,6 @@ class CleanerForm(forms.ModelForm):
                 text = "Dieses Feld darf nur {} bearbeiten.".format(cleaner)
                 self.fields['email_pref_assignment_coming_up'].disabled = True
                 self.fields['email_pref_assignment_coming_up'].help_text = text
-                self.fields['email_pref_new_acceptable_dutyswitch'].disabled = True
-                self.fields['email_pref_new_acceptable_dutyswitch'].help_text = text
                 self.fields['email_pref_accepted_foreign_dutyswitch'].disabled = True
                 self.fields['email_pref_accepted_foreign_dutyswitch'].help_text = text
                 self.fields['email_pref_own_dutyswitch_accepted'].disabled = True
