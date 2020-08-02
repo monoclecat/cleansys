@@ -5,16 +5,13 @@
 **{{ requester.assignment_date|date:"d. b. Y" }}** 
 im Putzplan **{{ requester.schedule }}** tauschen. 
 
-Da es oft vorkommt, dass Tauschanfragen ignoriert werden, ergreift CleanSys nun die Initiative um die 
-Tauschanfrage möglichst schnell zu erfüllen. 
-
 Dein Dienst am {{ dutyswitch.proposed_acceptor.assignment_date|date:"d. b. Y" }} wurde zum 
-Tausch _vorläufig_ ausgewählt. 
+Tausch vorgeschlagen. 
 **Wenn du nicht auf diese Email reagierst, wird der Tausch nach dem 
 {{ dutyswitch.execute_proposal|date:"d. b. Y" }} ausgeführt.**
 
 Wenn dieser Vorschlag ok für dich ist, kannst du diese Email ignorieren. 
-Wenn du stattdessen einen anderen Putzdienst tauschen möchtest, kannst du das 
+Wenn du stattdessen einen anderen PutzdienstV tauschen möchtest, kannst du das 
 <a href="{{ host }}{% url 'webinterface:dutyswitch-accept-no-cleaner-page' dutyswitch.pk %}">hier tun</a>. 
 
 Den Vorschlag einfach nur ablehnen kannst du 

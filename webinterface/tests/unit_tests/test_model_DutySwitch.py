@@ -120,19 +120,21 @@ class DutySwitchDatabaseTests(TestCase):
         self.dutyswitch.save()
         self.assert_switch_completed()
 
-    @patch('webinterface.models.Assignment.has_passed', autospec=True, return_value=False)
-    def test__automatic_accepting(self, mock_has_passed):
-        new_request = DutySwitch.objects.create(requester_assignment=self.assignment2)
-        new_request.acceptor_weeks.add(self.cleaning_week_1)
+    # Automatic accepting has been disabled
+    # @patch('webinterface.models.Assignment.has_passed', autospec=True, return_value=False)
+    # def test__automatic_accepting(self, mock_has_passed):
+    #     new_request = DutySwitch.objects.create(requester_assignment=self.assignment2)
+    #     new_request.acceptor_weeks.add(self.cleaning_week_1)
+    #
+    #     # Now the automatic accepting will happen
+    #     self.dutyswitch.acceptor_weeks.add(self.cleaning_week_2)
+    #
+    #     self.assert_switch_completed()
+    #     self.assertFalse(DutySwitch.objects.filter(pk=new_request.pk).exists())
 
-        # Now the automatic accepting will happen
-        self.dutyswitch.acceptor_weeks.add(self.cleaning_week_2)
-
-        self.assert_switch_completed()
-        self.assertFalse(DutySwitch.objects.filter(pk=new_request.pk).exists())
-
+    @patch('webinterface.email_sending.send_email__dutyswitch_proposal', autospec=True, return_value=True)
     @patch('webinterface.models.DutySwitch.possible_acceptors', autospec=True)
-    def test__set_new_proposal(self, mock_possible_acceptors):
+    def test__set_new_proposal(self, mock_possible_acceptors, mock_send_email):
         mock_possible_acceptors.return_value = Assignment.objects.filter(pk=self.assignment1.pk)
         dutyswitch = DutySwitch.objects.get(pk=self.dutyswitch.pk)
 
