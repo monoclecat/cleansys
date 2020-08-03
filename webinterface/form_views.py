@@ -691,7 +691,10 @@ class DutySwitchNewView(CreateView):
                                           "Startseite jeder Person, die mit dir tauschen kann, "
                                           "eine Nachricht eingeblendet. <br>"
                                           "Der Tausch erfolgt, wenn die Person eine ihrer Putzdienste "
-                                          "zum Tauschen auswählt und den Tausch bestätigt.</i></p>".format(
+                                          "zum Tauschen auswählt und den Tausch bestätigt.</i></p>"
+                                          "<p>Bist du über eine längere Zeit nicht da oder ziehst du aus? "
+                                          "Setze dich bitte mit dem Admin in Verbindung, damit er dich für die "
+                                          "Zeit freistellen oder austragen kann!</p>".format(
                                             self.assignment.schedule,
                                             self.assignment.assignment_date().strftime("%d. %b %Y"))}
         context['submit_button'] = {'text': "Ja, ich möchte den Putzdienst-Tausch in Auftrag geben"}

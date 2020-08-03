@@ -425,20 +425,17 @@ class DutySwitchRejectProposalView(DetailView):
     template_name = "webinterface/dutyswitch_reject_proposal.html"
     model = DutySwitch
 
-    def dispatch(self, request, *args, **kwargs):
-        dutyswitch = self.get_object()
-        # Anne
-        if dutyswitch.proposed_acceptor.cleaner.user != request.user:
-            return HttpResponseForbidden("Du hast keine Berechtigung, diese Seite zu sehen. ")
-        return super().dispatch(request, *args, **kwargs)
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # We need to set new proposal after context has been loaded, or else the new proposal will be shown on the page
-        # Also, we need to run the function on a new object instance, because self.object is in context
-        DutySwitch.objects.get(pk=self.object.pk).set_new_proposal()
+        if self.object.proposed_acceptor.cleaner.user != self.request.user:
+            context['success'] = False
+        else:
+            context['success'] = True
+            # We need to set new proposal after context has been loaded, or else the new proposal
+            # will be shown on the page.
+            # Also, we need to run the function on a new object instance, because self.object is in context
+            DutySwitch.objects.get(pk=self.object.pk).set_new_proposal()
         return context
-
 
 
 class LoginByClickView(LoginView):
