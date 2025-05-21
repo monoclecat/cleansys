@@ -7,7 +7,7 @@ from .common_settings import LOGGING, BASE_DIR
 import os
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "tn[&Vf+),$GA/}uf[iQ!&w?aaBkqay_,4+sRNPTqLvS@'&]/X&4Y{&tHv{H"
+SECRET_KEY = "a secret key that should be kept secret"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False

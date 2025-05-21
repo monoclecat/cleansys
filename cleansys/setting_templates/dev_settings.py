@@ -8,7 +8,7 @@ import os
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "iE]L3?gXE$UG`#C'h'L:U*S58}vYkt;z2H3H&d`uX-3D,nak/E$8+D]g"
+SECRET_KEY = "a secret key that should be kept secret"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
