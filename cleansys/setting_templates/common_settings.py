@@ -108,6 +108,8 @@ USE_L10N = True
 USE_TZ = True
 
 LOGGING_PATH = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOGGING_PATH, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
